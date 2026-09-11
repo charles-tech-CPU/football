@@ -10,6 +10,7 @@ import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,20 @@ public class MatchService {
     @Transactional(readOnly = true)
     public List<MatchDto> findByTeam(Long teamId) {
         return matchRepository.findByTeam1_IdOrTeam2_IdOrderByDateDesc(teamId, teamId)
+                .stream().map(MatchDto::from).toList();
+    }
+
+    /** Derniers matchs joues, toutes competitions confondues, du plus recent au plus ancien. */
+    @Transactional(readOnly = true)
+    public List<MatchDto> findRecentResults(int limit) {
+        return matchRepository.findRecentByStatus(MatchStatus.COMPLETED, PageRequest.of(0, limit))
+                .stream().map(MatchDto::from).toList();
+    }
+
+    /** Tous les matchs pas encore joues, toutes competitions confondues, du plus proche au plus lointain. */
+    @Transactional(readOnly = true)
+    public List<MatchDto> findUpcoming(int limit) {
+        return matchRepository.findUpcoming(MatchStatus.COMPLETED, PageRequest.of(0, limit))
                 .stream().map(MatchDto::from).toList();
     }
 

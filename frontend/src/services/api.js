@@ -15,6 +15,8 @@ export default {
 
   getMatchesByCompetition: (competitionId) =>
     api.get('/matches', { params: { competitionId } }).then(r => r.data),
+  getRecentResults: (limit) => api.get('/matches/recent', { params: { limit } }).then(r => r.data),
+  getUpcomingMatches: (limit) => api.get('/matches/upcoming', { params: { limit } }).then(r => r.data),
   createMatch: (payload) => api.post('/matches', payload).then(r => r.data),
   updateMatch: (id, payload) => api.put(`/matches/${id}`, payload).then(r => r.data),
   deleteMatch: (id) => api.delete(`/matches/${id}`),

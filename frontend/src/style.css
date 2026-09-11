@@ -204,6 +204,17 @@ tbody tr:hover {
   text-align: center;
 }
 
+/* Saisie brute du score, sans les fleches +/- du input[type=number]. */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .row-scheduled {
   color: var(--text-muted);
 }
@@ -519,6 +530,10 @@ tbody tr.standing-yellow:hover { background: #f6ecac; }
   font-weight: 700;
   font-size: 0.9em;
   letter-spacing: 0.01em;
+}
+
+.group-input {
+  width: 160px;
 }
 
 .team-country {

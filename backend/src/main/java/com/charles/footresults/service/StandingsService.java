@@ -3,9 +3,11 @@ package com.charles.footresults.service;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.MatchStatus;
 import com.charles.footresults.domain.Team;
+import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.HeadToHeadCellDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.MatchRepository;
+import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,6 +21,18 @@ import java.util.Map;
  * partir des matchs COMPLETED d'une competition. Points classiques : victoire
  * = 3, nul = 1, defaite = 0. N'a de sens que pour une competition de type
  * LEAGUE (les coupes sont a elimination directe, pas de classement).
+ *
+ * Certains championnats se scindent en 2e partie de saison en plusieurs
+ * mini-groupes (ex: Finlande - top 6 / bottom 6, meme principe en Ecosse,
+ * Autriche, Belgique...) : les points de la phase 1 (saison reguliere,
+ * TOUS les adversaires) sont conserves tels quels, puis les matchs de la
+ * phase 2 (uniquement entre membres du meme groupe final) s'ajoutent par
+ * dessus. Comme ce calcul est deja exactement "additionner tous les matchs
+ * joues par l'equipe", aucun filtrage particulier n'est necessaire : on
+ * garde le meme calcul qu'une competition classique, et on se contente de
+ * REPARTIR les lignes obtenues par groupe (TeamCompetitionStatus.groupName)
+ * pour l'affichage. Une competition sans aucune equipe groupee garde un
+ * classement unique, inchange.
  */
 @Service
 public class StandingsService {
@@ -27,21 +41,58 @@ public class StandingsService {
     private static final int POINTS_DRAW = 1;
 
     private final MatchRepository matchRepository;
+    private final TeamCompetitionStatusRepository statusRepository;
 
-    public StandingsService(MatchRepository matchRepository) {
+    public StandingsService(MatchRepository matchRepository, TeamCompetitionStatusRepository statusRepository) {
         this.matchRepository = matchRepository;
+        this.statusRepository = statusRepository;
     }
 
     public List<StandingRowDto> computeStandings(Long competitionId) {
-        Map<Long, TeamTally> byTeam = new LinkedHashMap<>();
+        Map<Long, String> teamGroup = new LinkedHashMap<>();
+        for (TeamCompetitionStatus s : statusRepository.findByCompetitionId(competitionId)) {
+            if (s.getGroupName() != null && !s.getGroupName().isBlank()) {
+                teamGroup.put(s.getTeam().getId(), s.getGroupName());
+            }
+        }
 
+        Map<Long, TeamTally> byTeam = new LinkedHashMap<>();
         for (Match m : playedMatches(competitionId)) {
             tallyFor(byTeam, m.getTeam1()).addResult(m.getScore1(), m.getScore2());
             tallyFor(byTeam, m.getTeam2()).addResult(m.getScore2(), m.getScore1());
         }
 
-        return byTeam.values().stream()
-                .map(TeamTally::toDto)
+        List<StandingRowDto> rows = byTeam.values().stream()
+                .map(t -> t.toDto(teamGroup.get(t.team.getId())))
+                .toList();
+
+        if (teamGroup.isEmpty()) {
+            return sortRows(rows);
+        }
+
+        Map<String, List<StandingRowDto>> byGroup = new LinkedHashMap<>();
+        List<StandingRowDto> ungrouped = new ArrayList<>();
+        for (StandingRowDto row : rows) {
+            if (row.group() == null) {
+                ungrouped.add(row);
+            } else {
+                byGroup.computeIfAbsent(row.group(), g -> new ArrayList<>()).add(row);
+            }
+        }
+
+        List<StandingRowDto> result = byGroup.values().stream()
+                .map(this::sortRows)
+                .sorted(Comparator.comparingInt(
+                        (List<StandingRowDto> groupRows) -> groupRows.stream().mapToInt(StandingRowDto::points).max().orElse(0)
+                ).reversed())
+                .flatMap(List::stream)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        result.addAll(sortRows(ungrouped));
+        return result;
+    }
+
+    private List<StandingRowDto> sortRows(List<StandingRowDto> rows) {
+        return rows.stream()
                 .sorted(Comparator
                         .comparingInt(StandingRowDto::points).reversed()
                         .thenComparing(Comparator.comparingInt(StandingRowDto::goalDifference).reversed())
@@ -116,10 +167,10 @@ public class StandingsService {
             }
         }
 
-        private StandingRowDto toDto() {
+        private StandingRowDto toDto(String group) {
             int points = won * POINTS_WIN + drawn * POINTS_DRAW;
             return new StandingRowDto(team.getId(), team.getName(), played, won, drawn, lost,
-                    goalsFor, goalsAgainst, goalsFor - goalsAgainst, points);
+                    goalsFor, goalsAgainst, goalsFor - goalsAgainst, points, group);
         }
     }
 }

@@ -32,6 +32,18 @@ public class MatchController {
         throw new IllegalArgumentException("Precise competitionId ou teamId en parametre de requete");
     }
 
+    /** GET /api/matches/recent?limit=300 : derniers matchs joues, toutes competitions confondues. */
+    @GetMapping("/recent")
+    public List<MatchDto> recent(@RequestParam(defaultValue = "300") int limit) {
+        return matchService.findRecentResults(limit);
+    }
+
+    /** GET /api/matches/upcoming?limit=300 : matchs pas encore joues, toutes competitions confondues. */
+    @GetMapping("/upcoming")
+    public List<MatchDto> upcoming(@RequestParam(defaultValue = "300") int limit) {
+        return matchService.findUpcoming(limit);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MatchDto create(@Valid @RequestBody MatchCreateDto dto) {

@@ -6,9 +6,11 @@ public record TeamStatusDto(
         Long teamId,
         boolean defendingChampion,
         boolean promoted,
-        boolean previousCupWinner
+        boolean previousCupWinner,
+        String groupName
 ) {
     public static TeamStatusDto from(TeamCompetitionStatus s) {
-        return new TeamStatusDto(s.getTeam().getId(), s.isDefendingChampion(), s.isPromoted(), s.isPreviousCupWinner());
+        return new TeamStatusDto(s.getTeam().getId(), s.isDefendingChampion(), s.isPromoted(), s.isPreviousCupWinner(),
+                s.getGroupName());
     }
 }

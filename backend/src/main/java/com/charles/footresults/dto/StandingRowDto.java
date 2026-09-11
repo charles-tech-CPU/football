@@ -10,6 +10,8 @@ public record StandingRowDto(
         int goalsFor,
         int goalsAgainst,
         int goalDifference,
-        int points
+        int points,
+        /** Groupe de 2eme phase (ex: "Championnat", "Relegation") ; null si la competition n'est pas scindee. */
+        String group
 ) {
 }

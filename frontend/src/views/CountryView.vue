@@ -69,11 +69,18 @@
             <button type="submit">Enregistrer</button>
           </form>
 
+          <p class="section-intro">
+            Groupe de 2e phase (ex: "Championnat" / "Relégation") : laisse vide tant que la compétition
+            n'est pas scindée en plusieurs mini-championnats. Une fois renseigné pour au moins une équipe,
+            le classement se sépare automatiquement par groupe.
+          </p>
+
           <table>
             <thead>
               <tr>
                 <th>Équipe</th>
                 <th>Statuts</th>
+                <th>Groupe (2e phase)</th>
               </tr>
             </thead>
             <tbody>
@@ -83,6 +90,14 @@
                   <StatusDropdown
                     :model-value="statusEdits[row.teamId]"
                     @update:model-value="v => saveStatus(row.teamId, v)"
+                  />
+                </td>
+                <td>
+                  <input
+                    class="group-input"
+                    v-model="statusEdits[row.teamId].groupName"
+                    placeholder="ex: Championnat"
+                    @change="saveStatus(row.teamId, statusEdits[row.teamId])"
                   />
                 </td>
               </tr>
@@ -151,7 +166,8 @@ async function load() {
       statusEdits[row.teamId] = {
         defendingChampion: existing?.defendingChampion ?? false,
         promoted: existing?.promoted ?? false,
-        previousCupWinner: existing?.previousCupWinner ?? false
+        previousCupWinner: existing?.previousCupWinner ?? false,
+        groupName: existing?.groupName ?? ''
       }
     }
   } else {
@@ -168,7 +184,8 @@ async function saveSlots() {
 
 async function saveStatus(teamId, value) {
   statusEdits[teamId] = value
-  const updated = await api.setTeamStatus(league.value.id, teamId, value)
+  const payload = { ...value, groupName: value.groupName || null }
+  const updated = await api.setTeamStatus(league.value.id, teamId, payload)
   teamStatusMap.value = { ...teamStatusMap.value, [teamId]: updated }
 }
 

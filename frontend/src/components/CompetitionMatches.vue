@@ -95,9 +95,17 @@ const newMatch = reactive({
   score2: null
 })
 
-const rounds = computed(() => [...new Set(matches.value.map(m => m.roundLabel))])
+const playedMatches = computed(() => {
+  const played = matches.value.filter(m => m.status === 'COMPLETED')
+  return played.slice().sort((a, b) => {
+    const ad = a.date ?? '', bd = b.date ?? ''
+    if (ad !== bd) return bd.localeCompare(ad)
+    return (b.time ?? '').localeCompare(a.time ?? '')
+  })
+})
+const rounds = computed(() => [...new Set(playedMatches.value.map(m => m.roundLabel))])
 const filteredMatches = computed(() =>
-  roundFilter.value ? matches.value.filter(m => m.roundLabel === roundFilter.value) : matches.value
+  roundFilter.value ? playedMatches.value.filter(m => m.roundLabel === roundFilter.value) : playedMatches.value
 )
 
 function isDraw(m) {
