@@ -1,7 +1,13 @@
 <template>
-  <nav>
-    <router-link to="/">Compétitions</router-link>
-    <router-link to="/teams">Équipes</router-link>
-  </nav>
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-mark">⚽</span>
+      Foot Results
+    </div>
+    <nav class="tabs-nav">
+      <router-link to="/">Compétitions</router-link>
+      <router-link to="/teams">Équipes</router-link>
+    </nav>
+  </div>
   <router-view />
 </template>

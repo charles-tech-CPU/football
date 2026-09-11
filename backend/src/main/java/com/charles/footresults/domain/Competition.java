@@ -35,6 +35,16 @@ public class Competition {
     @Column(nullable = false)
     private Integer season;
 
+    /** Nombre de places qualificatives par rang de classement (LEAGUE uniquement). Saisi a la main, pays par pays. */
+    @Column(name = "ldc_slots", nullable = false)
+    private Integer ldcSlots = 0;
+
+    @Column(name = "el_slots", nullable = false)
+    private Integer elSlots = 0;
+
+    @Column(name = "ecl_slots", nullable = false)
+    private Integer eclSlots = 0;
+
     public Competition(String code, String name, CompetitionType type, String country, Integer season) {
         this.code = code;
         this.name = name;

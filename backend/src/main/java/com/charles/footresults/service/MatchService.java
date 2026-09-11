@@ -76,8 +76,8 @@ public class MatchService {
         match.setTeam2(team2);
         match.setScore1(dto.score1());
         match.setScore2(dto.score2());
-        match.setStatus(dto.score1() != null && dto.score2() != null
-                ? MatchStatus.COMPLETED
-                : MatchStatus.SCHEDULED);
+        match.setStatus(dto.status() != null
+                ? dto.status()
+                : (dto.score1() != null && dto.score2() != null ? MatchStatus.COMPLETED : MatchStatus.SCHEDULED));
     }
 }

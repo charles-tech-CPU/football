@@ -3,6 +3,7 @@ package com.charles.footresults.web;
 import com.charles.footresults.domain.Competition;
 import com.charles.footresults.dto.CompetitionCreateDto;
 import com.charles.footresults.dto.CompetitionDto;
+import com.charles.footresults.dto.QualificationSlotsDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -48,5 +49,16 @@ public class CompetitionController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         competitionRepository.deleteById(id);
+    }
+
+    /** PATCH /api/competitions/{id}/qualification-slots */
+    @PatchMapping("/{id}/qualification-slots")
+    public CompetitionDto updateQualificationSlots(@PathVariable Long id, @Valid @RequestBody QualificationSlotsDto dto) {
+        Competition competition = competitionRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Competition introuvable : " + id));
+        competition.setLdcSlots(dto.ldcSlots());
+        competition.setElSlots(dto.elSlots());
+        competition.setEclSlots(dto.eclSlots());
+        return CompetitionDto.from(competitionRepository.save(competition));
     }
 }

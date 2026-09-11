@@ -2,5 +2,8 @@ package com.charles.footresults.domain;
 
 public enum MatchStatus {
     SCHEDULED,
-    COMPLETED
+    COMPLETED,
+    POSTPONED,
+    SUSPENDED,
+    FORFEIT
 }

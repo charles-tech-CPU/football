@@ -11,6 +11,7 @@ export default {
 
   getTeams: (country) => api.get('/teams', { params: { country } }).then(r => r.data),
   createTeam: (payload) => api.post('/teams', payload).then(r => r.data),
+  mergeTeam: (id, intoId) => api.post(`/teams/${id}/merge`, null, { params: { intoId } }).then(r => r.data),
 
   getMatchesByCompetition: (competitionId) =>
     api.get('/matches', { params: { competitionId } }).then(r => r.data),
@@ -21,5 +22,12 @@ export default {
   getStandings: (competitionId) =>
     api.get('/standings', { params: { competitionId } }).then(r => r.data),
   getHeadToHead: (competitionId) =>
-    api.get('/head-to-head', { params: { competitionId } }).then(r => r.data)
+    api.get('/head-to-head', { params: { competitionId } }).then(r => r.data),
+
+  getTeamStatuses: (competitionId) =>
+    api.get('/team-status', { params: { competitionId } }).then(r => r.data),
+  setTeamStatus: (competitionId, teamId, payload) =>
+    api.put('/team-status', payload, { params: { competitionId, teamId } }).then(r => r.data),
+  updateQualificationSlots: (competitionId, payload) =>
+    api.patch(`/competitions/${competitionId}/qualification-slots`, payload).then(r => r.data)
 }

@@ -3,8 +3,19 @@ package com.charles.footresults.dto;
 import com.charles.footresults.domain.Competition;
 import com.charles.footresults.domain.CompetitionType;
 
-public record CompetitionDto(Long id, String code, String name, CompetitionType type, String country, Integer season) {
+public record CompetitionDto(
+        Long id,
+        String code,
+        String name,
+        CompetitionType type,
+        String country,
+        Integer season,
+        Integer ldcSlots,
+        Integer elSlots,
+        Integer eclSlots
+) {
     public static CompetitionDto from(Competition c) {
-        return new CompetitionDto(c.getId(), c.getCode(), c.getName(), c.getType(), c.getCountry(), c.getSeason());
+        return new CompetitionDto(c.getId(), c.getCode(), c.getName(), c.getType(), c.getCountry(), c.getSeason(),
+                c.getLdcSlots(), c.getElSlots(), c.getEclSlots());
     }
 }

@@ -4,6 +4,7 @@ import com.charles.footresults.domain.Team;
 import com.charles.footresults.dto.TeamCreateDto;
 import com.charles.footresults.dto.TeamDto;
 import com.charles.footresults.repository.TeamRepository;
+import com.charles.footresults.service.TeamService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -17,9 +18,11 @@ import java.util.List;
 public class TeamController {
 
     private final TeamRepository teamRepository;
+    private final TeamService teamService;
 
-    public TeamController(TeamRepository teamRepository) {
+    public TeamController(TeamRepository teamRepository, TeamService teamService) {
         this.teamRepository = teamRepository;
+        this.teamService = teamService;
     }
 
     @GetMapping
@@ -57,5 +60,11 @@ public class TeamController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         teamRepository.deleteById(id);
+    }
+
+    /** POST /api/teams/{id}/merge?intoId=42 : reaffecte les matchs de {id} vers intoId, puis supprime {id}. */
+    @PostMapping("/{id}/merge")
+    public TeamDto merge(@PathVariable Long id, @RequestParam Long intoId) {
+        return teamService.merge(id, intoId);
     }
 }
