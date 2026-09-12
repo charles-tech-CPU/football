@@ -29,14 +29,28 @@
         <td>{{ m.roundLabel }}</td>
         <td>{{ m.date ?? '—' }}</td>
         <td>{{ formatTime(m.time) }}</td>
-        <td><span class="team-cell"><TeamLogo :name="m.team1Name" /> {{ m.team1Name }}</span></td>
+        <td>
+          <span class="team-cell">
+            <TeamLogo :name="m.team1Name" :logo-path="m.team1LogoPath" />
+            <select v-model.number="edits[m.id].team1Id">
+              <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </span>
+        </td>
         <td>
           <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score1" />
         </td>
         <td>
           <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score2" />
         </td>
-        <td><span class="team-cell"><TeamLogo :name="m.team2Name" /> {{ m.team2Name }}</span></td>
+        <td>
+          <span class="team-cell">
+            <TeamLogo :name="m.team2Name" :logo-path="m.team2LogoPath" />
+            <select v-model.number="edits[m.id].team2Id">
+              <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </span>
+        </td>
         <td>{{ statusLabel(m.status) }}</td>
         <td>
           <button @click="saveScore(m)">Enregistrer</button>
@@ -75,7 +89,10 @@ import TeamLogo from './TeamLogo.vue'
 import { formatTime } from '../utils/format'
 
 const props = defineProps({
-  competitionId: { type: [String, Number], required: true }
+  competitionId: { type: [String, Number], required: true },
+  // Fragments (insensibles a la casse) : un match n'est garde que si son round_label
+  // contient au moins un de ces fragments. Pas de filtre => tous les matchs.
+  roundIncludes: { type: Array, default: null }
 })
 
 const matches = ref([])
@@ -95,8 +112,14 @@ const newMatch = reactive({
   score2: null
 })
 
+const scopedMatches = computed(() => {
+  if (!props.roundIncludes) return matches.value
+  const fragments = props.roundIncludes.map(f => f.toUpperCase())
+  return matches.value.filter(m => fragments.some(f => (m.roundLabel ?? '').toUpperCase().includes(f)))
+})
+
 const playedMatches = computed(() => {
-  const played = matches.value.filter(m => m.status === 'COMPLETED')
+  const played = scopedMatches.value.filter(m => m.status === 'COMPLETED')
   return played.slice().sort((a, b) => {
     const ad = a.date ?? '', bd = b.date ?? ''
     if (ad !== bd) return bd.localeCompare(ad)
@@ -137,29 +160,50 @@ async function load() {
   const competitionId = Number(props.competitionId)
   const [matchList, teamList] = await Promise.all([
     api.getMatchesByCompetition(competitionId),
-    api.getTeams()
+    api.getTeams({ competitionId })
   ])
   matches.value = matchList
   teams.value = teamList
 
   for (const key of Object.keys(edits)) delete edits[key]
   for (const m of matchList) {
-    edits[m.id] = { score1: m.score1, score2: m.score2 }
+    edits[m.id] = { team1Id: m.team1Id, team2Id: m.team2Id, score1: m.score1, score2: m.score2 }
   }
   loaded.value = true
+}
+
+const sortedTeams = computed(() => teams.value.slice().sort((a, b) => a.name.localeCompare(b.name)))
+
+function teamNameById(id) {
+  return teams.value.find(t => t.id === id)?.name ?? '?'
+}
+
+function confirmTeamChangeIfNeeded(match, edit) {
+  const changed1 = edit.team1Id !== match.team1Id
+  const changed2 = edit.team2Id !== match.team2Id
+  if (!changed1 && !changed2) return true
+  const lines = []
+  if (changed1) lines.push(`Équipe 1 : ${match.team1Name} → ${teamNameById(edit.team1Id)}`)
+  if (changed2) lines.push(`Équipe 2 : ${match.team2Name} → ${teamNameById(edit.team2Id)}`)
+  return window.confirm(`Confirmer la modification du match ?\n${lines.join('\n')}`)
 }
 
 async function saveScore(match) {
   error.value = ''
   const edit = edits[match.id]
+  if (!confirmTeamChangeIfNeeded(match, edit)) {
+    edit.team1Id = match.team1Id
+    edit.team2Id = match.team2Id
+    return
+  }
   try {
     await api.updateMatch(match.id, {
       competitionId: match.competitionId,
       roundLabel: match.roundLabel,
       date: match.date,
       time: match.time,
-      team1Id: match.team1Id,
-      team2Id: match.team2Id,
+      team1Id: edit.team1Id,
+      team2Id: edit.team2Id,
       score1: edit.score1,
       score2: edit.score2
     })

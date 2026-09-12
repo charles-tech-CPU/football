@@ -1,15 +1,18 @@
 package com.charles.footresults.service;
 
 import com.charles.footresults.domain.Competition;
+import com.charles.footresults.domain.CompetitionType;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.MatchStatus;
 import com.charles.footresults.domain.Team;
 import com.charles.footresults.dto.MatchCreateDto;
 import com.charles.footresults.dto.MatchDto;
+import com.charles.footresults.dto.MatchPageDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,10 +54,34 @@ public class MatchService {
                 .stream().map(MatchDto::from).toList();
     }
 
-    /** Tous les matchs pas encore joues, toutes competitions confondues, du plus proche au plus lointain. */
+    /**
+     * Tous les matchs pas encore joues, toutes competitions confondues, du plus proche au plus
+     * lointain, page par page et filtres par type ("league"/"cup"/"ldc"/"el"/"ec", tout par defaut)
+     * pour eviter de charger les ~8000 matchs a chaque affichage du calendrier.
+     */
     @Transactional(readOnly = true)
-    public List<MatchDto> findUpcoming(int limit) {
-        return matchRepository.findUpcoming(MatchStatus.COMPLETED, PageRequest.of(0, limit))
+    public MatchPageDto findUpcoming(int page, int size, String filter) {
+        CompetitionType type = switch (filter == null ? "all" : filter) {
+            case "league" -> CompetitionType.LEAGUE;
+            case "cup" -> CompetitionType.DOMESTIC_CUP;
+            default -> null;
+        };
+        String code = switch (filter == null ? "all" : filter) {
+            case "ldc" -> "LDC";
+            case "el" -> "EL";
+            case "ec" -> "EC";
+            default -> null;
+        };
+        Page<Match> result = matchRepository.findUpcomingFiltered(
+                List.of(MatchStatus.COMPLETED, MatchStatus.POSTPONED, MatchStatus.SUSPENDED),
+                type, code, PageRequest.of(page, size));
+        return new MatchPageDto(result.getContent().stream().map(MatchDto::from).toList(), result.getTotalElements());
+    }
+
+    /** Tous les matchs reportes/suspendus, toutes competitions confondues, sans limite. */
+    @Transactional(readOnly = true)
+    public List<MatchDto> findPostponedOrSuspended() {
+        return matchRepository.findByStatusInOrderByDateAscTimeAsc(List.of(MatchStatus.POSTPONED, MatchStatus.SUSPENDED))
                 .stream().map(MatchDto::from).toList();
     }
 

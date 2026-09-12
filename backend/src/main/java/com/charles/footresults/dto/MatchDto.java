@@ -1,5 +1,6 @@
 package com.charles.footresults.dto;
 
+import com.charles.footresults.domain.CompetitionType;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.MatchStatus;
 
@@ -12,13 +13,18 @@ public record MatchDto(
         String competitionCode,
         String competitionName,
         String competitionCountry,
+        CompetitionType competitionType,
         String roundLabel,
         LocalDate date,
         LocalTime time,
         Long team1Id,
         String team1Name,
+        String team1LogoPath,
+        String team1Country,
         Long team2Id,
         String team2Name,
+        String team2LogoPath,
+        String team2Country,
         Integer score1,
         Integer score2,
         MatchStatus status
@@ -30,13 +36,18 @@ public record MatchDto(
                 m.getCompetition().getCode(),
                 m.getCompetition().getName(),
                 m.getCompetition().getCountry(),
+                m.getCompetition().getType(),
                 m.getRoundLabel(),
                 m.getDate(),
                 m.getTime(),
                 m.getTeam1().getId(),
                 m.getTeam1().getName(),
+                m.getTeam1().getLogoPath(),
+                m.getTeam1().getCountry(),
                 m.getTeam2().getId(),
                 m.getTeam2().getName(),
+                m.getTeam2().getLogoPath(),
+                m.getTeam2().getCountry(),
                 m.getScore1(),
                 m.getScore2(),
                 m.getStatus()

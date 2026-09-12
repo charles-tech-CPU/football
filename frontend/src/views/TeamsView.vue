@@ -16,7 +16,7 @@
       <tr v-for="t in filtered" :key="t.id">
         <td>
           <span class="team-cell">
-            <TeamLogo :name="t.name" :country="t.country" />
+            <TeamLogo :name="t.name" :country="t.country" :logo-path="t.logoPath" />
             <span class="team-chip" :style="chipStyle(t.country)">{{ t.name }}</span>
           </span>
         </td>

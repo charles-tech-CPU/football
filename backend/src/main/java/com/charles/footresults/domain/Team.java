@@ -30,6 +30,10 @@ public class Team {
     @Column(length = 60)
     private String country;
 
+    /** Chemin relatif du blason, servi en statique par le backend (ex: "749.png"). Null si pas encore importe. */
+    @Column(name = "logo_path", length = 200)
+    private String logoPath;
+
     public Team(String name, String country) {
         this.name = name;
         this.country = country;

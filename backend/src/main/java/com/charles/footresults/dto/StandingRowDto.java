@@ -3,6 +3,8 @@ package com.charles.footresults.dto;
 public record StandingRowDto(
         Long teamId,
         String teamName,
+        String teamLogoPath,
+        String teamCountry,
         int played,
         int won,
         int drawn,

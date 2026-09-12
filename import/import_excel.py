@@ -116,7 +116,11 @@ def import_league_calendar(wb, registry, out):
         s1 = ws.cell(row=row, column=8).value
         s2 = ws.cell(row=row, column=9).value
 
-        if not pays or not club1 or not club2 or not isinstance(date, datetime):
+        # "REPORTE" en date (au lieu d'une vraie date) : match reporte sans
+        # nouvelle date connue - exploitable quand meme (contrairement a une
+        # date manquante ordinaire, qui elle est rejetee ci-dessous).
+        date_reported = isinstance(date, str) and date.strip().upper() == "REPORTE"
+        if not pays or not club1 or not club2 or not (isinstance(date, datetime) or date_reported):
             continue
         # Lignes placeholder : match contre soi-meme, ou equipe = position au
         # classement / vainqueur d'un autre match ("BARRAGE", "B EUR") plutot
@@ -146,8 +150,8 @@ def import_league_calendar(wb, registry, out):
         matches.append({
             "competition_code": comp_code,
             "round_label": round_label,
-            "date": date,
-            "time": horaire,
+            "date": None if date_reported else date,
+            "time": None if date_reported else horaire,
             "team1": club1,
             "team2": club2,
             "s1": s1,
@@ -223,17 +227,25 @@ def write_sql(registry, league_matches, continental_ties):
 
     out.write("\n-- Matchs de championnat (Calendrier championnat)\n")
     for m in league_matches:
-        date_sql = m["date"].strftime("%Y-%m-%d")
+        date_sql = f"'{m['date'].strftime('%Y-%m-%d')}'" if m["date"] is not None else "NULL"
         time_sql = parse_time(m["time"])
         s1 = m["s1"] if isinstance(m["s1"], (int, float)) else None
         s2 = m["s2"] if isinstance(m["s2"], (int, float)) else None
         s1_sql = "NULL" if s1 is None else int(s1)
         s2_sql = "NULL" if s2 is None else int(s2)
-        status = "COMPLETED" if s1 is not None and s2 is not None else "SCHEDULED"
+        # "REPORTE" en S1/S2 (pas un score numerique) : match reporte, pas
+        # simplement "pas encore joue".
+        reported = str(m["s1"]).strip().upper() == "REPORTE" or str(m["s2"]).strip().upper() == "REPORTE"
+        if reported:
+            status = "POSTPONED"
+        elif s1 is not None and s2 is not None:
+            status = "COMPLETED"
+        else:
+            status = "SCHEDULED"
         out.write(
             "INSERT INTO match (competition_id, round_label, date, time, team1_id, team2_id, score1, score2, status) VALUES ("
             f"(SELECT id FROM competition WHERE code = '{sql_escape(m['competition_code'])}' AND season = {SEASON}), "
-            f"'{sql_escape(m['round_label'])}', '{date_sql}', {time_sql}, "
+            f"'{sql_escape(m['round_label'])}', {date_sql}, {time_sql}, "
             f"(SELECT id FROM team WHERE name = '{sql_escape(str(m['team1']))}'), "
             f"(SELECT id FROM team WHERE name = '{sql_escape(str(m['team2']))}'), "
             f"{s1_sql}, {s2_sql}, '{status}');\n"

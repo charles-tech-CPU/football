@@ -16,18 +16,32 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="m in upcoming" :key="m.id" :class="statusRowClass(edits[m.id].status)">
+      <tr v-for="m in upcoming" :key="m.id" :class="rowClass(m)">
         <td>{{ m.roundLabel }}</td>
         <td><input class="date-input" type="date" v-model="edits[m.id].date" /></td>
         <td><input class="time-input" type="time" v-model="edits[m.id].time" /></td>
-        <td><span class="team-cell"><TeamLogo :name="m.team1Name" /> {{ m.team1Name }}</span></td>
+        <td>
+          <span class="team-cell">
+            <TeamLogo :name="m.team1Name" :logo-path="m.team1LogoPath" />
+            <select v-model.number="edits[m.id].team1Id">
+              <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </span>
+        </td>
         <td>
           <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score1" />
         </td>
         <td>
           <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score2" />
         </td>
-        <td><span class="team-cell"><TeamLogo :name="m.team2Name" /> {{ m.team2Name }}</span></td>
+        <td>
+          <span class="team-cell">
+            <TeamLogo :name="m.team2Name" :logo-path="m.team2LogoPath" />
+            <select v-model.number="edits[m.id].team2Id">
+              <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </span>
+        </td>
         <td>
           <select v-model="edits[m.id].status">
             <option value="">À venir</option>
@@ -56,9 +70,12 @@ const props = defineProps({
 })
 
 const matches = ref([])
+const teams = ref([])
 const loaded = ref(false)
 const error = ref('')
 const edits = reactive({})
+
+const sortedTeams = computed(() => teams.value.slice().sort((a, b) => a.name.localeCompare(b.name)))
 
 const upcoming = computed(() => matches.value.filter(m => m.status !== 'COMPLETED'))
 
@@ -69,14 +86,34 @@ function statusRowClass(status) {
   return ''
 }
 
+const today = new Date().toISOString().slice(0, 10)
+
+function rowClass(m) {
+  const status = edits[m.id].status
+  const cls = statusRowClass(status)
+  if (cls) return cls
+  const date = edits[m.id].date
+  if (!date) return ''
+  if (date < today) return 'row-overdue'
+  if (date === today) return 'row-today'
+  return ''
+}
+
 async function load() {
   loaded.value = false
   const competitionId = Number(props.competitionId)
-  matches.value = await api.getMatchesByCompetition(competitionId)
+  const [matchList, teamList] = await Promise.all([
+    api.getMatchesByCompetition(competitionId),
+    api.getTeams()
+  ])
+  matches.value = matchList
+  teams.value = teamList
 
   for (const key of Object.keys(edits)) delete edits[key]
   for (const m of matches.value) {
     edits[m.id] = {
+      team1Id: m.team1Id,
+      team2Id: m.team2Id,
       date: m.date ?? '',
       time: m.time ? m.time.slice(0, 5) : '',
       score1: m.score1,
@@ -87,17 +124,36 @@ async function load() {
   loaded.value = true
 }
 
+function teamNameById(id) {
+  return teams.value.find(t => t.id === id)?.name ?? '?'
+}
+
+function confirmTeamChangeIfNeeded(match, edit) {
+  const changed1 = edit.team1Id !== match.team1Id
+  const changed2 = edit.team2Id !== match.team2Id
+  if (!changed1 && !changed2) return true
+  const lines = []
+  if (changed1) lines.push(`Équipe 1 : ${match.team1Name} → ${teamNameById(edit.team1Id)}`)
+  if (changed2) lines.push(`Équipe 2 : ${match.team2Name} → ${teamNameById(edit.team2Id)}`)
+  return window.confirm(`Confirmer la modification du match ?\n${lines.join('\n')}`)
+}
+
 async function saveMatch(match) {
   error.value = ''
   const edit = edits[match.id]
+  if (!confirmTeamChangeIfNeeded(match, edit)) {
+    edit.team1Id = match.team1Id
+    edit.team2Id = match.team2Id
+    return
+  }
   try {
     await api.updateMatch(match.id, {
       competitionId: match.competitionId,
       roundLabel: match.roundLabel,
       date: edit.date || null,
       time: edit.time || null,
-      team1Id: match.team1Id,
-      team2Id: match.team2Id,
+      team1Id: edit.team1Id,
+      team2Id: edit.team2Id,
       score1: edit.score1,
       score2: edit.score2,
       status: edit.status || null
@@ -130,6 +186,6 @@ onMounted(load)
 }
 
 .row-forfeit td {
-  background: #fdecd2;
+  background: #e5e7eb;
 }
 </style>

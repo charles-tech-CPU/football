@@ -1,6 +1,18 @@
 <template>
   <h1>Calendrier</h1>
-  <p class="section-intro">Tous les matchs pas encore joués, toutes compétitions confondues, du plus proche au plus lointain.</p>
+  <p class="section-intro">Matchs pas encore joués (hors reportés/suspendus), du plus proche au plus lointain. Filtrable par type de compétition, 20 par page.</p>
+
+  <div class="filters">
+    <select v-model="typeFilter" @change="onFilterChange">
+      <option value="league">Championnats</option>
+      <option value="cup">Coupes nationales</option>
+      <option value="ldc">Ligue des Champions</option>
+      <option value="el">Europa League</option>
+      <option value="ec">Conference League</option>
+      <option value="all">Toutes les compétitions</option>
+    </select>
+    <span class="page-info" v-if="totalCount">{{ totalCount }} match{{ totalCount > 1 ? 's' : '' }}</span>
+  </div>
 
   <table v-if="matches.length">
     <thead>
@@ -17,23 +29,34 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="m in matches" :key="m.id" :class="statusRowClass(edits[m.id].status)">
+      <tr v-for="m in matches" :key="m.id" :class="rowClass(m)">
         <td><input class="date-input" type="date" v-model="edits[m.id].date" /></td>
-        <td><input class="time-input" type="time" v-model="edits[m.id].time" /></td>
         <td>
-          <span class="team-cell">
+          <input class="time-input" type="time" v-model="edits[m.id].time" />
+          <span v-if="!edits[m.id].time" class="no-time-tag">Sans horaire</span>
+        </td>
+        <td>
+          <span class="team-cell" :class="competitionBadgeClass(m)">
             <FlagIcon v-if="m.competitionCountry" :country="m.competitionCountry" />
             {{ m.competitionName }}
           </span>
         </td>
-        <td><span class="team-chip" :style="chipStyle(m)">{{ m.team1Name }}</span></td>
+        <td>
+          <select v-model.number="edits[m.id].team1Id">
+            <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+          </select>
+        </td>
         <td>
           <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score1" />
         </td>
         <td>
           <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score2" />
         </td>
-        <td><span class="team-chip" :style="chipStyle(m)">{{ m.team2Name }}</span></td>
+        <td>
+          <select v-model.number="edits[m.id].team2Id">
+            <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+          </select>
+        </td>
         <td>
           <select v-model="edits[m.id].status">
             <option value="">À venir</option>
@@ -48,26 +71,40 @@
       </tr>
     </tbody>
   </table>
-  <p v-else-if="loaded" class="empty-state">Aucun match à venir pour l'instant.</p>
+  <p v-else-if="loaded" class="empty-state">Aucun match pour ce filtre.</p>
+
+  <div class="pagination" v-if="totalPages > 1">
+    <button type="button" :disabled="currentPage === 0" @click="prevPage">← Précédent</button>
+    <span>Page {{ currentPage + 1 }} / {{ totalPages }}</span>
+    <button type="button" :disabled="currentPage >= totalPages - 1" @click="nextPage">Suivant →</button>
+  </div>
+
   <p v-if="error" class="error-text">{{ error }}</p>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../services/api'
 import FlagIcon from '../components/FlagIcon.vue'
 import { formatTime } from '../utils/format'
-import { teamCountryStyle } from '../utils/teamColors'
+import { competitionBadgeClass } from '../utils/competitionBadge'
+
+const PAGE_SIZE = 20
 
 const matches = ref([])
+const teams = ref([])
 const loaded = ref(false)
 const error = ref('')
 const edits = reactive({})
+// Championnats par defaut (le plus gros volume) : evite de charger d'un coup
+// les ~8000 matchs a venir toutes competitions confondues.
+const typeFilter = ref('league')
+const currentPage = ref(0)
+const totalCount = ref(0)
 
-function chipStyle(m) {
-  const { bg, fg } = teamCountryStyle(m.competitionCountry ?? m.team1Name)
-  return { backgroundColor: bg, color: fg }
-}
+const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
+
+const sortedTeams = computed(() => teams.value.slice().sort((a, b) => a.name.localeCompare(b.name)))
 
 function statusRowClass(status) {
   if (status === 'POSTPONED') return 'row-postponed'
@@ -76,13 +113,37 @@ function statusRowClass(status) {
   return ''
 }
 
+const today = new Date().toISOString().slice(0, 10)
+
+function rowClass(m) {
+  const status = edits[m.id].status
+  const cls = statusRowClass(status)
+  if (cls) return cls
+  const date = edits[m.id].date
+  if (!date) return ''
+  if (date < today) return 'row-overdue'
+  if (date === today) return 'row-today'
+  return ''
+}
+
+let teamsLoaded = false
+
 async function load() {
   loaded.value = false
-  matches.value = await api.getUpcomingMatches(500)
+  const [page, teamList] = await Promise.all([
+    api.getUpcomingMatches({ page: currentPage.value, size: PAGE_SIZE, filter: typeFilter.value }),
+    teamsLoaded ? Promise.resolve(teams.value) : api.getTeams()
+  ])
+  matches.value = page.items
+  totalCount.value = page.totalCount
+  teams.value = teamList
+  teamsLoaded = true
 
   for (const key of Object.keys(edits)) delete edits[key]
   for (const m of matches.value) {
     edits[m.id] = {
+      team1Id: m.team1Id,
+      team2Id: m.team2Id,
       date: m.date ?? '',
       time: formatTime(m.time),
       score1: m.score1,
@@ -93,17 +154,53 @@ async function load() {
   loaded.value = true
 }
 
+function onFilterChange() {
+  currentPage.value = 0
+  load()
+}
+
+function prevPage() {
+  if (currentPage.value === 0) return
+  currentPage.value--
+  load()
+}
+
+function nextPage() {
+  if (currentPage.value >= totalPages.value - 1) return
+  currentPage.value++
+  load()
+}
+
+function teamNameById(id) {
+  return teams.value.find(t => t.id === id)?.name ?? '?'
+}
+
+function confirmTeamChangeIfNeeded(match, edit) {
+  const changed1 = edit.team1Id !== match.team1Id
+  const changed2 = edit.team2Id !== match.team2Id
+  if (!changed1 && !changed2) return true
+  const lines = []
+  if (changed1) lines.push(`Équipe 1 : ${match.team1Name} → ${teamNameById(edit.team1Id)}`)
+  if (changed2) lines.push(`Équipe 2 : ${match.team2Name} → ${teamNameById(edit.team2Id)}`)
+  return window.confirm(`Confirmer la modification du match ?\n${lines.join('\n')}`)
+}
+
 async function saveMatch(match) {
   error.value = ''
   const edit = edits[match.id]
+  if (!confirmTeamChangeIfNeeded(match, edit)) {
+    edit.team1Id = match.team1Id
+    edit.team2Id = match.team2Id
+    return
+  }
   try {
     await api.updateMatch(match.id, {
       competitionId: match.competitionId,
       roundLabel: match.roundLabel,
       date: edit.date || null,
       time: edit.time || null,
-      team1Id: match.team1Id,
-      team2Id: match.team2Id,
+      team1Id: edit.team1Id,
+      team2Id: edit.team2Id,
       score1: edit.score1,
       score2: edit.score2,
       status: edit.status || null
@@ -124,5 +221,30 @@ onMounted(load)
 
 .time-input {
   width: 120px;
+}
+
+.no-time-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.72em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.page-info {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 16px 0;
 }
 </style>

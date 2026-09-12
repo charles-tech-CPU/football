@@ -2,6 +2,7 @@ package com.charles.footresults.web;
 
 import com.charles.footresults.dto.MatchCreateDto;
 import com.charles.footresults.dto.MatchDto;
+import com.charles.footresults.dto.MatchPageDto;
 import com.charles.footresults.service.MatchService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -38,10 +39,21 @@ public class MatchController {
         return matchService.findRecentResults(limit);
     }
 
-    /** GET /api/matches/upcoming?limit=300 : matchs pas encore joues, toutes competitions confondues. */
+    /**
+     * GET /api/matches/upcoming?page=0&size=20&filter=league : matchs pas encore joues, paginés,
+     * filtre optionnel parmi "league"/"cup"/"ldc"/"el"/"ec" (defaut : tout).
+     */
     @GetMapping("/upcoming")
-    public List<MatchDto> upcoming(@RequestParam(defaultValue = "300") int limit) {
-        return matchService.findUpcoming(limit);
+    public MatchPageDto upcoming(@RequestParam(defaultValue = "0") int page,
+                                  @RequestParam(defaultValue = "20") int size,
+                                  @RequestParam(required = false) String filter) {
+        return matchService.findUpcoming(page, size, filter);
+    }
+
+    /** GET /api/matches/postponed : matchs reportes/suspendus, toutes competitions confondues, sans limite. */
+    @GetMapping("/postponed")
+    public List<MatchDto> postponed() {
+        return matchService.findPostponedOrSuspended();
     }
 
     @PostMapping

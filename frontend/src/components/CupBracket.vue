@@ -6,7 +6,9 @@
         <div class="tie-box" v-for="tie in r.ties" :key="tieKey(tie)">
           <div class="tie-leg" v-for="leg in tie.legs" :key="leg.id">
             <span class="tie-team" :class="{ 'tie-winner': tie.winnerId === leg.team1Id }">
-              <TeamLogo :name="leg.team1Name" />{{ leg.team1Name }}
+              <TeamLogo :name="leg.team1Name" :logo-path="leg.team1LogoPath" />
+              <FlagIcon v-if="showFlags" :country="leg.team1Country" />
+              {{ leg.team1Name }}
             </span>
             <template v-if="editingId === leg.id">
               <span class="grid-edit">
@@ -19,7 +21,9 @@
               {{ leg.score1 ?? '-' }} — {{ leg.score2 ?? '-' }}
             </span>
             <span class="tie-team tie-team--right" :class="{ 'tie-winner': tie.winnerId === leg.team2Id }">
-              {{ leg.team2Name }}<TeamLogo :name="leg.team2Name" />
+              {{ leg.team2Name }}
+              <FlagIcon v-if="showFlags" :country="leg.team2Country" />
+              <TeamLogo :name="leg.team2Name" :logo-path="leg.team2LogoPath" />
             </span>
           </div>
           <p class="tie-aggregate" v-if="tie.legs.length > 1">
@@ -57,9 +61,19 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
+import FlagIcon from './FlagIcon.vue'
 
 const props = defineProps({
-  competitionId: { type: [String, Number], required: true }
+  competitionId: { type: [String, Number], required: true },
+  // Fragments (insensibles a la casse) : un match n'est garde que si son round_label
+  // contient au moins un de ces fragments. Pas de filtre => tous les matchs.
+  roundIncludes: { type: Array, default: null },
+  // Quand fourni, remplace l'inference automatique des tours (par date/vainqueur) par
+  // un regroupement explicite base sur le round_label reel des matchs : [{ frag, label }, ...],
+  // dans l'ordre d'affichage voulu. Chaque tie est classe dans le premier groupe dont le
+  // fragment (insensible a la casse) apparait dans le round_label de son premier match.
+  explicitRounds: { type: Array, default: null },
+  showFlags: { type: Boolean, default: false }
 })
 
 const matches = ref([])
@@ -88,11 +102,17 @@ function tieKey(tie) {
   return `${tie.teamAId}-${tie.teamBId}`
 }
 
+const filteredMatches = computed(() => {
+  if (!props.roundIncludes) return matches.value
+  const fragments = props.roundIncludes.map(f => f.toUpperCase())
+  return matches.value.filter(m => fragments.some(f => (m.roundLabel ?? '').toUpperCase().includes(f)))
+})
+
 const rounds = computed(() => {
-  if (!matches.value.length) return []
+  if (!filteredMatches.value.length) return []
 
   const tieMap = new Map()
-  for (const m of matches.value) {
+  for (const m of filteredMatches.value) {
     const key = [m.team1Id, m.team2Id].sort((a, b) => a - b).join('-')
     if (!tieMap.has(key)) tieMap.set(key, [])
     tieMap.get(key).push(m)
@@ -121,6 +141,25 @@ const rounds = computed(() => {
       tie.winnerId = tie.aggA > tie.aggB ? tie.teamAId : tie.teamBId
     }
   }
+
+  if (props.explicitRounds) {
+    const byGroup = new Map()
+    for (const tie of ties) {
+      const label = tie.legs[0].roundLabel ?? ''
+      const upper = label.toUpperCase()
+      const group = props.explicitRounds.find(g => upper.includes(g.frag.toUpperCase()))
+      const key = group ? group.label : 'Autre'
+      if (!byGroup.has(key)) byGroup.set(key, [])
+      byGroup.get(key).push(tie)
+    }
+    const orderedLabels = [...props.explicitRounds.map(g => g.label), 'Autre'].filter(l => byGroup.has(l))
+    return orderedLabels.map(label => ({
+      round: label,
+      label,
+      ties: byGroup.get(label).sort((a, b) => (a.legs[0].date ?? '').localeCompare(b.legs[0].date ?? ''))
+    }))
+  }
+
   for (const tie of ties) {
     if (tie.winnerId) continue
     const laterA = ties.some(o => o !== tie && (o.teamAId === tie.teamAId || o.teamBId === tie.teamAId) && o.lastDate > tie.lastDate)
@@ -226,7 +265,7 @@ async function load() {
   const competitionId = Number(props.competitionId)
   const [matchList, teamList] = await Promise.all([
     api.getMatchesByCompetition(competitionId),
-    api.getTeams()
+    api.getTeams({ competitionId })
   ])
   matches.value = matchList
   teams.value = teamList

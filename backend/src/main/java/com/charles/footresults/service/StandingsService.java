@@ -48,6 +48,24 @@ public class StandingsService {
         this.statusRepository = statusRepository;
     }
 
+    /**
+     * Classement d'une seule phase d'une competition (ex: "Phase de ligue" des
+     * coupes d'Europe format 36 clubs), identifiee par un fragment contenu
+     * dans le round_label des matchs. Pas de notion de groupe ici : une phase
+     * de ligue continentale n'est jamais scindee en mini-groupes comme un
+     * championnat national.
+     */
+    public List<StandingRowDto> computeStandingsForRound(Long competitionId, String roundLabelPart) {
+        Map<Long, TeamTally> byTeam = new LinkedHashMap<>();
+        for (Match m : matchRepository.findByCompetitionIdAndStatusAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
+                competitionId, MatchStatus.COMPLETED, roundLabelPart)) {
+            tallyFor(byTeam, m.getTeam1()).addResult(m.getScore1(), m.getScore2());
+            tallyFor(byTeam, m.getTeam2()).addResult(m.getScore2(), m.getScore1());
+        }
+        List<StandingRowDto> rows = byTeam.values().stream().map(t -> t.toDto(null)).toList();
+        return sortRows(rows);
+    }
+
     public List<StandingRowDto> computeStandings(Long competitionId) {
         Map<Long, String> teamGroup = new LinkedHashMap<>();
         for (TeamCompetitionStatus s : statusRepository.findByCompetitionId(competitionId)) {
@@ -169,7 +187,7 @@ public class StandingsService {
 
         private StandingRowDto toDto(String group) {
             int points = won * POINTS_WIN + drawn * POINTS_DRAW;
-            return new StandingRowDto(team.getId(), team.getName(), played, won, drawn, lost,
+            return new StandingRowDto(team.getId(), team.getName(), team.getLogoPath(), team.getCountry(), played, won, drawn, lost,
                     goalsFor, goalsAgainst, goalsFor - goalsAgainst, points, group);
         }
     }

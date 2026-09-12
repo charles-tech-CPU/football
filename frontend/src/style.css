@@ -232,7 +232,60 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 .row-forfeit td {
-  background: #fdecd2;
+  background: #e5e7eb;
+}
+
+/* Match programme dont la date est deja passee mais toujours SCHEDULED : signale qu'il
+   faudrait saisir le resultat (ou reporter/suspendre le match). */
+.row-overdue td {
+  background: #f8b4b4;
+}
+
+.row-overdue:hover td {
+  background: #f29a9a;
+}
+
+/* Match programme aujourd'hui : a surveiller, pas encore en retard. */
+.row-today td {
+  background: #bfdbfe;
+}
+
+.row-today:hover td {
+  background: #9cc6fb;
+}
+
+/* Code couleur competition (calendrier multi-competitions) : championnat,
+   coupe nationale et coupes d'Europe (LDC/EL/EC) se demarquent au premier coup d'oeil. */
+.comp-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85em;
+}
+
+.comp-league {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.comp-cup {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.comp-ldc {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.comp-el {
+  background: #ffe4cc;
+  color: #9a3412;
+}
+
+.comp-ecl {
+  background: #dcfce7;
+  color: #14532d;
 }
 
 .team-cell {
@@ -459,9 +512,9 @@ tbody tr.standing-blue {
   box-shadow: inset 3px 0 0 #2563eb;
 }
 
-tbody tr.standing-orange {
-  background: #fdecd2;
-  box-shadow: inset 3px 0 0 #d97706;
+tbody tr.standing-purple {
+  background: #ede9fe;
+  box-shadow: inset 3px 0 0 #7c3aed;
 }
 
 tbody tr.standing-red {
@@ -474,22 +527,22 @@ tbody tr.standing-green {
   box-shadow: inset 3px 0 0 #16a34a;
 }
 
-tbody tr.standing-darkorange {
-  background: #f6dcc2;
-  box-shadow: inset 3px 0 0 #b45309;
+tbody tr.standing-orange {
+  background: #ffedd5;
+  box-shadow: inset 3px 0 0 #ea580c;
 }
 
-tbody tr.standing-yellow {
-  background: #fbf3c7;
-  box-shadow: inset 3px 0 0 #ca8a04;
+tbody tr.standing-teal {
+  background: #ccfbf1;
+  box-shadow: inset 3px 0 0 #0d9488;
 }
 
 tbody tr.standing-blue:hover { background: #cddcfb; }
-tbody tr.standing-orange:hover { background: #fbe1b8; }
+tbody tr.standing-purple:hover { background: #ddd6fe; }
 tbody tr.standing-red:hover { background: #f7cdc9; }
 tbody tr.standing-green:hover { background: #c9edd9; }
-tbody tr.standing-darkorange:hover { background: #f0cba5; }
-tbody tr.standing-yellow:hover { background: #f6ecac; }
+tbody tr.standing-orange:hover { background: #fed7aa; }
+tbody tr.standing-teal:hover { background: #99f6e4; }
 
 .standings-legend {
   display: flex;
@@ -516,11 +569,11 @@ tbody tr.standing-yellow:hover { background: #f6ecac; }
 }
 
 .legend-blue { background: #2563eb; }
-.legend-orange { background: #d97706; }
+.legend-purple { background: #7c3aed; }
 .legend-red { background: #dc2626; }
 .legend-green { background: #16a34a; }
-.legend-darkorange { background: #b45309; }
-.legend-yellow { background: #ca8a04; }
+.legend-orange { background: #ea580c; }
+.legend-teal { background: #0d9488; }
 
 /* ---- Teams view ---- */
 .team-chip {
