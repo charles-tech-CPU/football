@@ -23,46 +23,159 @@
     <button type="submit">Ajouter</button>
   </form>
 
-  <div class="grid-scroll" v-if="teamOrder.length">
-    <table class="results-grid">
-      <thead>
-        <tr>
-          <th class="corner"></th>
-          <th v-for="t in teamOrder" :key="`h-${t.id}`" :title="t.name">{{ shortName(t.name) }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="row in teamOrder" :key="`r-${row.id}`">
-          <th :title="row.name">
-            <span class="grid-row-header">
-              <TeamLogo :name="row.name" :logo-path="row.logoPath" />
-              <FlagIcon v-if="showFlags" :country="row.country" />
-              {{ row.name }}
-            </span>
-          </th>
-          <td
-            v-for="col in teamOrder"
-            :key="`c-${row.id}-${col.id}`"
-            :class="cellClass(row.id, col.id)"
-            @click="startEdit(row.id, col.id)"
-          >
-            <template v-if="row.id === col.id">—</template>
-            <template v-else-if="editingKey === cellKey(row.id, col.id)">
-              <span class="grid-edit">
-                <input class="score-input" type="number" min="0" v-model.number="editScore1" @click.stop />
-                <input class="score-input" type="number" min="0" v-model.number="editScore2" @click.stop />
-                <button type="button" @click.stop="confirmEdit">✓</button>
+  <div v-for="c in cycles" :key="c.cycle" class="results-grid-block">
+    <h3 v-if="cycles.length > 1">{{ cycleLabel(c.cycle) }}</h3>
+    <div class="grid-scroll" v-if="teamOrder.length">
+      <table class="results-grid">
+        <thead>
+          <tr>
+            <th class="corner"></th>
+            <th v-for="t in teamOrder" :key="`h-${t.id}`" :title="t.name">{{ shortName(t.name) }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in teamOrder" :key="`r-${row.id}`">
+            <th :title="row.name">
+              <span class="grid-row-header">
+                <TeamLogo :name="row.name" :logo-path="row.logoPath" />
+                <FlagIcon v-if="showFlags" :country="row.country" />
+                {{ row.name }}
               </span>
-            </template>
-            <template v-else-if="matchAt(row.id, col.id)">
-              {{ cellLabel(row.id, col.id) }}
-            </template>
-            <template v-else>·</template>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            </th>
+            <td
+              v-for="col in teamOrder"
+              :key="`c-${row.id}-${col.id}`"
+              :class="cellClass(c.matchByPair, row.id, col.id)"
+              @click="startEdit(c.cycle, c.matchByPair, row.id, col.id)"
+            >
+              <template v-if="row.id === col.id">—</template>
+              <template v-else-if="editingKey === cellKey(c.cycle, row.id, col.id)">
+                <span class="grid-edit">
+                  <input class="score-input" type="number" min="0" v-model.number="editScore1" @click.stop />
+                  <input class="score-input" type="number" min="0" v-model.number="editScore2" @click.stop />
+                  <button type="button" @click.stop="confirmEdit">✓</button>
+                </span>
+              </template>
+              <template v-else-if="matchAt(c.matchByPair, row.id, col.id)">
+                {{ cellLabel(c.matchByPair, row.id, col.id) }}
+              </template>
+              <template v-else>·</template>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
+
+  <div v-if="expectSecondPhase && cycles.length === 1" class="results-grid-block">
+    <h3>2e phase <span class="pending-note">(à venir)</span></h3>
+    <div class="grid-scroll" v-if="teamOrder.length">
+      <table class="results-grid">
+        <thead>
+          <tr>
+            <th class="corner"></th>
+            <th v-for="t in teamOrder" :key="`h2-${t.id}`" :title="t.name">{{ shortName(t.name) }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in teamOrder" :key="`r2-${row.id}`">
+            <th :title="row.name">
+              <span class="grid-row-header">
+                <TeamLogo :name="row.name" :logo-path="row.logoPath" />
+                <FlagIcon v-if="showFlags" :country="row.country" />
+                {{ row.name }}
+              </span>
+            </th>
+            <td v-for="col in teamOrder" :key="`c2-${row.id}-${col.id}`" :class="row.id === col.id ? 'grid-diagonal' : 'grid-empty'">
+              {{ row.id === col.id ? '—' : '·' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <template v-if="groupSplit">
+    <div v-for="(grp, gi) in groupBlocks" :key="`grp-${gi}`" class="results-grid-block">
+      <h3>{{ grp.label }}<span v-if="!grp.matchByPair.size" class="pending-note"> (à venir)</span></h3>
+      <div class="grid-scroll" v-if="grp.teams.length">
+        <table class="results-grid">
+          <thead>
+            <tr>
+              <th class="corner"></th>
+              <th v-for="t in grp.teams" :key="`gh-${gi}-${t.id}`" :title="t.name">{{ shortName(t.name) }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in grp.teams" :key="`gr-${gi}-${row.id}`">
+              <th :title="row.name">
+                <span class="grid-row-header">
+                  <TeamLogo :name="row.name" :logo-path="row.logoPath" />
+                  <FlagIcon v-if="showFlags" :country="row.country" />
+                  {{ row.name }}
+                </span>
+              </th>
+              <td
+                v-for="col in grp.teams"
+                :key="`gc-${gi}-${row.id}-${col.id}`"
+                :class="cellClass(grp.matchByPair, row.id, col.id)"
+                @click="startEdit(`group-${gi}`, grp.matchByPair, row.id, col.id)"
+              >
+                <template v-if="row.id === col.id">—</template>
+                <template v-else-if="editingKey === cellKey(`group-${gi}`, row.id, col.id)">
+                  <span class="grid-edit">
+                    <input class="score-input" type="number" min="0" v-model.number="editScore1" @click.stop />
+                    <input class="score-input" type="number" min="0" v-model.number="editScore2" @click.stop />
+                    <button type="button" @click.stop="confirmEdit">✓</button>
+                  </span>
+                </template>
+                <template v-else-if="matchAt(grp.matchByPair, row.id, col.id)">{{ cellLabel(grp.matchByPair, row.id, col.id) }}</template>
+                <template v-else>·</template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </template>
+
+  <div v-if="miniLeaguePositions.length" class="results-grid-block">
+    <h3>Mini-championnat (top {{ miniLeaguePositions.length }})</h3>
+    <div class="grid-scroll">
+      <table class="results-grid">
+        <thead>
+          <tr>
+            <th class="corner"></th>
+            <th v-for="pos in miniLeaguePositions" :key="`mh-${pos}`">{{ pos }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="rowPos in miniLeaguePositions" :key="`mr-${rowPos}`">
+            <th>{{ rowPos }}</th>
+            <td
+              v-for="colPos in miniLeaguePositions"
+              :key="`mc-${rowPos}-${colPos}`"
+              :class="miniCellClass(rowPos, colPos)"
+              @click="startMiniEdit(rowPos, colPos)"
+            >
+              <template v-if="rowPos === colPos">—</template>
+              <template v-else-if="miniEditingKey === `${rowPos}-${colPos}`">
+                <span class="grid-edit">
+                  <input class="score-input" type="number" min="0" v-model.number="editScore1" @click.stop />
+                  <input class="score-input" type="number" min="0" v-model.number="editScore2" @click.stop />
+                  <button type="button" @click.stop="confirmMiniEdit">✓</button>
+                </span>
+              </template>
+              <template v-else-if="miniFixtureBetween(rowPos, colPos)">{{ miniCellLabel(rowPos, colPos) }}</template>
+              <template v-else>·</template>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="section-intro">Équipes connues seulement une fois la 2e phase terminée (top {{ miniLeaguePositions.length }} du classement).</p>
+  </div>
+
   <p v-if="error" class="error-text">{{ error }}</p>
 </template>
 
@@ -80,6 +193,18 @@ const props = defineProps({
   // Transmis tel quel a /api/standings pour ne classer/ordonner que les equipes de cette phase.
   round: { type: String, default: null },
   showFlags: { type: Boolean, default: false },
+  // Affiche par avance une 2e grille vide (meme equipes) si la saison doit rejouer un 2e
+  // aller-retour complet mais qu'aucun match de cette 2e phase n'a encore ete saisi -
+  // pour rendre la structure visible avant meme d'avoir des resultats a y mettre.
+  expectSecondPhase: { type: Boolean, default: false },
+  // Scinde par avance le classement provisoire en N groupes vides (ex: Meistergruppe /
+  // Qualifikationsgruppe en Autriche, mini-championnats en Bulgarie) tant qu'aucun match
+  // de la phase de groupe n'a ete saisi : { sizes: [4, 4, 6], labels: [...],
+  // regularSeasonCycles: 1 } - le 1er groupe prend les sizes[0] premieres equipes du
+  // classement actuel, le 2e les sizes[1] suivantes, etc. regularSeasonCycles (defaut 1)
+  // = nombre de tours complets joues AVANT la scission en groupes (ex: 2 en Ecosse, qui
+  // joue un triple aller-retour avant le split top6/bottom6).
+  groupSplit: { type: Object, default: null },
   // Affiche le formulaire "Ajouter un match" (necessaire pour les phases sans
   // autre ecran d'edition, ex: phase de ligue LDC/EL/EC - contrairement aux
   // championnats nationaux, deja editables via CompetitionMatches).
@@ -89,6 +214,7 @@ const props = defineProps({
 })
 
 const matches = ref([])
+const rawMatches = ref([])
 const standings = ref([])
 const teams = ref([])
 const error = ref('')
@@ -134,13 +260,137 @@ async function submitMatch() {
   }
 }
 
-const matchByPair = computed(() => {
-  const map = new Map()
-  for (const m of matches.value) {
-    map.set(`${m.team1Id}-${m.team2Id}`, m)
+function isPendingTeam(name) {
+  return (name ?? '').toUpperCase().startsWith('A DETERMINER')
+}
+
+function roundNumber(m) {
+  const found = (m.roundLabel ?? '').match(/(\d+)/)
+  return found ? parseInt(found[1], 10) : null
+}
+
+// Certains championnats (ex: Albanie) rejouent un aller-retour complet une 2e fois
+// (championnat/relegation ou simplement un 2e tour) : un couple d'equipes peut donc
+// s'affronter plus de 2 fois dans la saison. On detecte ces "cycles" successifs (1ere
+// confrontation aller/retour entre 2 equipes = cycle 1, 2e confrontation = cycle 2, ...)
+// pour afficher une grille distincte par cycle plutot que d'ecraser silencieusement les
+// scores les plus anciens dans une seule grille.
+const allCycles = computed(() => {
+  const sorted = matches.value.slice().sort((a, b) => {
+    const ra = roundNumber(a), rb = roundNumber(b)
+    if (ra != null && rb != null && ra !== rb) return ra - rb
+    const ad = a.date ?? '', bd = b.date ?? ''
+    if (ad !== bd) return ad.localeCompare(bd)
+    return a.id - b.id
+  })
+  const seenCount = new Map()
+  const byCycle = new Map()
+  for (const m of sorted) {
+    const key = `${m.team1Id}-${m.team2Id}`
+    const n = (seenCount.get(key) ?? 0) + 1
+    seenCount.set(key, n)
+    if (!byCycle.has(n)) byCycle.set(n, new Map())
+    byCycle.get(n).set(key, m)
   }
-  return map
+  return [...byCycle.entries()].sort((a, b) => a[0] - b[0]).map(([cycle, matchByPair]) => ({ cycle, matchByPair }))
 })
+
+// Quand la competition se scinde en mini-championnats (groupSplit, ex: Autriche/Bulgarie/
+// Chypre/Danemark), les cycles au-dela de la "vraie" saison reguliere (regularSeasonCycles,
+// 1 par defaut - certains championnats comme l'Ecosse jouent 2 tours complets AVANT la
+// scission en groupes) ne doivent pas s'afficher en grille generique indifferenciee
+// ("phase N") : ils correspondent a la phase de groupe et atterrissent dans la grille du
+// bon mini-championnat (cf. groupBlocks). Sans groupSplit, comportement inchange (Albanie
+// etc, vrai 2e tour complet entre toutes les equipes).
+const regularSeasonCycles = computed(() => props.groupSplit?.regularSeasonCycles ?? 1)
+const cycles = computed(() =>
+  props.groupSplit ? allCycles.value.filter(c => c.cycle <= regularSeasonCycles.value) : allCycles.value
+)
+
+function cycleLabel(n) {
+  return n === 1 ? '1ère phase' : `${n}e phase`
+}
+
+// Mini-championnat de fin de saison (V23, ex: Albanie) : matchs "Mini-championnat (a
+// determiner : 1ER-2E)" etc, un seul match par paire de POSITIONS finales (pas encore de
+// vraies equipes). On extrait les positions directement du round_label pour construire une
+// petite grille dediee, distincte du reste (equipes generiques partagees, sinon collision).
+const MINI_LEAGUE_RE = /Mini-championnat \(a d[ée]terminer\s*:\s*(.+?)-(.+?)\)/i
+
+const miniLeagueFixtures = computed(() => {
+  const list = []
+  for (const m of rawMatches.value) {
+    const found = (m.roundLabel ?? '').match(MINI_LEAGUE_RE)
+    if (found) list.push({ posA: found[1].trim(), posB: found[2].trim(), match: m })
+  }
+  return list
+})
+
+const miniLeaguePositions = computed(() => {
+  const set = new Set()
+  for (const f of miniLeagueFixtures.value) { set.add(f.posA); set.add(f.posB) }
+  return [...set].sort()
+})
+
+function miniFixtureBetween(rowPos, colPos) {
+  return miniLeagueFixtures.value.find(f =>
+    (f.posA === rowPos && f.posB === colPos) || (f.posA === colPos && f.posB === rowPos))
+}
+
+function miniCellClass(rowPos, colPos) {
+  if (rowPos === colPos) return 'grid-diagonal'
+  const f = miniFixtureBetween(rowPos, colPos)
+  if (!f) return 'grid-empty'
+  const m = f.match
+  if (m.score1 == null || m.score2 == null) return 'grid-scheduled'
+  const score1 = rowPos === f.posA ? m.score1 : m.score2
+  const score2 = rowPos === f.posA ? m.score2 : m.score1
+  if (score1 > score2) return 'grid-win'
+  if (score1 < score2) return 'grid-loss'
+  return 'grid-draw'
+}
+
+function miniCellLabel(rowPos, colPos) {
+  const f = miniFixtureBetween(rowPos, colPos)
+  if (!f || f.match.score1 == null || f.match.score2 == null) return '-'
+  return rowPos === f.posA ? `${f.match.score1}-${f.match.score2}` : `${f.match.score2}-${f.match.score1}`
+}
+
+const miniEditingKey = ref(null)
+
+function startMiniEdit(rowPos, colPos) {
+  if (rowPos === colPos) return
+  const f = miniFixtureBetween(rowPos, colPos)
+  if (!f) return
+  miniEditingKey.value = `${rowPos}-${colPos}`
+  editingMatch.value = f.match
+  editScore1.value = rowPos === f.posA ? f.match.score1 : f.match.score2
+  editScore2.value = rowPos === f.posA ? f.match.score2 : f.match.score1
+  miniSwapped.value = rowPos !== f.posA
+}
+
+async function confirmMiniEdit() {
+  const m = editingMatch.value
+  const score1 = miniSwapped.value ? editScore2.value : editScore1.value
+  const score2 = miniSwapped.value ? editScore1.value : editScore2.value
+  error.value = ''
+  try {
+    await api.updateMatch(m.id, {
+      competitionId: m.competitionId,
+      roundLabel: m.roundLabel,
+      date: m.date,
+      time: m.time,
+      team1Id: m.team1Id,
+      team2Id: m.team2Id,
+      score1,
+      score2
+    })
+    miniEditingKey.value = null
+    await load()
+  } catch (e) {
+    error.value = e.response?.data?.error ?? "Erreur lors de l'enregistrement du score."
+  }
+}
 
 const teamOrder = computed(() => {
   const ordered = []
@@ -169,27 +419,77 @@ const teamOrder = computed(() => {
   return ordered
 })
 
+// Groupes provisoires (Meistergruppe/Qualifikationsgruppe, mini-championnats...) bases sur
+// l'ordre actuel du classement - juste indicatif tant que la phase de groupe n'a pas
+// reellement commence. `sizes` accepte des groupes de tailles differentes (ex: [4, 4, 6]).
+// Index de groupe (0-based) d'une equipe, d'apres sa position dans le classement actuel -
+// juste indicatif tant que la phase de groupe n'a pas reellement commence.
+function groupIndexForTeam(teamId) {
+  if (!props.groupSplit) return -1
+  const idx = teamOrder.value.findIndex(t => t.id === teamId)
+  if (idx === -1) return -1
+  let start = 0
+  for (let i = 0; i < props.groupSplit.sizes.length; i++) {
+    if (idx < start + props.groupSplit.sizes[i]) return i
+    start += props.groupSplit.sizes[i]
+  }
+  return -1
+}
+
+// Confrontations au-dela de la saison reguliere (allCycles, cycle > regularSeasonCycles)
+// routees vers le mini-championnat des 2 equipes concernees (les 2 doivent appartenir au
+// meme groupe pour etre de vrais matchs de phase de groupe).
+const repeatMatchesByGroup = computed(() => {
+  const perGroup = (props.groupSplit?.sizes ?? []).map(() => new Map())
+  if (!props.groupSplit) return perGroup
+  for (const c of allCycles.value) {
+    if (c.cycle <= regularSeasonCycles.value) continue
+    for (const m of c.matchByPair.values()) {
+      const g1 = groupIndexForTeam(m.team1Id)
+      const g2 = groupIndexForTeam(m.team2Id)
+      if (g1 !== -1 && g1 === g2) perGroup[g1].set(`${m.team1Id}-${m.team2Id}`, m)
+    }
+  }
+  return perGroup
+})
+
+const groupBlocks = computed(() => {
+  if (!props.groupSplit) return []
+  const { sizes, labels } = props.groupSplit
+  const blocks = []
+  let start = 0
+  for (let i = 0; i < sizes.length && start < teamOrder.value.length; i++) {
+    blocks.push({
+      label: labels?.[i] ?? `Groupe ${i + 1}`,
+      teams: teamOrder.value.slice(start, start + sizes[i]),
+      matchByPair: repeatMatchesByGroup.value[i] ?? new Map()
+    })
+    start += sizes[i]
+  }
+  return blocks
+})
+
 function shortName(name) {
   return name.length > 3 ? name.slice(0, 3).toUpperCase() : name.toUpperCase()
 }
 
-function cellKey(rowId, colId) {
-  return `${rowId}-${colId}`
+function cellKey(cycle, rowId, colId) {
+  return `${cycle}-${rowId}-${colId}`
 }
 
-function matchAt(rowId, colId) {
-  return matchByPair.value.get(cellKey(rowId, colId)) ?? null
+function matchAt(matchByPair, rowId, colId) {
+  return matchByPair.get(`${rowId}-${colId}`) ?? null
 }
 
-function cellLabel(rowId, colId) {
-  const m = matchAt(rowId, colId)
+function cellLabel(matchByPair, rowId, colId) {
+  const m = matchAt(matchByPair, rowId, colId)
   if (!m || m.score1 == null || m.score2 == null) return '-'
   return `${m.score1}-${m.score2}`
 }
 
-function cellClass(rowId, colId) {
+function cellClass(matchByPair, rowId, colId) {
   if (rowId === colId) return 'grid-diagonal'
-  const m = matchAt(rowId, colId)
+  const m = matchAt(matchByPair, rowId, colId)
   if (!m) return 'grid-empty'
   if (m.score1 == null || m.score2 == null) return 'grid-scheduled'
   if (m.score1 > m.score2) return 'grid-win'
@@ -197,18 +497,21 @@ function cellClass(rowId, colId) {
   return 'grid-draw'
 }
 
-function startEdit(rowId, colId) {
+const editingMatch = ref(null)
+const miniSwapped = ref(false)
+
+function startEdit(cycle, matchByPair, rowId, colId) {
   if (rowId === colId) return
-  const m = matchAt(rowId, colId)
+  const m = matchAt(matchByPair, rowId, colId)
   if (!m) return
-  editingKey.value = cellKey(rowId, colId)
+  editingKey.value = cellKey(cycle, rowId, colId)
+  editingMatch.value = m
   editScore1.value = m.score1
   editScore2.value = m.score2
 }
 
 async function confirmEdit() {
-  const [rowId, colId] = editingKey.value.split('-').map(Number)
-  const m = matchAt(rowId, colId)
+  const m = editingMatch.value
   error.value = ''
   try {
     await api.updateMatch(m.id, {
@@ -235,9 +538,15 @@ async function load() {
     api.getStandings(competitionId, props.round),
     props.allowAdd ? api.getTeams({ competitionId }) : Promise.resolve([])
   ])
-  matches.value = props.roundIncludes
+  const scoped = props.roundIncludes
     ? matchList.filter(m => props.roundIncludes.some(f => (m.roundLabel ?? '').toUpperCase().includes(f.toUpperCase())))
     : matchList
+  // La grille matricielle n'a de sens qu'entre equipes reelles connues : les confrontations
+  // "en attente de tirage" (barrage, mini-championnat de fin de saison...) partagent toutes
+  // les 2 memes equipes generiques "A DETERMINER" et n'ont donc pas leur place ici tant
+  // qu'elles n'ont pas ete completees (elles restent visibles dans l'onglet Championnat).
+  rawMatches.value = scoped
+  matches.value = scoped.filter(m => !isPendingTeam(m.team1Name) && !isPendingTeam(m.team2Name))
   standings.value = standingsList
   teams.value = teamList
 }
@@ -257,6 +566,20 @@ onMounted(load)
 
 .results-grid-header h2 {
   margin: 0;
+}
+
+.results-grid-block {
+  margin-bottom: 32px;
+}
+
+.results-grid-block h3 {
+  margin: 0 0 10px;
+}
+
+.pending-note {
+  font-weight: 400;
+  font-size: 0.75em;
+  color: var(--text-muted);
 }
 
 .add-match-btn {

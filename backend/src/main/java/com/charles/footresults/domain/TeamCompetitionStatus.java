@@ -40,6 +40,10 @@ public class TeamCompetitionStatus {
     @Column(name = "previous_cup_winner", nullable = false)
     private boolean previousCupWinner = false;
 
+    /** Competition europeenne jouee la saison precedente ("EL" ou "ECL") ; null si aucune. */
+    @Column(name = "previous_europe_competition", length = 10)
+    private String previousEuropeCompetition;
+
     /** Groupe de 2eme phase (ex: "Championnat", "Relegation") ; null si la competition n'est pas scindee. */
     @Column(name = "group_name", length = 60)
     private String groupName;

@@ -59,6 +59,17 @@ public class Match {
     /** Buts marques par team2. Null tant que le match n'est pas joue. */
     private Integer score2;
 
+    /**
+     * Tirs au but de team1/team2, uniquement renseignes quand ce match (ou l'aggregat
+     * aller-retour dont il est le match retour) se termine a egalite et qu'une coupe a
+     * elimination directe doit designer un vainqueur. Null dans tous les autres cas.
+     */
+    @Column(name = "penalty_score1")
+    private Integer penaltyScore1;
+
+    @Column(name = "penalty_score2")
+    private Integer penaltyScore2;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MatchStatus status = MatchStatus.SCHEDULED;

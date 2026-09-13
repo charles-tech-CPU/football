@@ -47,6 +47,7 @@ public class TeamStatusService {
         status.setDefendingChampion(dto.defendingChampion());
         status.setPromoted(dto.promoted());
         status.setPreviousCupWinner(dto.previousCupWinner());
+        status.setPreviousEuropeCompetition(dto.previousEuropeCompetition());
         status.setGroupName(dto.groupName());
         return TeamStatusDto.from(statusRepository.save(status));
     }

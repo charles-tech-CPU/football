@@ -66,7 +66,13 @@ import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
 
 const props = defineProps({
-  competitionId: { type: [String, Number], required: true }
+  competitionId: { type: [String, Number], required: true },
+  // Fragments (insensibles a la casse) : un match n'est garde que si son round_label
+  // contient au moins un de ces fragments.
+  roundIncludes: { type: Array, default: null },
+  // Fragments (insensibles a la casse) : un match est ecarte si son round_label
+  // contient l'un de ces fragments (applique apres roundIncludes).
+  roundExcludes: { type: Array, default: null }
 })
 
 const matches = ref([])
@@ -77,7 +83,18 @@ const edits = reactive({})
 
 const sortedTeams = computed(() => teams.value.slice().sort((a, b) => a.name.localeCompare(b.name)))
 
-const upcoming = computed(() => matches.value.filter(m => m.status !== 'COMPLETED'))
+const upcoming = computed(() => {
+  let list = matches.value.filter(m => m.status !== 'COMPLETED')
+  if (props.roundIncludes) {
+    const fragments = props.roundIncludes.map(f => f.toUpperCase())
+    list = list.filter(m => fragments.some(f => (m.roundLabel ?? '').toUpperCase().includes(f)))
+  }
+  if (props.roundExcludes) {
+    const fragments = props.roundExcludes.map(f => f.toUpperCase())
+    list = list.filter(m => !fragments.some(f => (m.roundLabel ?? '').toUpperCase().includes(f)))
+  }
+  return list
+})
 
 function statusRowClass(status) {
   if (status === 'POSTPONED') return 'row-postponed'

@@ -1,4 +1,36 @@
 <template>
+  <div class="action-bar">
+    <button type="button" class="action-btn" @click="showMatchModal = true">+ Ajouter un match</button>
+    <button type="button" class="action-btn action-btn--secondary" @click="showTeamModal = true">+ Ajouter un club</button>
+  </div>
+
+  <Modal v-model="showMatchModal" title="Ajouter un match">
+    <form class="inline" @submit.prevent="submitMatch">
+      <select v-model.number="newMatch.team1Id" required>
+        <option disabled value="">Équipe 1</option>
+        <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
+      </select>
+      <select v-model.number="newMatch.team2Id" required>
+        <option disabled value="">Équipe 2</option>
+        <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
+      </select>
+      <input v-model="newMatch.roundLabel" placeholder="Round (ex: J1, 8e de finale)" required />
+      <input v-model="newMatch.date" type="date" />
+      <input v-model="newMatch.time" type="time" />
+      <input class="score-input" type="number" min="0" v-model.number="newMatch.score1" placeholder="B1" />
+      <input class="score-input" type="number" min="0" v-model.number="newMatch.score2" placeholder="B2" />
+      <button type="submit">Ajouter</button>
+    </form>
+  </Modal>
+
+  <Modal v-model="showTeamModal" title="Ajouter un club">
+    <form class="inline" @submit.prevent="submitNewTeam">
+      <input v-model="newTeam.name" placeholder="Nom du club" required />
+      <button type="submit">Ajouter</button>
+    </form>
+    <p v-if="teamError" class="error-text">{{ teamError }}</p>
+  </Modal>
+
   <div class="filters" v-if="rounds.length > 1">
     <select v-model="roundFilter">
       <option value="">Toutes les journées / tous les tours</option>
@@ -60,25 +92,6 @@
   </table>
   <p v-else-if="loaded" class="empty-state">Aucun match pour ce filtre.</p>
 
-  <details class="add-form">
-    <summary>Ajouter un match</summary>
-    <form class="inline" @submit.prevent="submitMatch">
-      <select v-model.number="newMatch.team1Id" required>
-        <option disabled value="">Équipe 1</option>
-        <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
-      </select>
-      <select v-model.number="newMatch.team2Id" required>
-        <option disabled value="">Équipe 2</option>
-        <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
-      </select>
-      <input v-model="newMatch.roundLabel" placeholder="Round (ex: J1, 8e de finale)" required />
-      <input v-model="newMatch.date" type="date" />
-      <input v-model="newMatch.time" type="time" />
-      <input class="score-input" type="number" min="0" v-model.number="newMatch.score1" placeholder="B1" />
-      <input class="score-input" type="number" min="0" v-model.number="newMatch.score2" placeholder="B2" />
-      <button type="submit">Ajouter</button>
-    </form>
-  </details>
   <p v-if="error" class="error-text">{{ error }}</p>
 </template>
 
@@ -86,6 +99,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
+import Modal from './Modal.vue'
 import { formatTime } from '../utils/format'
 
 const props = defineProps({
@@ -101,6 +115,11 @@ const loaded = ref(false)
 const error = ref('')
 const edits = reactive({})
 const roundFilter = ref('')
+const competitionCountry = ref(null)
+const newTeam = reactive({ name: '' })
+const teamError = ref('')
+const showMatchModal = ref(false)
+const showTeamModal = ref(false)
 
 const newMatch = reactive({
   team1Id: '',
@@ -158,18 +177,32 @@ async function load() {
   loaded.value = false
   roundFilter.value = ''
   const competitionId = Number(props.competitionId)
-  const [matchList, teamList] = await Promise.all([
+  const [matchList, teamList, competitions] = await Promise.all([
     api.getMatchesByCompetition(competitionId),
-    api.getTeams({ competitionId })
+    api.getTeams({ competitionId }),
+    api.getCompetitions()
   ])
   matches.value = matchList
   teams.value = teamList
+  competitionCountry.value = competitions.find(c => c.id === competitionId)?.country ?? null
 
   for (const key of Object.keys(edits)) delete edits[key]
   for (const m of matchList) {
     edits[m.id] = { team1Id: m.team1Id, team2Id: m.team2Id, score1: m.score1, score2: m.score2 }
   }
   loaded.value = true
+}
+
+async function submitNewTeam() {
+  teamError.value = ''
+  try {
+    await api.createTeam({ name: newTeam.name.toUpperCase(), country: competitionCountry.value })
+    newTeam.name = ''
+    teams.value = await api.getTeams({ competitionId: Number(props.competitionId) })
+    showTeamModal.value = false
+  } catch (e) {
+    teamError.value = e.response?.data?.error ?? "Erreur lors de la création du club."
+  }
 }
 
 const sortedTeams = computed(() => teams.value.slice().sort((a, b) => a.name.localeCompare(b.name)))
@@ -231,6 +264,7 @@ async function submitMatch() {
     newMatch.time = ''
     newMatch.score1 = null
     newMatch.score2 = null
+    showMatchModal.value = false
     await load()
   } catch (e) {
     error.value = e.response?.data?.error ?? "Erreur lors de la création du match."

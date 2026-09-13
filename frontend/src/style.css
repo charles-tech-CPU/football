@@ -122,6 +122,12 @@ nav.tabs-nav a.router-link-exact-active {
   margin: 0 0 20px;
 }
 
+.pending-note {
+  font-weight: 400;
+  font-size: 0.75em;
+  color: var(--text-muted);
+}
+
 /* ---- Filters ---- */
 .filters {
   display: flex;
@@ -457,6 +463,17 @@ form.inline {
   border-bottom-color: var(--primary);
 }
 
+.sub-tab-bar {
+  margin-top: -8px;
+  margin-bottom: 16px;
+}
+
+.sub-tab-bar .tab-btn {
+  font-size: 0.88em;
+  padding: 8px 4px;
+  margin-right: 16px;
+}
+
 .tab-btn:disabled {
   color: #c2cac5;
   cursor: not-allowed;
@@ -506,6 +523,31 @@ details.add-form > summary:hover {
   color: var(--text);
 }
 
+/* ---- Boutons d'action (ouverture de popup) ---- */
+.action-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  font-weight: 700;
+  padding: 10px 18px;
+  font-size: 0.95em;
+}
+
+.action-btn--secondary {
+  background: var(--surface);
+  color: var(--primary-dark);
+  border-color: var(--primary);
+}
+
+.action-btn--secondary:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary-dark);
+}
+
 /* ---- Standings row highlights ---- */
 tbody tr.standing-blue {
   background: #e0ebff;
@@ -537,12 +579,24 @@ tbody tr.standing-teal {
   box-shadow: inset 3px 0 0 #0d9488;
 }
 
+tbody tr.standing-yellow {
+  background: #fef9c3;
+  box-shadow: inset 3px 0 0 #ca8a04;
+}
+
+tbody tr.standing-orange-dark {
+  background: #fed7aa;
+  box-shadow: inset 3px 0 0 #c2410c;
+}
+
 tbody tr.standing-blue:hover { background: #cddcfb; }
 tbody tr.standing-purple:hover { background: #ddd6fe; }
 tbody tr.standing-red:hover { background: #f7cdc9; }
 tbody tr.standing-green:hover { background: #c9edd9; }
 tbody tr.standing-orange:hover { background: #fed7aa; }
 tbody tr.standing-teal:hover { background: #99f6e4; }
+tbody tr.standing-yellow:hover { background: #fef08a; }
+tbody tr.standing-orange-dark:hover { background: #fdba74; }
 
 .standings-legend {
   display: flex;
@@ -574,6 +628,8 @@ tbody tr.standing-teal:hover { background: #99f6e4; }
 .legend-green { background: #16a34a; }
 .legend-orange { background: #ea580c; }
 .legend-teal { background: #0d9488; }
+.legend-yellow { background: #ca8a04; }
+.legend-orange-dark { background: #c2410c; }
 
 /* ---- Teams view ---- */
 .team-chip {

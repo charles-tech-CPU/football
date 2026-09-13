@@ -45,6 +45,14 @@ public class Competition {
     @Column(name = "ecl_slots", nullable = false)
     private Integer eclSlots = 0;
 
+    /** Nombre de places de relegation directe (dernieres places du classement, LEAGUE uniquement). */
+    @Column(name = "relegation_slots", nullable = false)
+    private Integer relegationSlots = 0;
+
+    /** Nombre de places de barrage de maintien, juste au-dessus de la zone de relegation directe. */
+    @Column(name = "barrage_slots", nullable = false)
+    private Integer barrageSlots = 0;
+
     public Competition(String code, String name, CompetitionType type, String country, Integer season) {
         this.code = code;
         this.name = name;

@@ -27,6 +27,8 @@ public record MatchDto(
         String team2Country,
         Integer score1,
         Integer score2,
+        Integer penaltyScore1,
+        Integer penaltyScore2,
         MatchStatus status
 ) {
     public static MatchDto from(Match m) {
@@ -50,6 +52,8 @@ public record MatchDto(
                 m.getTeam2().getCountry(),
                 m.getScore1(),
                 m.getScore2(),
+                m.getPenaltyScore1(),
+                m.getPenaltyScore2(),
                 m.getStatus()
         );
     }

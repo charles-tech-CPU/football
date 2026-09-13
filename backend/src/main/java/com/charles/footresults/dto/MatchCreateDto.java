@@ -15,6 +15,9 @@ public record MatchCreateDto(
         @NotNull Long team2Id,
         Integer score1,
         Integer score2,
+        /** Tirs au but (coupe a elimination directe terminee a egalite), optionnel. */
+        Integer penaltyScore1,
+        Integer penaltyScore2,
         /** Optionnel : force un statut (REPORTE/SUSPENDU/FORFAIT). Si null, deduit des scores (COMPLETED/SCHEDULED). */
         MatchStatus status
 ) {

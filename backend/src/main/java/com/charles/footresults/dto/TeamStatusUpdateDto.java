@@ -4,6 +4,7 @@ public record TeamStatusUpdateDto(
         boolean defendingChampion,
         boolean promoted,
         boolean previousCupWinner,
+        String previousEuropeCompetition,
         String groupName
 ) {
 }

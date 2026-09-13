@@ -101,7 +101,7 @@ async function load() {
 async function submit() {
   error.value = ''
   try {
-    await api.createTeam({ ...form, country: form.country || null })
+    await api.createTeam({ ...form, name: form.name.toUpperCase(), country: form.country || null })
     form.name = ''
     form.country = ''
     await load()
