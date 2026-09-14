@@ -14,12 +14,14 @@
     <span class="page-info" v-if="totalCount">{{ totalCount }} match{{ totalCount > 1 ? 's' : '' }}</span>
   </div>
 
-  <table v-if="matches.length">
+  <div class="table-scroll" v-if="matches.length">
+  <table>
     <thead>
       <tr>
         <th>Date</th>
         <th>Heure</th>
         <th>Compétition</th>
+        <th>Journée</th>
         <th>Équipe 1</th>
         <th></th>
         <th></th>
@@ -41,10 +43,17 @@
             {{ m.competitionName }}
           </span>
         </td>
+        <td>{{ m.roundLabel }}</td>
         <td>
-          <select v-model.number="edits[m.id].team1Id">
-            <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
-          </select>
+          <span class="team-cell">
+            <template v-if="isContinental(m)">
+              <TeamLogo :name="m.team1Name" :logo-path="m.team1LogoPath" />
+              <FlagIcon :country="m.team1Country" />
+            </template>
+            <select v-model.number="edits[m.id].team1Id">
+              <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </span>
         </td>
         <td>
           <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score1" />
@@ -53,9 +62,15 @@
           <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score2" />
         </td>
         <td>
-          <select v-model.number="edits[m.id].team2Id">
-            <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
-          </select>
+          <span class="team-cell">
+            <template v-if="isContinental(m)">
+              <TeamLogo :name="m.team2Name" :logo-path="m.team2LogoPath" />
+              <FlagIcon :country="m.team2Country" />
+            </template>
+            <select v-model.number="edits[m.id].team2Id">
+              <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </span>
         </td>
         <td>
           <select v-model="edits[m.id].status">
@@ -71,6 +86,7 @@
       </tr>
     </tbody>
   </table>
+  </div>
   <p v-else-if="loaded" class="empty-state">Aucun match pour ce filtre.</p>
 
   <div class="pagination" v-if="totalPages > 1">
@@ -86,8 +102,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../services/api'
 import FlagIcon from '../components/FlagIcon.vue'
+import TeamLogo from '../components/TeamLogo.vue'
 import { formatTime } from '../utils/format'
 import { competitionBadgeClass } from '../utils/competitionBadge'
+
+function isContinental(m) {
+  return m.competitionCode === 'LDC' || m.competitionCode === 'EL' || m.competitionCode === 'EC'
+}
 
 const PAGE_SIZE = 20
 
@@ -215,6 +236,17 @@ onMounted(load)
 </script>
 
 <style scoped>
+.table-scroll {
+  overflow-x: auto;
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  padding: 0 20px;
+}
+
 .date-input {
   width: 140px;
 }

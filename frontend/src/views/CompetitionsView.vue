@@ -6,27 +6,6 @@
     <input v-model="search" placeholder="Rechercher un pays ou une compétition..." />
   </div>
 
-  <template v-if="filteredCountries.length">
-    <div class="country-grid">
-      <router-link
-        v-for="c in filteredCountries"
-        :key="c.country"
-        class="country-card"
-        :to="`/pays/${encodeURIComponent(c.country)}`"
-      >
-        <FlagIcon :country="c.country" />
-        <div class="country-card-info">
-          <span class="country-card-name">{{ c.country }}</span>
-          <span class="country-card-badges">
-            <span v-if="c.league" class="badge badge-league">Championnat</span>
-            <span v-if="c.cup" class="badge badge-cup">Coupe</span>
-          </span>
-        </div>
-      </router-link>
-    </div>
-  </template>
-  <p v-else-if="loaded && !filteredContinental.length" class="empty-state">Aucune compétition ne correspond à cette recherche.</p>
-
   <template v-if="filteredContinental.length">
     <h2>Coupes d'Europe</h2>
     <div class="continental-grid">
@@ -46,6 +25,28 @@
       </router-link>
     </div>
   </template>
+
+  <template v-if="filteredCountries.length">
+    <h2 v-if="filteredContinental.length">Championnats</h2>
+    <div class="country-grid">
+      <router-link
+        v-for="c in filteredCountries"
+        :key="c.country"
+        class="country-card"
+        :to="`/pays/${encodeURIComponent(c.country)}`"
+      >
+        <FlagIcon :country="c.country" />
+        <div class="country-card-info">
+          <span class="country-card-name">{{ c.country }}</span>
+          <span class="country-card-badges">
+            <span v-if="c.league" class="badge badge-league">Championnat</span>
+            <span v-if="c.cup" class="badge badge-cup">Coupe</span>
+          </span>
+        </div>
+      </router-link>
+    </div>
+  </template>
+  <p v-else-if="loaded && !filteredContinental.length" class="empty-state">Aucune compétition ne correspond à cette recherche.</p>
 
   <details class="add-form">
     <summary>Ajouter une compétition</summary>

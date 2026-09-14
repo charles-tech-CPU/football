@@ -2,12 +2,14 @@
   <h1>Reportés / Suspendus</h1>
   <p class="section-intro">Tous les matchs reportés ou suspendus, toutes compétitions confondues.</p>
 
-  <table v-if="matches.length">
+  <div class="table-scroll" v-if="matches.length">
+  <table>
     <thead>
       <tr>
         <th>Date</th>
         <th>Heure</th>
         <th>Compétition</th>
+        <th>Journée</th>
         <th>Équipe 1</th>
         <th></th>
         <th></th>
@@ -26,6 +28,7 @@
             {{ m.competitionName }}
           </span>
         </td>
+        <td>{{ m.roundLabel }}</td>
         <td>
           <select v-model.number="edits[m.id].team1Id">
             <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
@@ -56,6 +59,7 @@
       </tr>
     </tbody>
   </table>
+  </div>
   <p v-else-if="loaded" class="empty-state">Aucun match reporté ou suspendu pour l'instant.</p>
   <p v-if="error" class="error-text">{{ error }}</p>
 </template>
@@ -163,6 +167,17 @@ onMounted(load)
 </script>
 
 <style scoped>
+.table-scroll {
+  overflow-x: auto;
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  padding: 0 20px;
+}
+
 .date-input {
   width: 140px;
 }
