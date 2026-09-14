@@ -95,7 +95,7 @@
     </div>
   </div>
 
-  <template v-if="groupSplit">
+  <template v-if="groupSplit || maltePhases">
     <div v-for="(grp, gi) in groupBlocks" :key="`grp-${gi}`" class="results-grid-block">
       <h3>{{ grp.label }}<span v-if="!grp.matchByPair.size" class="pending-note"> (à venir)</span></h3>
       <div class="grid-scroll" v-if="grp.teams.length">
@@ -205,6 +205,13 @@ const props = defineProps({
   // = nombre de tours complets joues AVANT la scission en groupes (ex: 2 en Ecosse, qui
   // joue un triple aller-retour avant le split top6/bottom6).
   groupSplit: { type: Object, default: null },
+  // Format Malte (cf. LEAGUE_RANK_CONFIG.MALTE / malteBlocks dans CountryView.vue) : 2
+  // championnats successifs identifies par PLAGE DE JOURNEES (pas par cycle, incompatible
+  // ici car le 2e championnat refait s'affronter toutes les paires depuis le debut) :
+  // [{ label, regularRange: [lo, hi], poolRange: [lo, hi], topIds, bottomIds, topLabel,
+  // bottomLabel }, ...]. La composition des poules est calculee une seule fois cote
+  // CountryView (malteBlocks) et transmise ici pour ne pas la recalculer.
+  maltePhases: { type: Array, default: null },
   // Affiche le formulaire "Ajouter un match" (necessaire pour les phases sans
   // autre ecran d'edition, ex: phase de ligue LDC/EL/EC - contrairement aux
   // championnats nationaux, deja editables via CompetitionMatches).
@@ -303,9 +310,13 @@ const allCycles = computed(() => {
 // bon mini-championnat (cf. groupBlocks). Sans groupSplit, comportement inchange (Albanie
 // etc, vrai 2e tour complet entre toutes les equipes).
 const regularSeasonCycles = computed(() => props.groupSplit?.regularSeasonCycles ?? 1)
-const cycles = computed(() =>
-  props.groupSplit ? allCycles.value.filter(c => c.cycle <= regularSeasonCycles.value) : allCycles.value
-)
+// maltePhases se base sur des plages de journees (cf. prop), pas sur les cycles : la
+// grille generique par cycle n'a pas de sens ici (elle melangerait les 2 championnats), on
+// la laisse vide et malteBlocks (groupBlocks) prend le relais entierement.
+const cycles = computed(() => {
+  if (props.maltePhases) return []
+  return props.groupSplit ? allCycles.value.filter(c => c.cycle <= regularSeasonCycles.value) : allCycles.value
+})
 
 function cycleLabel(n) {
   return n === 1 ? '1ère phase' : `${n}e phase`
@@ -453,7 +464,55 @@ const repeatMatchesByGroup = computed(() => {
   return perGroup
 })
 
+function malteInRange(m, range) {
+  const n = roundNumber(m)
+  return n != null && n >= range[0] && n <= range[1]
+}
+
+// Identite (nom/logo/pays) d'une equipe d'apres n'importe quel match ou elle apparait -
+// necessaire car une poule peut n'avoir encore aucun match joue (poule "a venir").
+function malteTeamInfo(id) {
+  const m = rawMatches.value.find(mm => mm.team1Id === id || mm.team2Id === id)
+  if (!m) return null
+  return m.team1Id === id
+    ? { id, name: m.team1Name, logoPath: m.team1LogoPath, country: m.team1Country }
+    : { id, name: m.team2Name, logoPath: m.team2LogoPath, country: m.team2Country }
+}
+
+function malteTeamsFromIds(ids) {
+  return ids.map(malteTeamInfo).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function malteBuildMatchByPair(list) {
+  const map = new Map()
+  for (const m of list) map.set(`${m.team1Id}-${m.team2Id}`, m)
+  return map
+}
+
 const groupBlocks = computed(() => {
+  if (props.maltePhases) {
+    const blocks = []
+    for (const phase of props.maltePhases) {
+      const regularMatches = rawMatches.value.filter(m => malteInRange(m, phase.regularRange) && !isPendingTeam(m.team1Name) && !isPendingTeam(m.team2Name))
+      const poolMatches = rawMatches.value.filter(m => malteInRange(m, phase.poolRange) && !isPendingTeam(m.team1Name) && !isPendingTeam(m.team2Name))
+      blocks.push({
+        label: `${phase.label} - Saison régulière`,
+        teams: malteTeamsFromIds([...phase.topIds, ...phase.bottomIds]),
+        matchByPair: malteBuildMatchByPair(regularMatches)
+      })
+      blocks.push({
+        label: phase.topLabel,
+        teams: malteTeamsFromIds(phase.topIds),
+        matchByPair: malteBuildMatchByPair(poolMatches.filter(m => phase.topIds.includes(m.team1Id) && phase.topIds.includes(m.team2Id)))
+      })
+      blocks.push({
+        label: phase.bottomLabel,
+        teams: malteTeamsFromIds(phase.bottomIds),
+        matchByPair: malteBuildMatchByPair(poolMatches.filter(m => phase.bottomIds.includes(m.team1Id) && phase.bottomIds.includes(m.team2Id)))
+      })
+    }
+    return blocks
+  }
   if (!props.groupSplit) return []
   const { sizes, labels } = props.groupSplit
   const blocks = []

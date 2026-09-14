@@ -162,6 +162,13 @@ function isPendingTeam(name) {
   return (name ?? '').toUpperCase().startsWith('A DETERMINER')
 }
 
+// Cf. V88__restore_moldavie_montenegro_two_legged_cup_ties.sql : tant que les 2 equipes
+// restent des places generiques "A DETERMINER", 2 manches d'une meme confrontation
+// partagent les 2 memes IDs generiques des 2 cotes et sont donc indiscernables l'une de
+// l'autre - un suffixe explicite dans le round_label est necessaire pour les regrouper
+// (sinon chaque manche s'affiche comme sa propre confrontation, cf. bug corrige plus bas).
+const ALLER_RETOUR_SUFFIX_RE = /-\s*(Aller|Retour)\s*$/i
+
 // Regroupe par tour reel (round_label), pas par nombre de confrontations restantes :
 // un simple comptage se desynchronise des que certaines confrontations d'un tour sont
 // resolues avant les autres. On fusionne aussi Aller/Retour d'un meme tour, et on
@@ -209,11 +216,32 @@ const filteredMatches = computed(() => {
 // ecraserait tous en une seule confrontation fantome (bug corrige : matchs "manquants").
 function buildTies(roundMatches) {
   const tieMap = new Map()
-  for (const m of roundMatches) {
+  const pendingAllerQueue = []
+  let pendingTieCounter = 0
+  const sortedById = roundMatches.slice().sort((a, b) => a.id - b.id)
+  for (const m of sortedById) {
     const pending = isPendingTeam(m.team1Name) || isPendingTeam(m.team2Name)
-    const key = pending ? `match-${m.id}` : [m.team1Id, m.team2Id].sort((a, b) => a - b).join('-')
-    if (!tieMap.has(key)) tieMap.set(key, [])
-    tieMap.get(key).push(m)
+    if (!pending) {
+      const key = [m.team1Id, m.team2Id].sort((a, b) => a - b).join('-')
+      if (!tieMap.has(key)) tieMap.set(key, [])
+      tieMap.get(key).push(m)
+      continue
+    }
+    const legMatch = (m.roundLabel ?? '').match(ALLER_RETOUR_SUFFIX_RE)
+    if (!legMatch) {
+      tieMap.set(`match-${m.id}`, [m])
+      continue
+    }
+    if (/aller/i.test(legMatch[1])) {
+      pendingTieCounter++
+      const key = `pending-tie-${pendingTieCounter}`
+      tieMap.set(key, [m])
+      pendingAllerQueue.push(key)
+    } else {
+      const key = pendingAllerQueue.shift()
+      if (key) tieMap.get(key).push(m)
+      else tieMap.set(`match-${m.id}`, [m])
+    }
   }
   return [...tieMap.values()].map(legs => {
     const sorted = legs.slice().sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))

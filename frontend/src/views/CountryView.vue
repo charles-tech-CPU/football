@@ -40,8 +40,9 @@
       <template v-if="league">
         <ResultsGrid
           :competition-id="league.id"
-          :expect-second-phase="league.code === 'ALBANIE'"
+          :expect-second-phase="league.code === 'ALBANIE' || league.code === 'SUISSE'"
           :group-split="rankConfig?.resultsGroupSplit"
+          :malte-phases="league.code === 'MALTE' ? maltePhasesForGrid : null"
         />
       </template>
       <p v-else class="empty-state">Pas de championnat importé pour ce pays.</p>
@@ -56,35 +57,83 @@
 
     <template v-else-if="activeTab === 'classement'">
       <template v-if="league">
-        <StandingsTable
-          :rows="rankConfig?.resultsGroupSplit ? frozenStandings : standings"
-          :team-statuses="teamStatusMap"
-          :ldc-slots="rankConfig?.resultsGroupSplit ? 0 : league.ldcSlots"
-          :el-slots="rankConfig?.resultsGroupSplit ? 0 : league.elSlots"
-          :ecl-slots="rankConfig?.resultsGroupSplit ? 0 : league.eclSlots"
-          :relegation-slots="rankConfig?.resultsGroupSplit ? 0 : league.relegationSlots"
-          :barrage-slots="rankConfig?.resultsGroupSplit ? 0 : league.barrageSlots"
-          :rank-markers="rankConfig?.rankMarkers"
-        />
-        <ul class="standings-legend" v-if="rankConfig?.rankMarkers">
-          <li v-for="(item, ii) in rankConfig.legend" :key="ii">{{ item }}</li>
-        </ul>
-
-        <template v-if="rankConfig?.resultsGroupSplit">
-          <div v-for="(grp, gi) in realGroupStandings" :key="`grp-${gi}`" class="standings-group">
-            <h2>{{ grp.label }}</h2>
+        <template v-if="league.code === 'MALTE'">
+          <div v-for="(phase, pi) in malteBlocks" :key="`malte-phase-${pi}`" class="standings-group">
+            <h2>{{ phase.regular.label }}</h2>
             <StandingsTable
-              :rows="grp.rows"
+              :rows="phase.regular.rows"
               :team-statuses="teamStatusMap"
               :show-base-legend="false"
-              :ldc-slots="grp.slots.ldcSlots"
-              :el-slots="grp.slots.elSlots"
-              :ecl-slots="grp.slots.eclSlots"
-              :barrage-slots="grp.slots.barrageSlots"
-              :relegation-slots="grp.slots.relegationSlots"
-              :rank-markers="grp.slots.rankMarkers"
+              :rank-markers="phase.regular.rankMarkers"
+            />
+
+            <h2>{{ phase.top.label }}</h2>
+            <StandingsTable
+              :rows="phase.top.rows"
+              :team-statuses="teamStatusMap"
+              :show-base-legend="false"
+              :rank-markers="phase.top.rankMarkers"
+            />
+
+            <h2>{{ phase.bottom.label }}</h2>
+            <StandingsTable
+              :rows="phase.bottom.rows"
+              :team-statuses="teamStatusMap"
+              :show-base-legend="false"
+              :barrage-slots="1"
+              :relegation-slots="0"
             />
           </div>
+
+          <div class="standings-group">
+            <h2>Playoffs</h2>
+            <CupBracket
+              :competition-id="league.id"
+              :round-includes="['DEMI-FINALE', '3E PLACE', 'FINALE']"
+              :explicit-rounds="[
+                { frag: 'DEMI', label: 'Demi-finales' },
+                { frag: '3E PLACE', label: '3e place' },
+                { frag: 'FINALE', label: 'Finale' }
+              ]"
+            />
+          </div>
+
+          <ul class="standings-legend">
+            <li v-for="(item, ii) in rankConfig.legend" :key="ii">{{ item }}</li>
+          </ul>
+        </template>
+
+        <template v-else>
+          <StandingsTable
+            :rows="rankConfig?.resultsGroupSplit ? frozenStandings : standings"
+            :team-statuses="teamStatusMap"
+            :ldc-slots="rankConfig?.resultsGroupSplit ? 0 : league.ldcSlots"
+            :el-slots="rankConfig?.resultsGroupSplit ? 0 : league.elSlots"
+            :ecl-slots="rankConfig?.resultsGroupSplit ? 0 : league.eclSlots"
+            :relegation-slots="rankConfig?.resultsGroupSplit ? 0 : league.relegationSlots"
+            :barrage-slots="rankConfig?.resultsGroupSplit ? 0 : league.barrageSlots"
+            :rank-markers="rankConfig?.rankMarkers"
+          />
+          <ul class="standings-legend" v-if="rankConfig?.rankMarkers">
+            <li v-for="(item, ii) in rankConfig.legend" :key="ii">{{ item }}</li>
+          </ul>
+
+          <template v-if="rankConfig?.resultsGroupSplit">
+            <div v-for="(grp, gi) in realGroupStandings" :key="`grp-${gi}`" class="standings-group">
+              <h2>{{ grp.label }}</h2>
+              <StandingsTable
+                :rows="grp.rows"
+                :team-statuses="teamStatusMap"
+                :show-base-legend="false"
+                :ldc-slots="grp.slots.ldcSlots"
+                :el-slots="grp.slots.elSlots"
+                :ecl-slots="grp.slots.eclSlots"
+                :barrage-slots="grp.slots.barrageSlots"
+                :relegation-slots="grp.slots.relegationSlots"
+                :rank-markers="grp.slots.rankMarkers"
+              />
+            </div>
+          </template>
         </template>
 
         <details class="add-form">
@@ -584,34 +633,290 @@ const LEAGUE_RANK_CONFIG = {
       ]
     }
   },
-  ROUMANIE: {
-    // Barrage europeen (7e-8e puis le vainqueur contre le 4e, comme en Irlande du Nord) :
-    // place europeenne supplementaire, distincte du barrage de maintien (13e/14e, deja
-    // couvert par barrageSlots). Classement plat sinon, pas de scission en groupes.
+  MALTE: {
+    // Format unique (pas de resultsGroupSplit ici, incompatible - voir plus bas) : 2
+    // "championnats" successifs dans la MEME saison, avec les MEMES 12 equipes, qui
+    // rejouent chacun exactement la meme mecanique : saison reguliere (11 journees, aller
+    // simple) puis scission en 2 mini-championnats de 6 (aller simple chacun) - Groupe
+    // Championnat (haut, icone 🅰️) et Groupe Maintien (bas, icone 🅱️). A l'issue des 2
+    // championnats : playoffs (demi-finales aller simple entre les 2 premiers de chaque
+    // Groupe Championnat, 3e place entre les perdants, finale entre les gagnants) + barrage
+    // de relegation entre le DERNIER de chaque Groupe Maintien (= 12e general de chaque
+    // championnat ; les 10e/11e generaux n'ont ni icone ni consequence particuliere, le
+    // barrage ne concerne que le tout dernier de chaque championnat). Pas de classement
+    // general unique : ce sont 2 tournois distincts, sommer leurs points n'aurait pas de
+    // sens.
+    // resultsGroupSplit (detection par cycle = Nieme confrontation d'une paire d'equipes)
+    // est incompatible : le Championnat 2 refait s'affronter TOUTES les paires depuis le
+    // debut, ce qui decale le numero de cycle differemment pour les paires qui restent
+    // groupees et celles qui changent de groupe. Le rendu (voir malteBlocks/template) se
+    // base donc sur des PLAGES DE JOURNEES fixes plutot que sur les cycles :
+    //   Championnat 1 saison reguliere = J1-J11 (deja importe), poules = J12-J16
+    //   Championnat 2 saison reguliere = J17-J27, poules = J28-J32
+    //   playoffs = round_label 'DEMI-FINALE' / '3E PLACE' / 'FINALE'
+    //   barrage = round_label 'BARRAGE' (tab "A venir > Barrage", deja generique)
+    legend: [
+      '🅰️ Groupe Championnat (haut de tableau, places 1 à 6)',
+      '🅱️ Groupe Maintien (bas de tableau, places 7 à 12)',
+      '🎟️ Qualifié pour les playoffs (2 premiers du Groupe Championnat)',
+      '⚔️ Barragiste (dernier du Groupe Maintien, barrage de relégation contre l\'autre championnat)'
+    ]
+  },
+  MOLDAVIE: {
+    // 8 equipes, saison reguliere en triple confrontation (21 journees - chaque paire se
+    // rencontre 3 fois, 3 cycles au sens allCycles). A l'issue : format asymetrique façon
+    // Gibraltar (un seul groupe qualificatif, PAS de groupe du bas) - seuls les 6 premiers
+    // continuent dans un mini-championnat aller-retour (titre + Europe), les 2 derniers
+    // (7e-8e) partent en barrage de promotion-relegation contre la Division 2 (pas de
+    // bracket a afficher ici, juste l'icone sur le classement fige).
     rankMarkers: [
+      { rank: 7, icon: '⚔️', tooltip: 'Barragiste (barrage promotion-relégation)' },
+      { rank: 8, icon: '⚔️', tooltip: 'Barragiste (barrage promotion-relégation)' }
+    ],
+    legend: ['⚔️ Barragiste (barrage promotion-relégation)'],
+    resultsGroupSplit: {
+      sizes: [6],
+      labels: ['Mini-championnat (top 6)'],
+      regularSeasonCycles: 3,
+      groupSlots: [
+        {
+          ldcSlots: 1, elSlots: 0, eclSlots: 2, barrageSlots: 0, relegationSlots: 0,
+          rankMarkers: null
+        }
+      ]
+    }
+  },
+  'PAYS-BAS': {
+    // Classement plat (pas de resultsGroupSplit). Barrage Europe (5e-8e, cf. V90) : place
+    // Conference supplementaire, distincte de l'Europa League directe (4e) - pas d'icone
+    // generique pour ce cas (eclSlots reste a 0), rankMarker dedie ici. Barrage
+    // promotion-relegation (16e contre le vainqueur d'un bracket a 6 equipes de Division 2,
+    // cf. V90) deja couvert par barrageSlots (generique).
+    rankMarkers: [
+      { rank: 5, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
+      { rank: 6, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
       { rank: 7, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
       { rank: 8, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' }
     ],
     legend: ['🌐 Barrage pour une place européenne (Conference League)']
   },
-  TCHEQUIE: {
-    // 2 barrages non contigus avec le bas du classement (le systeme d'icones automatique ne
-    // gere qu'un bloc barrage/relegation colle au dernier rang) : barrage europeen (7e-10e,
-    // cascade façon Irlande du Nord, pour une place de Conference League) et barrage de
-    // maintien (14e/15e, aller-retour contre le 3e/2e de Division 2) - tout en rankMarkers
-    // dedies. La relegation directe (dernier rang) reste geree par relegationSlots.
+  ROUMANIE: {
+    // 16 equipes, 2 phases aller-retour (30 journees, regularSeasonCycles: 2) puis scission
+    // asymetrique : top 6 dans un mini-championnat (titre + Europe), 10 derniers dans un
+    // 2e mini-championnat (maintien). Barrage europeen (7e-8e puis le vainqueur contre le
+    // 4e, comme en Irlande du Nord) : place europeenne supplementaire pour le 1er du mini-
+    // championnat du bas (=7e general), gardee ici en marqueur pre-scission (frozen
+    // standings) en plus du marqueur du groupe.
     rankMarkers: [
+      { rank: 1, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 2, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 3, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 4, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 5, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 6, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 7, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
       { rank: 7, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
+      { rank: 8, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
       { rank: 8, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
-      { rank: 9, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
-      { rank: 10, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
-      { rank: 14, icon: '⚔️', tooltip: 'Barrage de maintien' },
-      { rank: 15, icon: '⚔️', tooltip: 'Barrage de maintien' }
+      { rank: 9, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
+      { rank: 10, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
+      { rank: 11, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
+      { rank: 12, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
+      { rank: 13, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
+      { rank: 14, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
+      { rank: 15, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
+      { rank: 16, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' }
     ],
     legend: [
-      '🌐 Barrage pour une place européenne (Conference League)',
-      '⚔️ Barrage de maintien'
+      '🅰️ Mini-championnat du haut (places 1 à 6)',
+      '🅱️ Mini-championnat du bas (places 7 à 16)',
+      '🌐 Barrage pour une place européenne (Conference League)'
+    ],
+    resultsGroupSplit: {
+      sizes: [6, 10],
+      labels: ['Mini-championnat (top 6)', 'Mini-championnat (10 derniers)'],
+      regularSeasonCycles: 2,
+      groupSlots: [
+        // 1er champion, 2e-3e Conference League.
+        { ldcSlots: 1, elSlots: 0, eclSlots: 2, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
+        // 1er de ce groupe (=7e general) Conference League (barrage europeen ci-dessus),
+        // 7e-8e de ce groupe (=13e-14e general) barragistes, 9e-10e (=15e-16e) relegues.
+        { ldcSlots: 0, elSlots: 0, eclSlots: 1, barrageSlots: 2, relegationSlots: 2, rankMarkers: null }
+      ]
+    }
+  },
+  SERBIE: {
+    // 14 equipes, 2 phases aller-retour (26 journees, regularSeasonCycles: 2) puis scission
+    // top 6 / 8 derniers.
+    rankMarkers: [
+      { rank: 1, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 2, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 3, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 4, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 5, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 6, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 7, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
+      { rank: 8, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
+      { rank: 9, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
+      { rank: 10, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
+      { rank: 11, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
+      { rank: 12, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
+      { rank: 13, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
+      { rank: 14, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' }
+    ],
+    legend: [
+      '🅰️ Mini-championnat du haut (places 1 à 6)',
+      '🅱️ Mini-championnat du bas (places 7 à 14)'
+    ],
+    resultsGroupSplit: {
+      sizes: [6, 8],
+      labels: ['Mini-championnat (top 6)', 'Mini-championnat (8 derniers)'],
+      regularSeasonCycles: 2,
+      groupSlots: [
+        // 1er champion, 2e Europa League, 3e-4e Conference League.
+        { ldcSlots: 1, elSlots: 1, eclSlots: 2, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
+        // 7e-8e de ce groupe (=13e-14e general) relegues, pas de barrage.
+        { ldcSlots: 0, elSlots: 0, eclSlots: 0, barrageSlots: 0, relegationSlots: 2, rankMarkers: null }
+      ]
+    }
+  },
+  SLOVAQUIE: {
+    // 12 equipes, 2 phases aller-retour (22 journees, regularSeasonCycles: 2) puis scission
+    // top 6 / bottom 6 (comme l'Autriche/l'Islande).
+    rankMarkers: [
+      { rank: 1, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 2, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 3, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 4, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 5, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 6, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 7, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
+      { rank: 8, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
+      { rank: 9, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
+      { rank: 10, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
+      { rank: 11, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
+      { rank: 12, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' }
+    ],
+    legend: ['🅰️ Groupe du haut', '🅱️ Groupe du bas'],
+    resultsGroupSplit: {
+      sizes: [6, 6],
+      labels: ['Groupe du haut', 'Groupe du bas'],
+      regularSeasonCycles: 2,
+      groupSlots: [
+        // 1er champion, 2e-3e Conference League.
+        { ldcSlots: 1, elSlots: 0, eclSlots: 2, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
+        // 5e de ce groupe (=11e general) barragiste, 6e (=12e general) relegue.
+        { ldcSlots: 0, elSlots: 0, eclSlots: 0, barrageSlots: 1, relegationSlots: 1, rankMarkers: null }
+      ]
+    }
+  },
+  SUISSE: {
+    // 12 equipes, 2 phases aller-retour AVEC TOUTES LES EQUIPES (regularSeasonCycles: 2,
+    // comme la Slovaquie) puis une 3e phase : scission top 6 / bottom 6.
+    rankMarkers: [
+      { rank: 1, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 2, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 3, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 4, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 5, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 6, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
+      { rank: 7, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
+      { rank: 8, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
+      { rank: 9, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
+      { rank: 10, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
+      { rank: 11, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
+      { rank: 12, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' }
+    ],
+    legend: ['🅰️ Groupe du haut', '🅱️ Groupe du bas'],
+    resultsGroupSplit: {
+      sizes: [6, 6],
+      labels: ['Groupe du haut', 'Groupe du bas'],
+      regularSeasonCycles: 2,
+      groupSlots: [
+        // 1er champion, 2e Europa League, 3e-4e Conference League.
+        { ldcSlots: 1, elSlots: 1, eclSlots: 2, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
+        // 5e de ce groupe (=11e general) barragiste, 6e (=12e general) relegue.
+        { ldcSlots: 0, elSlots: 0, eclSlots: 0, barrageSlots: 1, relegationSlots: 1, rankMarkers: null }
+      ]
+    }
+  },
+  'SAN MARIN': {
+    // Championnat sans classement continental direct au-dela du champion : l'unique place
+    // europeenne restante se joue dans un tournoi a elimination directe entre le 2e et le
+    // 11e (eclSlots remis a 0, ce n'est pas une attribution par rang). Les mieux classes
+    // (2e-7e) demarrent directement en quarts, les moins bien classes (8e-11e) doivent
+    // passer par un tour preliminaire (huitiemes) avant de les rejoindre.
+    rankMarkers: [
+      { rank: 2, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
+      { rank: 3, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
+      { rank: 4, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
+      { rank: 5, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
+      { rank: 6, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
+      { rank: 7, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
+      { rank: 8, icon: '🔹', tooltip: 'Qualifié pour les huitièmes de finale (tournoi Europe)' },
+      { rank: 9, icon: '🔹', tooltip: 'Qualifié pour les huitièmes de finale (tournoi Europe)' },
+      { rank: 10, icon: '🔹', tooltip: 'Qualifié pour les huitièmes de finale (tournoi Europe)' },
+      { rank: 11, icon: '🔹', tooltip: 'Qualifié pour les huitièmes de finale (tournoi Europe)' }
+    ],
+    legend: [
+      '🔶 Qualifié pour les quarts de finale (tournoi Europe)',
+      '🔹 Qualifié pour les huitièmes de finale (tournoi Europe)'
     ]
+  },
+  TCHEQUIE: {
+    // 2 phases (30 journees aller-retour x2, regularSeasonCycles: 2) puis scission en 3
+    // groupes : haut (1-6, mini-championnat aller-retour), milieu (7-10, PAS un mini-
+    // championnat - ce sont les 4 barragistes europeens deja inscrits au calendrier des
+    // barrages sous forme de playoff cascade : demies 7e-10e et 8e-9e, puis finale entre les
+    // 2 vainqueurs pour une place de Conference League - cf. V16__pending_draw_matches.sql),
+    // bas (11-16, mini-championnat aller-retour, 16e relegue direct, 14e-15e barragistes de
+    // maintien aller-retour contre la Division 2).
+    rankMarkers: [
+      { rank: 1, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 2, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 3, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 4, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 5, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 6, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      { rank: 7, icon: '🅱️', tooltip: 'Groupe barrage européen (places 7 à 10)' },
+      { rank: 8, icon: '🅱️', tooltip: 'Groupe barrage européen (places 7 à 10)' },
+      { rank: 9, icon: '🅱️', tooltip: 'Groupe barrage européen (places 7 à 10)' },
+      { rank: 10, icon: '🅱️', tooltip: 'Groupe barrage européen (places 7 à 10)' },
+      { rank: 11, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' },
+      { rank: 12, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' },
+      { rank: 13, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' },
+      { rank: 14, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' },
+      { rank: 15, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' },
+      { rank: 16, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' }
+    ],
+    legend: [
+      '🅰️ Mini-championnat du haut (places 1 à 6)',
+      '🅱️ Groupe barrage européen (places 7 à 10)',
+      '🅲️ Mini-championnat du bas (places 11 à 16)'
+    ],
+    resultsGroupSplit: {
+      sizes: [6, 4, 6],
+      labels: ['Mini-championnat (top 6)', 'Barrage européen (7e à 10e)', 'Mini-championnat (6 derniers)'],
+      regularSeasonCycles: 2,
+      groupSlots: [
+        // 1er champion + LDC, 2e LDC, 3e Europa League, 4e Conference League.
+        { ldcSlots: 2, elSlots: 1, eclSlots: 1, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
+        // Pas de mini-championnat ici : playoff cascade deja au calendrier (demies puis
+        // finale), classement du groupe garde a titre indicatif, la vraie qualification se
+        // joue sur les confrontations directes, pas sur ce classement.
+        {
+          ldcSlots: 0, elSlots: 0, eclSlots: 0, barrageSlots: 0, relegationSlots: 0,
+          rankMarkers: [
+            { rank: 1, icon: '🌐', tooltip: 'Barrage européen : demi-finale contre le 10e (place de Conference League en jeu)' },
+            { rank: 2, icon: '🌐', tooltip: 'Barrage européen : demi-finale contre le 9e (place de Conference League en jeu)' },
+            { rank: 3, icon: '🌐', tooltip: 'Barrage européen : demi-finale contre le 8e (place de Conference League en jeu)' },
+            { rank: 4, icon: '🌐', tooltip: 'Barrage européen : demi-finale contre le 7e (place de Conference League en jeu)' }
+          ]
+        },
+        // 4e-5e de ce groupe (=14e-15e general) barragistes de maintien, 6e (=16e general) relegue.
+        { ldcSlots: 0, elSlots: 0, eclSlots: 0, barrageSlots: 2, relegationSlots: 1, rankMarkers: null }
+      ]
+    }
   }
 }
 
@@ -764,6 +1069,129 @@ const realGroupStandings = computed(() => {
   return blocks
 })
 
+// Malte (cf. commentaire LEAGUE_RANK_CONFIG.MALTE) : 2 championnats successifs, chacun
+// identifie par une plage de journees fixe plutot que par cycle.
+const MALTE_PHASES = [
+  { label: 'Championnat 1', regularRange: [1, 11], poolRange: [12, 16] },
+  { label: 'Championnat 2', regularRange: [17, 27], poolRange: [28, 32] }
+]
+
+function malteMatchesInRange(list, [lo, hi]) {
+  return list.filter(m => { const n = roundNumber(m); return n != null && n >= lo && n <= hi })
+}
+
+// Composition reelle des 2 poules (Groupe Championnat / Groupe Maintien) d'une phase,
+// deduite des matchs de poule deja joues (memes composantes connexes que
+// groupAssignmentFromMatches) ; a defaut (poule pas encore commencee), repli sur le
+// classement de la saison reguliere de CETTE phase (pas le classement general, qui n'a pas
+// de sens ici vu que ce sont 2 tournois distincts).
+function malteGroupSplit(regularMatches, poolMatches) {
+  const regularStandings = standingsFromMatches(regularMatches)
+  const adjacency = new Map()
+  for (const m of poolMatches) {
+    if (!adjacency.has(m.team1Id)) adjacency.set(m.team1Id, new Set())
+    if (!adjacency.has(m.team2Id)) adjacency.set(m.team2Id, new Set())
+    adjacency.get(m.team1Id).add(m.team2Id)
+    adjacency.get(m.team2Id).add(m.team1Id)
+  }
+  if (adjacency.size === regularStandings.length && regularStandings.length > 0) {
+    const visited = new Set()
+    const components = []
+    for (const teamId of adjacency.keys()) {
+      if (visited.has(teamId)) continue
+      const stack = [teamId]
+      const comp = []
+      visited.add(teamId)
+      while (stack.length) {
+        const cur = stack.pop()
+        comp.push(cur)
+        for (const next of adjacency.get(cur) ?? []) {
+          if (!visited.has(next)) { visited.add(next); stack.push(next) }
+        }
+      }
+      components.push(comp)
+    }
+    if (components.length === 2 && components.every(c => c.length === 6)) {
+      const rankOf = new Map(regularStandings.map((r, i) => [r.teamId, i]))
+      components.sort((a, b) => {
+        const avgA = a.reduce((s, id) => s + (rankOf.get(id) ?? 0), 0) / a.length
+        const avgB = b.reduce((s, id) => s + (rankOf.get(id) ?? 0), 0) / b.length
+        return avgA - avgB
+      })
+      return { top: components[0], bottom: components[1] }
+    }
+  }
+  return { top: regularStandings.slice(0, 6).map(r => r.teamId), bottom: regularStandings.slice(6, 12).map(r => r.teamId) }
+}
+
+const MALTE_REGULAR_RANK_MARKERS = [
+  { rank: 1, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
+  { rank: 2, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
+  { rank: 3, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
+  { rank: 4, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
+  { rank: 5, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
+  { rank: 6, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
+  { rank: 7, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' },
+  { rank: 8, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' },
+  { rank: 9, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' },
+  { rank: 10, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' },
+  { rank: 11, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' },
+  { rank: 12, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' }
+]
+
+const malteBlocks = computed(() => {
+  if (league.value?.code !== 'MALTE') return []
+  return MALTE_PHASES.map(phase => {
+    const regularMatches = malteMatchesInRange(rawMatches.value, phase.regularRange)
+    const poolMatches = malteMatchesInRange(rawMatches.value, phase.poolRange)
+    const { top, bottom } = malteGroupSplit(regularMatches, poolMatches)
+    const cumulative = [...regularMatches, ...poolMatches]
+    const inGroup = ids => cumulative.filter(m => ids.includes(m.team1Id) && ids.includes(m.team2Id))
+    const topLabel = `${phase.label} - Groupe Championnat`
+    const bottomLabel = `${phase.label} - Groupe Maintien`
+    return {
+      label: phase.label,
+      regularRange: phase.regularRange,
+      poolRange: phase.poolRange,
+      topIds: top,
+      bottomIds: bottom,
+      topLabel,
+      bottomLabel,
+      regular: {
+        label: `${phase.label} - Saison régulière`,
+        rows: standingsFromMatches(regularMatches),
+        rankMarkers: MALTE_REGULAR_RANK_MARKERS
+      },
+      top: {
+        label: topLabel,
+        rows: standingsFromMatches(inGroup(top)),
+        rankMarkers: [
+          { rank: 1, icon: '🎟️', tooltip: 'Qualifié pour les playoffs' },
+          { rank: 2, icon: '🎟️', tooltip: 'Qualifié pour les playoffs' }
+        ]
+      },
+      bottom: {
+        label: bottomLabel,
+        rows: standingsFromMatches(inGroup(bottom))
+      }
+    }
+  })
+})
+
+// Meme decoupage que malteBlocks, mis en forme pour ResultsGrid (grilles matricielles de
+// resultats plutot que classements) : evite de recalculer la composition des poules 2 fois.
+const maltePhasesForGrid = computed(() =>
+  malteBlocks.value.map(b => ({
+    label: b.label,
+    regularRange: b.regularRange,
+    poolRange: b.poolRange,
+    topIds: b.topIds,
+    bottomIds: b.bottomIds,
+    topLabel: b.topLabel,
+    bottomLabel: b.bottomLabel
+  }))
+)
+
 async function load() {
   loaded.value = false
   const competitions = await api.getCompetitions()
@@ -780,7 +1208,7 @@ async function load() {
     slots.relegationSlots = league.value.relegationSlots
     slots.barrageSlots = league.value.barrageSlots
 
-    const needsRawMatches = !!rankConfig.value?.resultsGroupSplit
+    const needsRawMatches = !!rankConfig.value?.resultsGroupSplit || league.value.code === 'MALTE'
     const [standingsList, statuses, matchList] = await Promise.all([
       api.getStandings(league.value.id),
       api.getTeamStatuses(league.value.id),
