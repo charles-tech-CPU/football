@@ -121,7 +121,7 @@ async function load() {
   const competitionId = Number(props.competitionId)
   const [matchList, teamList] = await Promise.all([
     api.getMatchesByCompetition(competitionId),
-    api.getTeams()
+    api.getTeams({ competitionId })
   ])
   matches.value = matchList
   teams.value = teamList

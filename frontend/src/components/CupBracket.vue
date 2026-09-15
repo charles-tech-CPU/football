@@ -276,6 +276,41 @@ function buildTies(roundMatches) {
   })
 }
 
+// Reordonne les confrontations d'un tour pour que chacune se retrouve visuellement a la
+// position de ses 2 equipes au tour precedent (moyenne des index) plutot qu'a la position
+// que lui donnerait un simple tri par date : sinon, des qu'un tour n'est pas rejoue dans le
+// meme ordre que le tour precedent (frequent en qualifs de coupe d'Europe, ou les dates ne
+// suivent pas la structure de l'arbre), une equipe se retrouve visuellement tres loin de son
+// match precedent alors que le trait de connexion CSS (dessine par simple position d'index,
+// cf. pairChunks) suppose implicitement le meme ordre d'un tour a l'autre.
+function reorderForBracket(prevTies, ties) {
+  if (!prevTies) return ties
+  const prevIndex = new Map()
+  prevTies.forEach((tie, idx) => {
+    prevIndex.set(tie.teamAId, idx)
+    prevIndex.set(tie.teamBId, idx)
+  })
+  const positionOf = tie => {
+    const a = prevIndex.get(tie.teamAId)
+    const b = prevIndex.get(tie.teamBId)
+    if (a != null && b != null) return (a + b) / 2
+    if (a != null) return a
+    if (b != null) return b
+    return null
+  }
+  return ties
+    .map((tie, originalIndex) => ({ tie, originalIndex, position: positionOf(tie) }))
+    .sort((x, y) => {
+      // Une equipe absente du tour precedent (bye, entree directe a ce tour) garde sa
+      // place d'origine (deja triee par date) plutot que d'etre arbitrairement deplacee.
+      if (x.position != null && y.position != null) return x.position - y.position
+      if (x.position != null) return -1
+      if (y.position != null) return 1
+      return x.originalIndex - y.originalIndex
+    })
+    .map(x => x.tie)
+}
+
 const rounds = computed(() => {
   if (!filteredMatches.value.length) return []
 
@@ -286,6 +321,7 @@ const rounds = computed(() => {
     buckets.get(key).matches.push(m)
   }
 
+  let result
   if (props.explicitRounds) {
     const byGroup = new Map()
     for (const [, bucket] of buckets) {
@@ -296,38 +332,43 @@ const rounds = computed(() => {
       byGroup.get(key).push(...bucket.matches)
     }
     const orderedLabels = [...props.explicitRounds.map(g => g.label), 'Autre'].filter(l => byGroup.has(l))
-    return orderedLabels.map(label => ({
+    result = orderedLabels.map(label => ({
       round: label,
       label,
       ties: buildTies(byGroup.get(label)).sort((a, b) => (a.legs[0].date ?? '').localeCompare(b.legs[0].date ?? ''))
     }))
+  } else {
+    const entries = [...buckets.entries()].map(([key, bucket]) => {
+      const minDate = bucket.matches.reduce((min, m) => (m.date && (!min || m.date < min) ? m.date : min), null)
+      return {
+        round: key,
+        label: bucket.label,
+        order: bucket.order,
+        minDate,
+        ties: buildTies(bucket.matches).sort((a, b) => (a.legs[0].date ?? '').localeCompare(b.legs[0].date ?? ''))
+      }
+    })
+    // Priorite a la date reelle du tour (les tours "en attente de tirage" ont presque
+    // toujours une date programmee, meme sans equipes connues - ex: Georgie, Gibraltar) :
+    // sinon un tour non date (ex: places generiques sans date, cf. Estonie) se retrouvait
+    // trie AVANT les tours deja joues juste parce qu'il portait un code HF/QF/DF/F connu.
+    // Le code de tour ne sert de repli que si aucun des deux tours n'a de date du tout.
+    entries.sort((a, b) => {
+      if (a.minDate && b.minDate) return a.minDate.localeCompare(b.minDate)
+      if (a.minDate) return -1
+      if (b.minDate) return 1
+      if (a.order != null && b.order != null) return a.order - b.order
+      if (a.order != null) return -1
+      if (b.order != null) return 1
+      return 0
+    })
+    result = entries
   }
 
-  const entries = [...buckets.entries()].map(([key, bucket]) => {
-    const minDate = bucket.matches.reduce((min, m) => (m.date && (!min || m.date < min) ? m.date : min), null)
-    return {
-      round: key,
-      label: bucket.label,
-      order: bucket.order,
-      minDate,
-      ties: buildTies(bucket.matches).sort((a, b) => (a.legs[0].date ?? '').localeCompare(b.legs[0].date ?? ''))
-    }
-  })
-  // Priorite a la date reelle du tour (les tours "en attente de tirage" ont presque
-  // toujours une date programmee, meme sans equipes connues - ex: Georgie, Gibraltar) :
-  // sinon un tour non date (ex: places generiques sans date, cf. Estonie) se retrouvait
-  // trie AVANT les tours deja joues juste parce qu'il portait un code HF/QF/DF/F connu.
-  // Le code de tour ne sert de repli que si aucun des deux tours n'a de date du tout.
-  entries.sort((a, b) => {
-    if (a.minDate && b.minDate) return a.minDate.localeCompare(b.minDate)
-    if (a.minDate) return -1
-    if (b.minDate) return 1
-    if (a.order != null && b.order != null) return a.order - b.order
-    if (a.order != null) return -1
-    if (b.order != null) return 1
-    return 0
-  })
-  return entries
+  for (let i = 1; i < result.length; i++) {
+    result[i].ties = reorderForBracket(result[i - 1].ties, result[i].ties)
+  }
+  return result
 })
 
 async function startEdit(leg) {
@@ -495,8 +536,8 @@ onMounted(load)
 .bracket-round {
   display: flex;
   flex-direction: column;
-  min-width: 250px;
-  padding: 0 30px;
+  min-width: 200px;
+  padding: 0 22px;
 }
 
 .bracket-round--last {
@@ -579,7 +620,7 @@ onMounted(load)
   background: linear-gradient(180deg, #ffffff, #f1f4f2);
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 12px;
-  padding: 11px 13px;
+  padding: 8px 10px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
   transition: box-shadow 0.15s ease, transform 0.15s ease;
   overflow: hidden;
@@ -614,8 +655,8 @@ onMounted(load)
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 8px;
-  font-size: 0.88em;
+  gap: 6px;
+  font-size: 0.74em;
 }
 
 .tie-team {
@@ -677,7 +718,7 @@ onMounted(load)
   padding: 7px 13px;
   background: var(--surface-muted);
   border-top: 1px solid var(--border);
-  font-size: 0.78em;
+  font-size: 0.68em;
 }
 
 .tie-aggregate-tag {
@@ -708,7 +749,7 @@ onMounted(load)
   padding: 5px 13px 7px;
   background: var(--surface-muted);
   border-top: 1px solid var(--border);
-  font-size: 0.78em;
+  font-size: 0.68em;
 }
 
 .tie-penalties-tag {

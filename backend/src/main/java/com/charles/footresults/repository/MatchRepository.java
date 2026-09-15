@@ -23,6 +23,9 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     List<Match> findByTeam1_IdOrTeam2_IdOrderByDateDesc(Long team1Id, Long team2Id);
 
+    /** Tous les matchs LDC/EL/EC (tous tours, tous statuts) pour le recalcul des points et du statut "encore en course" UEFA (cf. UefaRankingService). */
+    List<Match> findByCompetition_CodeIn(List<String> competitionCodes);
+
     /** Matchs reportes/suspendus, toutes competitions confondues : jamais borne par une limite,
      * contrairement a findUpcoming qui ne renvoie que les N prochains matchs par date. */
     List<Match> findByStatusInOrderByDateAscTimeAsc(List<MatchStatus> statuses);

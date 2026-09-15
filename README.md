@@ -98,7 +98,11 @@ Le `V2__seed_data.sql` fourni a déjà été généré et validé (voir section 
 - Import des coupes nationales à partir des tableaux de bracket par pays, une fois ceux-ci remplis.
 - Sélections nationales (Ligue des Nations, qualifs Coupe du monde).
 - Playoffs promotion/relégation et barrages de qualification européenne (nécessite de résoudre les positions finales de classement avant de connaître les équipes).
-- Tableau de coefficients UEFA (feuilles "PAYS"/"UEFA" du fichier) pour déterminer automatiquement le nombre de places en coupes d'Europe par pays la saison suivante.
+- Import des onglets **"UEFA"** et **"PAYS"** du fichier Excel, pour reconstituer le classement des clubs et le classement des pays (coefficient UEFA) : reprendre tel quel le contenu de ces feuilles (mêmes lignes, mêmes colonnes que dans le fichier).
+  - La colonne **PTS 2027** (saison en cours) ne doit pas être figée à la valeur importée : elle doit se recalculer dynamiquement en ajoutant les points gagnés au fil des matchs saisis en **phase de ligue** LDC / Europa League / Conference League — victoire = **2 pts**, nul = **1 pt**, défaite = 0 pt — au total de départ repris du fichier Excel.
+  - Ce recalcul doit s'appliquer aux **deux** classements : celui des clubs et celui des pays (UEFA).
+  - Même code couleur que dans l'onglet **PAYS** actuel du fichier, par ligne : **bleu** = pays encore représenté en Ligue des Champions, **orange** = encore représenté en Europa League, **jaune** = encore représenté en Conference League, **rouge** = plus aucun représentant du pays dans une coupe d'Europe.
+- Filtrer la liste des clubs proposée à la saisie d'un match selon le pays de la compétition sélectionnée (ex : pour un match de coupe d'Albanie, ne proposer que les clubs albanais) au lieu de la liste complète des ~1000 équipes.
 
 ## Structure du repo
 

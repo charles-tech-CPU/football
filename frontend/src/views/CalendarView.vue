@@ -51,7 +51,7 @@
               <FlagIcon :country="m.team1Country" />
             </template>
             <select v-model.number="edits[m.id].team1Id">
-              <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+              <option v-for="t in teamOptionsFor(m, edits[m.id].team1Id)" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </span>
         </td>
@@ -68,7 +68,7 @@
               <FlagIcon :country="m.team2Country" />
             </template>
             <select v-model.number="edits[m.id].team2Id">
-              <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+              <option v-for="t in teamOptionsFor(m, edits[m.id].team2Id)" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </span>
         </td>
@@ -125,7 +125,21 @@ const totalCount = ref(0)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
 
-const sortedTeams = computed(() => teams.value.slice().sort((a, b) => a.name.localeCompare(b.name)))
+// Restreint la liste proposee aux clubs du pays de la competition du match (championnats/coupes
+// nationales) ; pour les coupes d'Europe (pas de pays), la liste complete reste proposee. On
+// garde toujours l'equipe actuellement selectionnee meme si son pays ne correspond pas exactement
+// (libelles de pays en texte libre, cf README).
+function teamOptionsFor(m, currentId) {
+  const country = m.competitionCountry
+  let list = country
+    ? teams.value.filter(t => t.country && t.country.toLowerCase() === country.toLowerCase())
+    : teams.value
+  if (currentId != null && !list.some(t => t.id === currentId)) {
+    const current = teams.value.find(t => t.id === currentId)
+    if (current) list = [...list, current]
+  }
+  return list.slice().sort((a, b) => a.name.localeCompare(b.name))
+}
 
 function statusRowClass(status) {
   if (status === 'POSTPONED') return 'row-postponed'

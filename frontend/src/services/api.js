@@ -22,7 +22,6 @@ export default {
 
   getMatchesByCompetition: (competitionId) =>
     api.get('/matches', { params: { competitionId } }).then(r => r.data),
-  getRecentResults: (limit) => api.get('/matches/recent', { params: { limit } }).then(r => r.data),
   getUpcomingMatches: (params) => api.get('/matches/upcoming', { params }).then(r => r.data),
   getPostponedMatches: () => api.get('/matches/postponed').then(r => r.data),
   createMatch: (payload) => api.post('/matches', payload).then(r => r.data),
@@ -39,5 +38,8 @@ export default {
   setTeamStatus: (competitionId, teamId, payload) =>
     api.put('/team-status', payload, { params: { competitionId, teamId } }).then(r => r.data),
   updateQualificationSlots: (competitionId, payload) =>
-    api.patch(`/competitions/${competitionId}/qualification-slots`, payload).then(r => r.data)
+    api.patch(`/competitions/${competitionId}/qualification-slots`, payload).then(r => r.data),
+
+  getClubUefaRankings: () => api.get('/uefa-rankings/clubs').then(r => r.data),
+  getCountryUefaRankings: () => api.get('/uefa-rankings/countries').then(r => r.data)
 }
