@@ -56,6 +56,12 @@ public class MatchController {
         return matchService.findPostponedOrSuspended();
     }
 
+    /** GET /api/matches/international : calendrier international (selections nationales), sans limite. */
+    @GetMapping("/international")
+    public List<MatchDto> international() {
+        return matchService.findInternational();
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MatchDto create(@Valid @RequestBody MatchCreateDto dto) {

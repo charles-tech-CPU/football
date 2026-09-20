@@ -294,6 +294,39 @@ input[type="number"]::-webkit-inner-spin-button {
   color: #14532d;
 }
 
+/* Meme principe pour le calendrier international : 1 couleur par confederation
+   (voir frontend/src/utils/confederations.js), pour reperer d'un coup d'oeil Europe/
+   Afrique/Ameriques/Asie/Oceanie dans un calendrier qui les melange tous. */
+.comp-uefa {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+.comp-caf {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.comp-concacaf {
+  background: #ffe4cc;
+  color: #9a3412;
+}
+
+.comp-conmebol {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.comp-afc {
+  background: #ccfbf1;
+  color: #0f5952;
+}
+
+.comp-ofc {
+  background: #fef9c3;
+  color: #713f12;
+}
+
 .team-cell {
   display: inline-flex;
   align-items: center;

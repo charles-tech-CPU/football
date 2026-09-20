@@ -1,6 +1,7 @@
 package com.charles.footresults.web;
 
 import com.charles.footresults.domain.Competition;
+import com.charles.footresults.domain.CompetitionType;
 import com.charles.footresults.dto.CompetitionCreateDto;
 import com.charles.footresults.dto.CompetitionDto;
 import com.charles.footresults.dto.QualificationSlotsDto;
@@ -23,9 +24,13 @@ public class CompetitionController {
         this.competitionRepository = competitionRepository;
     }
 
+    /** GET /api/competitions  ou  GET /api/competitions?type=INTERNATIONAL */
     @GetMapping
-    public List<CompetitionDto> findAll() {
-        return competitionRepository.findAll().stream()
+    public List<CompetitionDto> findAll(@RequestParam(required = false) CompetitionType type) {
+        List<Competition> competitions = type != null
+                ? competitionRepository.findByType(type)
+                : competitionRepository.findAll();
+        return competitions.stream()
                 .sorted(Comparator.comparing(Competition::getType)
                         .thenComparing(Competition::getCode))
                 .map(CompetitionDto::from)

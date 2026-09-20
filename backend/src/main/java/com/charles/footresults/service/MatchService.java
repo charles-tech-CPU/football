@@ -85,6 +85,13 @@ public class MatchService {
                 .stream().map(MatchDto::from).toList();
     }
 
+    /** Calendrier international (selections nationales, toutes confederations), saison 2026-2027. */
+    @Transactional(readOnly = true)
+    public List<MatchDto> findInternational() {
+        return matchRepository.findByCompetition_TypeOrderByDateAscTimeAsc(CompetitionType.INTERNATIONAL)
+                .stream().map(MatchDto::from).toList();
+    }
+
     public MatchDto create(MatchCreateDto dto) {
         Match match = new Match();
         applyFields(match, dto);

@@ -12,6 +12,7 @@
       <option value="all">Toutes les compétitions</option>
     </select>
     <span class="page-info" v-if="totalCount">{{ totalCount }} match{{ totalCount > 1 ? 's' : '' }}</span>
+    <router-link to="/reportes-suspendus" class="action-btn action-btn--secondary">Reportés / Suspendus</router-link>
   </div>
 
   <div class="table-scroll" v-if="matches.length">

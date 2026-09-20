@@ -30,6 +30,10 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
      * contrairement a findUpcoming qui ne renvoie que les N prochains matchs par date. */
     List<Match> findByStatusInOrderByDateAscTimeAsc(List<MatchStatus> statuses);
 
+    /** Calendrier international (selections nationales, toutes confederations) : volume raisonnable
+     * pour une seule saison (quelques centaines de matchs), pas besoin de pagination cote serveur. */
+    List<Match> findByCompetition_TypeOrderByDateAscTimeAsc(CompetitionType type);
+
     /** Matchs sans date (tours de qualif. coupes d'Europe sans date exploitable) rejetes en fin de liste. */
     @Query("SELECT m FROM Match m WHERE m.status = :status ORDER BY m.date DESC NULLS LAST, m.time DESC NULLS LAST")
     List<Match> findRecentByStatus(@Param("status") MatchStatus status, Pageable pageable);
