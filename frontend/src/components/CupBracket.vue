@@ -56,7 +56,15 @@
               <div class="tie-leg-wrap" v-for="(leg, li) in tie.legs" :key="leg.id">
                 <span v-if="tie.legs.length > 1" class="leg-tag">{{ legLabel(li, tie.legs.length) }}</span>
                 <div class="tie-leg">
-                  <span class="tie-team" :class="{ 'tie-winner': tie.winnerId === leg.team1Id }">
+                  <template v-if="teamEditingKey === teamKey(leg, 1)">
+                    <span class="grid-edit" @click.stop>
+                      <select v-model.number="editTeamValue">
+                        <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+                      </select>
+                      <button type="button" @click.stop="confirmTeamEdit(leg, 1)">✓</button>
+                    </span>
+                  </template>
+                  <span v-else class="tie-team" :class="{ 'tie-winner': tie.winnerId === leg.team1Id }" @click="startTeamEdit(leg, 1)">
                     <TeamLogo :name="leg.team1Name" :logo-path="leg.team1LogoPath" />
                     <FlagIcon v-if="showFlags" :country="leg.team1Country" />
                     <span class="tie-team-name">{{ leg.team1Name }}</span>
@@ -71,7 +79,15 @@
                   <span v-else class="tie-score" @click="startEdit(leg)">
                     {{ leg.score1 ?? '-' }}<span class="tie-score-sep">:</span>{{ leg.score2 ?? '-' }}
                   </span>
-                  <span class="tie-team tie-team--right" :class="{ 'tie-winner': tie.winnerId === leg.team2Id }">
+                  <template v-if="teamEditingKey === teamKey(leg, 2)">
+                    <span class="grid-edit" @click.stop>
+                      <select v-model.number="editTeamValue">
+                        <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
+                      </select>
+                      <button type="button" @click.stop="confirmTeamEdit(leg, 2)">✓</button>
+                    </span>
+                  </template>
+                  <span v-else class="tie-team tie-team--right" :class="{ 'tie-winner': tie.winnerId === leg.team2Id }" @click="startTeamEdit(leg, 2)">
                     <span class="tie-team-name">{{ leg.team2Name }}</span>
                     <FlagIcon v-if="showFlags" :country="leg.team2Country" />
                     <TeamLogo :name="leg.team2Name" :logo-path="leg.team2LogoPath" />
@@ -142,6 +158,8 @@ const editScore2 = ref(null)
 const editingPenaltyId = ref(null)
 const editPen1 = ref(null)
 const editPen2 = ref(null)
+const teamEditingKey = ref(null)
+const editTeamValue = ref(null)
 const competitionCountry = ref(null)
 const newTeam = reactive({ name: '' })
 const teamError = ref('')
@@ -370,6 +388,39 @@ const rounds = computed(() => {
   }
   return result
 })
+
+const sortedTeams = computed(() => teams.value.slice().sort((a, b) => a.name.localeCompare(b.name)))
+
+function teamKey(leg, side) {
+  return `${leg.id}-${side}`
+}
+
+function startTeamEdit(leg, side) {
+  teamEditingKey.value = teamKey(leg, side)
+  editTeamValue.value = side === 1 ? leg.team1Id : leg.team2Id
+}
+
+async function confirmTeamEdit(leg, side) {
+  error.value = ''
+  try {
+    await api.updateMatch(leg.id, {
+      competitionId: leg.competitionId,
+      roundLabel: leg.roundLabel,
+      date: leg.date,
+      time: leg.time,
+      team1Id: side === 1 ? editTeamValue.value : leg.team1Id,
+      team2Id: side === 2 ? editTeamValue.value : leg.team2Id,
+      score1: leg.score1,
+      score2: leg.score2,
+      penaltyScore1: leg.penaltyScore1,
+      penaltyScore2: leg.penaltyScore2
+    })
+    teamEditingKey.value = null
+    await load()
+  } catch (e) {
+    error.value = e.response?.data?.error ?? "Erreur lors de la modification de l'équipe."
+  }
+}
 
 async function startEdit(leg) {
   editingId.value = leg.id
@@ -665,6 +716,11 @@ onMounted(load)
   gap: 7px;
   overflow: hidden;
   min-width: 0;
+  cursor: pointer;
+}
+
+.tie-team:hover .tie-team-name {
+  text-decoration: underline;
 }
 
 .tie-team-name {
