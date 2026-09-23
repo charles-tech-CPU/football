@@ -1,35 +1,13 @@
 <template>
-  <div class="action-bar">
-    <button type="button" class="action-btn" @click="showMatchModal = true">+ Ajouter un match</button>
-    <button type="button" class="action-btn action-btn--secondary" @click="showTeamModal = true">+ Ajouter un club</button>
-  </div>
-
-  <AppModal v-model="showMatchModal" title="Ajouter un match">
-    <form class="inline" @submit.prevent="submitMatch">
-      <select v-model.number="newMatch.team1Id" aria-label="Équipe domicile" required>
-        <option disabled value="">Équipe 1</option>
-        <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
-      </select>
-      <select v-model.number="newMatch.team2Id" aria-label="Équipe extérieur" required>
-        <option disabled value="">Équipe 2</option>
-        <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
-      </select>
-      <input v-model="newMatch.roundLabel" aria-label="Tour" placeholder="Round (ex: Coupe nationale)" required />
-      <input v-model="newMatch.date" aria-label="Date" type="date" />
-      <input v-model="newMatch.time" aria-label="Heure" type="time" />
-      <input v-model.number="newMatch.score1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" placeholder="B1" />
-      <input v-model.number="newMatch.score2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" placeholder="B2" />
-      <button type="submit">Ajouter</button>
-    </form>
-  </AppModal>
-
-  <AppModal v-model="showTeamModal" title="Ajouter un club">
-    <form class="inline" @submit.prevent="submitNewTeam">
-      <input v-model="newTeam.name" aria-label="Nom du club" placeholder="Nom du club" required />
-      <button type="submit">Ajouter</button>
-    </form>
-    <p v-if="teamError" class="error-text">{{ teamError }}</p>
-  </AppModal>
+  <MatchCreationBar
+    :competition-id="competitionId"
+    :teams="teams"
+    :competition-country="competitionCountry"
+    round-placeholder="Round (ex: Coupe nationale)"
+    default-round="Coupe nationale"
+    @match-created="load"
+    @team-created="reloadTeams"
+  />
 
   <div v-if="rounds.length" class="bracket-scroll">
     <div class="bracket">
@@ -64,11 +42,11 @@
                       <button type="button" @click.stop="confirmTeamEdit(leg, 1)">✓</button>
                     </span>
                   </template>
-                  <span v-else class="tie-team" :class="{ 'tie-winner': tie.winnerId === leg.team1Id }" role="button" tabindex="0" @click="startTeamEdit(leg, 1)" @keydown.enter="startTeamEdit(leg, 1)">
+                  <button v-else type="button" class="tie-team" :class="{ 'tie-winner': tie.winnerId === leg.team1Id }" @click="startTeamEdit(leg, 1)">
                     <TeamLogo :name="leg.team1Name" :logo-path="leg.team1LogoPath" />
                     <FlagIcon v-if="showFlags" :country="leg.team1Country" />
                     <span class="tie-team-name">{{ leg.team1Name }}</span>
-                  </span>
+                  </button>
                   <template v-if="editingId === leg.id">
                     <span class="grid-edit">
                       <input v-model.number="editScore1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" @click.stop />
@@ -76,9 +54,9 @@
                       <button type="button" @click.stop="confirmEdit(leg)">✓</button>
                     </span>
                   </template>
-                  <span v-else class="tie-score" role="button" tabindex="0" @click="startEdit(leg)" @keydown.enter="startEdit(leg)">
+                  <button v-else type="button" class="tie-score" @click="startEdit(leg)">
                     {{ leg.score1 ?? '-' }}<span class="tie-score-sep">:</span>{{ leg.score2 ?? '-' }}
-                  </span>
+                  </button>
                   <template v-if="teamEditingKey === teamKey(leg, 2)">
                     <span class="grid-edit" @click.stop @keydown.stop>
                       <select v-model.number="editTeamValue" aria-label="Équipe">
@@ -87,11 +65,11 @@
                       <button type="button" @click.stop="confirmTeamEdit(leg, 2)">✓</button>
                     </span>
                   </template>
-                  <span v-else class="tie-team tie-team--right" :class="{ 'tie-winner': tie.winnerId === leg.team2Id }" role="button" tabindex="0" @click="startTeamEdit(leg, 2)" @keydown.enter="startTeamEdit(leg, 2)">
+                  <button v-else type="button" class="tie-team tie-team--right" :class="{ 'tie-winner': tie.winnerId === leg.team2Id }" @click="startTeamEdit(leg, 2)">
                     <span class="tie-team-name">{{ leg.team2Name }}</span>
                     <FlagIcon v-if="showFlags" :country="leg.team2Country" />
                     <TeamLogo :name="leg.team2Name" :logo-path="leg.team2LogoPath" />
-                  </span>
+                  </button>
                 </div>
               </div>
               <div v-if="tie.legs.length > 1" class="tie-aggregate">
@@ -103,7 +81,7 @@
               <div v-if="tie.wentToPenalties" class="tie-penalties">
                 <span class="tie-penalties-tag">Tab</span>
                 <span class="tie-aggregate-team" :class="{ 'tie-winner': tie.winnerId === tie.teamAId }">{{ tie.teamAName }}</span>
-                <span class="tie-aggregate-score" role="button" tabindex="0" @click="startPenaltyEdit(tie)" @keydown.enter="startPenaltyEdit(tie)">{{ tie.penA }} – {{ tie.penB }}</span>
+                <button type="button" class="tie-aggregate-score tie-penalty-score" @click="startPenaltyEdit(tie)">{{ tie.penA }} – {{ tie.penB }}</button>
                 <span class="tie-aggregate-team" :class="{ 'tie-winner': tie.winnerId === tie.teamBId }">{{ tie.teamBName }}</span>
               </div>
               <div v-else-if="tie.needsPenalty" class="tie-penalties">
@@ -129,11 +107,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
 import FlagIcon from './FlagIcon.vue'
-import AppModal from './AppModal.vue'
+import MatchCreationBar from './MatchCreationBar.vue'
 import { summarizeTie } from '../utils/cupTies.js'
 
 const props = defineProps({
@@ -162,14 +140,6 @@ const editPen2 = ref(null)
 const teamEditingKey = ref(null)
 const editTeamValue = ref(null)
 const competitionCountry = ref(null)
-const newTeam = reactive({ name: '' })
-const teamError = ref('')
-const showMatchModal = ref(false)
-const showTeamModal = ref(false)
-
-const newMatch = reactive({
-  team1Id: '', team2Id: '', roundLabel: 'Coupe nationale', date: '', time: '', score1: null, score2: null
-})
 
 // Tours "en attente de tirage" (cf. import/import_excel.py PLACEHOLDER_RE et
 // V16__pending_draw_matches.sql) : round_label du type "... (a determiner : HF-HF)".
@@ -465,40 +435,9 @@ async function confirmPenaltyEdit(tie) {
   }
 }
 
-async function submitMatch() {
-  error.value = ''
-  try {
-    await api.createMatch({
-      competitionId: Number(props.competitionId),
-      roundLabel: newMatch.roundLabel,
-      date: newMatch.date || null,
-      time: newMatch.time || null,
-      team1Id: newMatch.team1Id,
-      team2Id: newMatch.team2Id,
-      score1: newMatch.score1,
-      score2: newMatch.score2
-    })
-    newMatch.date = ''
-    newMatch.time = ''
-    newMatch.score1 = null
-    newMatch.score2 = null
-    showMatchModal.value = false
-    await load()
-  } catch (e) {
-    error.value = e.response?.data?.error ?? "Erreur lors de la création du match."
-  }
-}
-
-async function submitNewTeam() {
-  teamError.value = ''
-  try {
-    await api.createTeam({ name: newTeam.name.toUpperCase(), country: competitionCountry.value })
-    newTeam.name = ''
-    teams.value = await api.getTeams({ competitionId: Number(props.competitionId) })
-    showTeamModal.value = false
-  } catch (e) {
-    teamError.value = e.response?.data?.error ?? "Erreur lors de la création du club."
-  }
+// Un club vient d'etre cree : on recharge la liste proposee dans les formulaires.
+async function reloadTeams() {
+  teams.value = await api.getTeams({ competitionId: Number(props.competitionId) })
 }
 
 async function load() {
@@ -579,7 +518,7 @@ onMounted(load)
 .round-badge {
   margin: 0 0 20px;
   align-self: center;
-  background: rgba(255, 255, 255, 0.12);
+  background: #2a3548;
   color: #f4f7f5;
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 999px;
@@ -689,6 +628,27 @@ onMounted(load)
   align-items: center;
   gap: 6px;
   font-size: 0.74em;
+}
+
+/* Boutons d'edition affiches comme du texte (anciens <span> cliquables) */
+.tie-team,
+.tie-score,
+.tie-penalty-score {
+  border: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+}
+
+.tie-team,
+.tie-penalty-score {
+  background: none;
+  padding: 0;
+}
+
+.tie-penalty-score {
+  cursor: pointer;
 }
 
 .tie-team {

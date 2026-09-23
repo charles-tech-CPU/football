@@ -22,6 +22,7 @@ import com.charles.footresults.repository.CountryUefaRankingRepository;
 import com.charles.footresults.repository.MatchRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -39,7 +40,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class UefaRankingServiceTest {
 
-    private static final LocalDate LEAGUE_PHASE_START = LocalDate.of(2026, 9, 16);
+    private static final LocalDate LEAGUE_PHASE_START = LocalDate.of(2026, Month.SEPTEMBER, 16);
 
     @Mock
     private ClubUefaRankingRepository clubRepository;

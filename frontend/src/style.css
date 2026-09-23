@@ -683,3 +683,37 @@ tbody tr.standing-orange-dark:hover { background: #fdba74; }
   align-items: center;
   gap: 8px;
 }
+
+/* ---- Tableaux de matchs editables (calendriers, matchs reportes, classement UEFA) ---- */
+/* Tableau pleine largeur : sort du conteneur centre (#app) pour limiter le scroll horizontal. */
+.table-scroll {
+  overflow-x: auto;
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  padding: 0 20px;
+}
+
+.date-input {
+  width: 140px;
+}
+
+.time-input {
+  width: 120px;
+}
+
+/* Match sans horaire connu (seule la date est fixee) */
+.no-time-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.72em;
+  font-weight: 600;
+  white-space: nowrap;
+}

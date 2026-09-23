@@ -21,6 +21,7 @@ import com.charles.footresults.repository.TeamRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Month;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -220,7 +221,7 @@ class MatchServiceTest {
         return new MatchCreateDto(
                 ligue1.getId(),
                 "J1",
-                LocalDate.of(2026, 8, 15),
+                LocalDate.of(2026, Month.AUGUST, 15),
                 LocalTime.of(21, 0),
                 psg.getId(),
                 om.getId(),

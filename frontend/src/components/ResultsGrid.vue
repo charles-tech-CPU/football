@@ -190,6 +190,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
 import FlagIcon from './FlagIcon.vue'
+import { compareByRoundThenDate, roundNumber } from '../utils/rounds.js'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },
@@ -277,11 +278,6 @@ function isPendingTeam(name) {
   return (name ?? '').toUpperCase().startsWith('A DETERMINER')
 }
 
-function roundNumber(m) {
-  const found = (m.roundLabel ?? '').match(/(\d+)/)
-  return found ? Number.parseInt(found[1], 10) : null
-}
-
 // Certains championnats (ex: Albanie) rejouent un aller-retour complet une 2e fois
 // (championnat/relegation ou simplement un 2e tour) : un couple d'equipes peut donc
 // s'affronter plus de 2 fois dans la saison. On detecte ces "cycles" successifs (1ere
@@ -289,13 +285,7 @@ function roundNumber(m) {
 // pour afficher une grille distincte par cycle plutot que d'ecraser silencieusement les
 // scores les plus anciens dans une seule grille.
 const allCycles = computed(() => {
-  const sorted = matches.value.slice().sort((a, b) => {
-    const ra = roundNumber(a), rb = roundNumber(b)
-    if (ra != null && rb != null && ra !== rb) return ra - rb
-    const ad = a.date ?? '', bd = b.date ?? ''
-    if (ad !== bd) return ad.localeCompare(bd)
-    return a.id - b.id
-  })
+  const sorted = matches.value.toSorted(compareByRoundThenDate)
   const seenCount = new Map()
   const byCycle = new Map()
   for (const m of sorted) {

@@ -210,6 +210,7 @@ import ResultsGrid from '../components/ResultsGrid.vue'
 import CupBracket from '../components/CupBracket.vue'
 import StatusDropdown from '../components/StatusDropdown.vue'
 import { groupAssignment, twoPoolSplit } from '../utils/groupSplit.js'
+import { compareByRoundThenDate, roundNumber } from '../utils/rounds.js'
 
 const props = defineProps({
   country: { type: String, required: true }
@@ -230,13 +231,35 @@ const season = computed(() => league.value?.season ?? cup.value?.season ?? '')
 // Particularites de format propres a un championnat precis, qui ne se deduisent pas des
 // places qualificatives/barrage/relegation generiques (ex: mini-championnat final entre
 // les 4 meilleures equipes de l'Albanie, unique a ce championnat).
+// Meme icone et meme info-bulle pour une plage de rangs consecutifs (ex: places 1 a 6).
+function rankRange(from, to, icon, tooltip) {
+  return Array.from({ length: to - from + 1 }, (_, i) => ({ rank: from + i, icon, tooltip }))
+}
+
+// Scission la plus courante apres la saison reguliere : 12 equipes, groupe du haut (1-6) et
+// groupe du bas (7-12).
+const TOP_BOTTOM_6_MARKERS = [
+  ...rankRange(1, 6, '🅰️', 'Groupe du haut (places 1 à 6)'),
+  ...rankRange(7, 12, '🅱️', 'Groupe du bas (places 7 à 12)')
+]
+const TOP_BOTTOM_LEGEND = ['🅰️ Groupe du haut', '🅱️ Groupe du bas']
+const TOP_BOTTOM_LABELS = ['Groupe du haut', 'Groupe du bas']
+
+// 14 equipes puis 3 mini-championnats : titre (1-4), Conference League (5-8), maintien (9-14).
+const MINI_LEAGUES_4_4_6 = {
+  rankMarkers: [
+    ...rankRange(1, 4, '🥇', 'Mini-championnat du futur champion (places 1 à 4)'),
+    ...rankRange(5, 8, '🥈', 'Mini-championnat Conference League (places 5 à 8)'),
+    ...rankRange(9, 14, '🔻', 'Championnat de relégation (places 9 à 14)')
+  ],
+  legend: ['🥇 Mini-championnat du futur champion', '🥈 Mini-championnat Conference League', '🔻 Championnat de relégation'],
+  labels: ['Mini-championnat du futur champion', 'Mini-championnat Conference League', 'Championnat de relégation']
+}
+
 const LEAGUE_RANK_CONFIG = {
   ALBANIE: {
     rankMarkers: [
-      { rank: 1, icon: '🏅', tooltip: 'Qualifié pour le mini-championnat (top 4)' },
-      { rank: 2, icon: '🏅', tooltip: 'Qualifié pour le mini-championnat (top 4)' },
-      { rank: 3, icon: '🏅', tooltip: 'Qualifié pour le mini-championnat (top 4)' },
-      { rank: 4, icon: '🏅', tooltip: 'Qualifié pour le mini-championnat (top 4)' }
+      ...rankRange(1, 4, '🏅', 'Qualifié pour le mini-championnat (top 4)')
     ],
     legend: ['🏅 Qualifié pour le mini-championnat (top 4)']
   },
@@ -248,18 +271,8 @@ const LEAGUE_RANK_CONFIG = {
     // FINAL de chaque mini-championnat, donc ces icones sont portees par les tableaux de
     // groupe (groupSlots), pas par le grand classement.
     rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Meistergruppe (groupe du haut, places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Meistergruppe (groupe du haut, places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Meistergruppe (groupe du haut, places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Meistergruppe (groupe du haut, places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Meistergruppe (groupe du haut, places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Meistergruppe (groupe du haut, places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Qualifikationsgruppe (groupe du bas, places 7 à 12)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Qualifikationsgruppe (groupe du bas, places 7 à 12)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Qualifikationsgruppe (groupe du bas, places 7 à 12)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Qualifikationsgruppe (groupe du bas, places 7 à 12)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Qualifikationsgruppe (groupe du bas, places 7 à 12)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Qualifikationsgruppe (groupe du bas, places 7 à 12)' }
+      ...rankRange(1, 6, '🅰️', 'Meistergruppe (groupe du haut, places 1 à 6)'),
+      ...rankRange(7, 12, '🅱️', 'Qualifikationsgruppe (groupe du bas, places 7 à 12)')
     ],
     legend: ['🅰️ Meistergruppe (groupe du haut)', '🅱️ Qualifikationsgruppe (groupe du bas)'],
     resultsGroupSplit: {
@@ -277,8 +290,7 @@ const LEAGUE_RANK_CONFIG = {
         {
           ldcSlots: 0, elSlots: 0, eclSlots: 0, barrageSlots: 0, relegationSlots: 1,
           rankMarkers: [
-            { rank: 1, icon: '🎟️', tooltip: 'Barrage pour une place en Conference League' },
-            { rank: 2, icon: '🎟️', tooltip: 'Barrage pour une place en Conference League' }
+            ...rankRange(1, 2, '🎟️', 'Barrage pour une place en Conference League')
           ]
         }
       ]
@@ -289,34 +301,11 @@ const LEAGUE_RANK_CONFIG = {
     // 5e-8e pour une place Conference League, 9e-14e pour le maintien. Le grand classement
     // ne sert qu'a repartir les groupes (icones 🥇/🥈/🔻) : champion/Conference/barrage/
     // relegation se jouent au classement FINAL de chaque mini-championnat (groupSlots).
-    rankMarkers: [
-      { rank: 1, icon: '🥇', tooltip: 'Mini-championnat du futur champion (places 1 à 4)' },
-      { rank: 2, icon: '🥇', tooltip: 'Mini-championnat du futur champion (places 1 à 4)' },
-      { rank: 3, icon: '🥇', tooltip: 'Mini-championnat du futur champion (places 1 à 4)' },
-      { rank: 4, icon: '🥇', tooltip: 'Mini-championnat du futur champion (places 1 à 4)' },
-      { rank: 5, icon: '🥈', tooltip: 'Mini-championnat Conference League (places 5 à 8)' },
-      { rank: 6, icon: '🥈', tooltip: 'Mini-championnat Conference League (places 5 à 8)' },
-      { rank: 7, icon: '🥈', tooltip: 'Mini-championnat Conference League (places 5 à 8)' },
-      { rank: 8, icon: '🥈', tooltip: 'Mini-championnat Conference League (places 5 à 8)' },
-      { rank: 9, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' },
-      { rank: 10, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' },
-      { rank: 11, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' },
-      { rank: 12, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' },
-      { rank: 13, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' },
-      { rank: 14, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' }
-    ],
-    legend: [
-      '🥇 Mini-championnat du futur champion',
-      '🥈 Mini-championnat Conference League',
-      '🔻 Championnat de relégation'
-    ],
+    rankMarkers: MINI_LEAGUES_4_4_6.rankMarkers,
+    legend: MINI_LEAGUES_4_4_6.legend,
     resultsGroupSplit: {
       sizes: [4, 4, 6],
-      labels: [
-        'Mini-championnat du futur champion',
-        'Mini-championnat Conference League',
-        'Championnat de relégation'
-      ],
+      labels: MINI_LEAGUES_4_4_6.labels,
       groupSlots: [
         // Top 4 : 1er champion (LDC), 2e-3e Conference.
         { ldcSlots: 1, elSlots: 0, eclSlots: 2, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
@@ -334,20 +323,8 @@ const LEAGUE_RANK_CONFIG = {
     // Meme principe qu'Autriche/Bulgarie, mais groupes asymetriques : Championship group
     // (6 premiers) pour le titre et l'Europe, play-out group (8 derniers) pour le maintien.
     rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Championship group (6 premiers)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Championship group (6 premiers)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Championship group (6 premiers)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Championship group (6 premiers)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Championship group (6 premiers)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Championship group (6 premiers)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Play-out group (8 derniers)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Play-out group (8 derniers)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Play-out group (8 derniers)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Play-out group (8 derniers)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Play-out group (8 derniers)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Play-out group (8 derniers)' },
-      { rank: 13, icon: '🅱️', tooltip: 'Play-out group (8 derniers)' },
-      { rank: 14, icon: '🅱️', tooltip: 'Play-out group (8 derniers)' }
+      ...rankRange(1, 6, '🅰️', 'Championship group (6 premiers)'),
+      ...rankRange(7, 14, '🅱️', 'Play-out group (8 derniers)')
     ],
     legend: ['🅰️ Championship group (haut de tableau)', '🅱️ Play-out group (bas de tableau)'],
     resultsGroupSplit: {
@@ -367,24 +344,11 @@ const LEAGUE_RANK_CONFIG = {
     // general (= 1er du groupe du bas), d'ou un rankMarker dedie de chaque cote plutot que
     // barrageSlots. Le 3e du haut n'est PAS qualifie automatiquement : il doit gagner ce
     // barrage, d'ou eclSlots=0 sur ce groupe.
-    rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' }
-    ],
-    legend: ['🅰️ Groupe du haut', '🅱️ Groupe du bas'],
+    rankMarkers: TOP_BOTTOM_6_MARKERS,
+    legend: TOP_BOTTOM_LEGEND,
     resultsGroupSplit: {
       sizes: [6, 6],
-      labels: ['Groupe du haut', 'Groupe du bas'],
+      labels: TOP_BOTTOM_LABELS,
       groupSlots: [
         // Groupe du haut : 1er champion (LDC), 2e Europa League, 3e en barrage europeen
         // (pas de qualification directe).
@@ -407,25 +371,12 @@ const LEAGUE_RANK_CONFIG = {
     // confrontations - la 3e rencontre alterne le sens aller/retour). Puis top 6 / bottom 6
     // (comme l'Autriche), reprenant les places qualificatives/barrage/relegation deja en
     // place, simplement reparties par groupe au lieu du grand classement.
-    rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' }
-    ],
-    legend: ['🅰️ Groupe du haut', '🅱️ Groupe du bas'],
+    rankMarkers: TOP_BOTTOM_6_MARKERS,
+    legend: TOP_BOTTOM_LEGEND,
     resultsGroupSplit: {
       sizes: [6, 6],
       regularSeasonCycles: 2,
-      labels: ['Groupe du haut', 'Groupe du bas'],
+      labels: TOP_BOTTOM_LABELS,
       groupSlots: [
         // Groupe du haut : 1er et 2e LDC, 3e EL, 4e ECL.
         { ldcSlots: 2, elSlots: 1, eclSlots: 1, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
@@ -442,24 +393,11 @@ const LEAGUE_RANK_CONFIG = {
     // de phase 2 entre membres du meme groupe (realGroupStandings, cumulatif comme le
     // classement general standard) : champion/conference pour le groupe du haut, barrage/
     // relegation pour le groupe du bas.
-    rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' }
-    ],
-    legend: ['🅰️ Groupe du haut', '🅱️ Groupe du bas'],
+    rankMarkers: TOP_BOTTOM_6_MARKERS,
+    legend: TOP_BOTTOM_LEGEND,
     resultsGroupSplit: {
       sizes: [6, 6],
-      labels: ['Groupe du haut', 'Groupe du bas'],
+      labels: TOP_BOTTOM_LABELS,
       groupSlots: [
         { ldcSlots: 1, elSlots: 0, eclSlots: 2, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
         { ldcSlots: 0, elSlots: 0, eclSlots: 0, barrageSlots: 1, relegationSlots: 1, rankMarkers: null }
@@ -473,12 +411,7 @@ const LEAGUE_RANK_CONFIG = {
     // Finlande) : LDC/EL/ECL s'y jouent, les 5 derniers du classement fige n'ont plus de
     // matchs a jouer.
     rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Qualifié pour le mini-championnat (top 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Qualifié pour le mini-championnat (top 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Qualifié pour le mini-championnat (top 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Qualifié pour le mini-championnat (top 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Qualifié pour le mini-championnat (top 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Qualifié pour le mini-championnat (top 6)' }
+      ...rankRange(1, 6, '🅰️', 'Qualifié pour le mini-championnat (top 6)')
     ],
     legend: ['🅰️ Qualifié pour le mini-championnat (top 6)'],
     resultsGroupSplit: {
@@ -493,34 +426,11 @@ const LEAGUE_RANK_CONFIG = {
     // Apres la saison reguliere (14 equipes), 3 mini-championnats comme en Bulgarie : top 4
     // pour le titre/l'Europe, 5e-8e pour une place Conference, 9e-14e pour le maintien (pas
     // de barrage).
-    rankMarkers: [
-      { rank: 1, icon: '🥇', tooltip: 'Mini-championnat du futur champion (places 1 à 4)' },
-      { rank: 2, icon: '🥇', tooltip: 'Mini-championnat du futur champion (places 1 à 4)' },
-      { rank: 3, icon: '🥇', tooltip: 'Mini-championnat du futur champion (places 1 à 4)' },
-      { rank: 4, icon: '🥇', tooltip: 'Mini-championnat du futur champion (places 1 à 4)' },
-      { rank: 5, icon: '🥈', tooltip: 'Mini-championnat Conference League (places 5 à 8)' },
-      { rank: 6, icon: '🥈', tooltip: 'Mini-championnat Conference League (places 5 à 8)' },
-      { rank: 7, icon: '🥈', tooltip: 'Mini-championnat Conference League (places 5 à 8)' },
-      { rank: 8, icon: '🥈', tooltip: 'Mini-championnat Conference League (places 5 à 8)' },
-      { rank: 9, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' },
-      { rank: 10, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' },
-      { rank: 11, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' },
-      { rank: 12, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' },
-      { rank: 13, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' },
-      { rank: 14, icon: '🔻', tooltip: 'Championnat de relégation (places 9 à 14)' }
-    ],
-    legend: [
-      '🥇 Mini-championnat du futur champion',
-      '🥈 Mini-championnat Conference League',
-      '🔻 Championnat de relégation'
-    ],
+    rankMarkers: MINI_LEAGUES_4_4_6.rankMarkers,
+    legend: MINI_LEAGUES_4_4_6.legend,
     resultsGroupSplit: {
       sizes: [4, 4, 6],
-      labels: [
-        'Mini-championnat du futur champion',
-        'Mini-championnat Conference League',
-        'Championnat de relégation'
-      ],
+      labels: MINI_LEAGUES_4_4_6.labels,
       groupSlots: [
         // Top 4 : 1er champion (LDC), 2e LDC, 3e Europa, 4e Conference.
         { ldcSlots: 2, elSlots: 1, eclSlots: 1, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
@@ -541,33 +451,18 @@ const LEAGUE_RANK_CONFIG = {
     // Le "Barrage Europe" (4e-5e-6e-7e, deja present en base sous forme de playoff en
     // cascade 6e-7e puis 5e puis 4e) est une place europeenne supplementaire, distincte du
     // barrage de maintien (11e) - icone dediee pour ne pas les confondre.
-    rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' }
-    ],
-    legend: ['🅰️ Groupe du haut', '🅱️ Groupe du bas'],
+    rankMarkers: TOP_BOTTOM_6_MARKERS,
+    legend: TOP_BOTTOM_LEGEND,
     resultsGroupSplit: {
       sizes: [6, 6],
-      labels: ['Groupe du haut', 'Groupe du bas'],
+      labels: TOP_BOTTOM_LABELS,
       regularSeasonCycles: 2,
       groupSlots: [
         // Groupe du haut : 1er champion (LDC), 2e-3e Conference, 4e-5e-6e barrage europeen.
         {
           ldcSlots: 1, elSlots: 0, eclSlots: 2, barrageSlots: 0, relegationSlots: 0,
           rankMarkers: [
-            { rank: 4, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
-            { rank: 5, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
-            { rank: 6, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' }
+            ...rankRange(4, 6, '🌐', 'Barrage pour une place européenne (Conference League)')
           ]
         },
         // Groupe du bas : le 1er (=7e general) complete le barrage europeen, avant-dernier
@@ -582,24 +477,11 @@ const LEAGUE_RANK_CONFIG = {
   ISLANDE: {
     // Apres la saison reguliere (12 equipes, un aller-retour), split top 6 / bottom 6 comme
     // en Autriche/Finlande.
-    rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' }
-    ],
-    legend: ['🅰️ Groupe du haut', '🅱️ Groupe du bas'],
+    rankMarkers: TOP_BOTTOM_6_MARKERS,
+    legend: TOP_BOTTOM_LEGEND,
     resultsGroupSplit: {
       sizes: [6, 6],
-      labels: ['Groupe du haut', 'Groupe du bas'],
+      labels: TOP_BOTTOM_LABELS,
       groupSlots: [
         { ldcSlots: 1, elSlots: 0, eclSlots: 2, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
         { ldcSlots: 0, elSlots: 0, eclSlots: 0, barrageSlots: 0, relegationSlots: 2, rankMarkers: null }
@@ -609,25 +491,13 @@ const LEAGUE_RANK_CONFIG = {
   ISRAEL: {
     // Apres la saison reguliere (14 equipes, un aller-retour), split top 6 / bottom 8.
     rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 14)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 14)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 14)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 14)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 14)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 14)' },
-      { rank: 13, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 14)' },
-      { rank: 14, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 14)' }
+      ...rankRange(1, 6, '🅰️', 'Groupe du haut (places 1 à 6)'),
+      ...rankRange(7, 14, '🅱️', 'Groupe du bas (places 7 à 14)')
     ],
-    legend: ['🅰️ Groupe du haut', '🅱️ Groupe du bas'],
+    legend: TOP_BOTTOM_LEGEND,
     resultsGroupSplit: {
       sizes: [6, 8],
-      labels: ['Groupe du haut', 'Groupe du bas'],
+      labels: TOP_BOTTOM_LABELS,
       groupSlots: [
         { ldcSlots: 1, elSlots: 0, eclSlots: 2, barrageSlots: 0, relegationSlots: 0, rankMarkers: null },
         { ldcSlots: 0, elSlots: 0, eclSlots: 0, barrageSlots: 0, relegationSlots: 2, rankMarkers: null }
@@ -671,8 +541,7 @@ const LEAGUE_RANK_CONFIG = {
     // (7e-8e) partent en barrage de promotion-relegation contre la Division 2 (pas de
     // bracket a afficher ici, juste l'icone sur le classement fige).
     rankMarkers: [
-      { rank: 7, icon: '⚔️', tooltip: 'Barragiste (barrage promotion-relégation)' },
-      { rank: 8, icon: '⚔️', tooltip: 'Barragiste (barrage promotion-relégation)' }
+      ...rankRange(7, 8, '⚔️', 'Barragiste (barrage promotion-relégation)')
     ],
     legend: ['⚔️ Barragiste (barrage promotion-relégation)'],
     resultsGroupSplit: {
@@ -694,10 +563,7 @@ const LEAGUE_RANK_CONFIG = {
     // promotion-relegation (16e contre le vainqueur d'un bracket a 6 equipes de Division 2,
     // cf. V90) deja couvert par barrageSlots (generique).
     rankMarkers: [
-      { rank: 5, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
-      { rank: 6, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
-      { rank: 7, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
-      { rank: 8, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' }
+      ...rankRange(5, 8, '🌐', 'Barrage pour une place européenne (Conference League)')
     ],
     legend: ['🌐 Barrage pour une place européenne (Conference League)']
   },
@@ -709,24 +575,12 @@ const LEAGUE_RANK_CONFIG = {
     // championnat du bas (=7e general), gardee ici en marqueur pre-scission (frozen
     // standings) en plus du marqueur du groupe.
     rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
+      ...rankRange(1, 6, '🅰️', 'Mini-championnat du haut (places 1 à 6)'),
       { rank: 7, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
       { rank: 7, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
       { rank: 8, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
       { rank: 8, icon: '🌐', tooltip: 'Barrage pour une place européenne (Conference League)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
-      { rank: 13, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
-      { rank: 14, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
-      { rank: 15, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' },
-      { rank: 16, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 16)' }
+      ...rankRange(9, 16, '🅱️', 'Mini-championnat du bas (places 7 à 16)')
     ],
     legend: [
       '🅰️ Mini-championnat du haut (places 1 à 6)',
@@ -750,20 +604,8 @@ const LEAGUE_RANK_CONFIG = {
     // 14 equipes, 2 phases aller-retour (26 journees, regularSeasonCycles: 2) puis scission
     // top 6 / 8 derniers.
     rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
-      { rank: 13, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' },
-      { rank: 14, icon: '🅱️', tooltip: 'Mini-championnat du bas (places 7 à 14)' }
+      ...rankRange(1, 6, '🅰️', 'Mini-championnat du haut (places 1 à 6)'),
+      ...rankRange(7, 14, '🅱️', 'Mini-championnat du bas (places 7 à 14)')
     ],
     legend: [
       '🅰️ Mini-championnat du haut (places 1 à 6)',
@@ -784,24 +626,11 @@ const LEAGUE_RANK_CONFIG = {
   SLOVAQUIE: {
     // 12 equipes, 2 phases aller-retour (22 journees, regularSeasonCycles: 2) puis scission
     // top 6 / bottom 6 (comme l'Autriche/l'Islande).
-    rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' }
-    ],
-    legend: ['🅰️ Groupe du haut', '🅱️ Groupe du bas'],
+    rankMarkers: TOP_BOTTOM_6_MARKERS,
+    legend: TOP_BOTTOM_LEGEND,
     resultsGroupSplit: {
       sizes: [6, 6],
-      labels: ['Groupe du haut', 'Groupe du bas'],
+      labels: TOP_BOTTOM_LABELS,
       regularSeasonCycles: 2,
       groupSlots: [
         // 1er champion, 2e-3e Conference League.
@@ -814,24 +643,11 @@ const LEAGUE_RANK_CONFIG = {
   SUISSE: {
     // 12 equipes, 2 phases aller-retour AVEC TOUTES LES EQUIPES (regularSeasonCycles: 2,
     // comme la Slovaquie) puis une 3e phase : scission top 6 / bottom 6.
-    rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Groupe du haut (places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 11, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' },
-      { rank: 12, icon: '🅱️', tooltip: 'Groupe du bas (places 7 à 12)' }
-    ],
-    legend: ['🅰️ Groupe du haut', '🅱️ Groupe du bas'],
+    rankMarkers: TOP_BOTTOM_6_MARKERS,
+    legend: TOP_BOTTOM_LEGEND,
     resultsGroupSplit: {
       sizes: [6, 6],
-      labels: ['Groupe du haut', 'Groupe du bas'],
+      labels: TOP_BOTTOM_LABELS,
       regularSeasonCycles: 2,
       groupSlots: [
         // 1er champion, 2e Europa League, 3e-4e Conference League.
@@ -848,16 +664,8 @@ const LEAGUE_RANK_CONFIG = {
     // (2e-7e) demarrent directement en quarts, les moins bien classes (8e-11e) doivent
     // passer par un tour preliminaire (huitiemes) avant de les rejoindre.
     rankMarkers: [
-      { rank: 2, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
-      { rank: 3, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
-      { rank: 4, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
-      { rank: 5, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
-      { rank: 6, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
-      { rank: 7, icon: '🔶', tooltip: 'Qualifié pour les quarts de finale (tournoi Europe)' },
-      { rank: 8, icon: '🔹', tooltip: 'Qualifié pour les huitièmes de finale (tournoi Europe)' },
-      { rank: 9, icon: '🔹', tooltip: 'Qualifié pour les huitièmes de finale (tournoi Europe)' },
-      { rank: 10, icon: '🔹', tooltip: 'Qualifié pour les huitièmes de finale (tournoi Europe)' },
-      { rank: 11, icon: '🔹', tooltip: 'Qualifié pour les huitièmes de finale (tournoi Europe)' }
+      ...rankRange(2, 7, '🔶', 'Qualifié pour les quarts de finale (tournoi Europe)'),
+      ...rankRange(8, 11, '🔹', 'Qualifié pour les huitièmes de finale (tournoi Europe)')
     ],
     legend: [
       '🔶 Qualifié pour les quarts de finale (tournoi Europe)',
@@ -873,22 +681,9 @@ const LEAGUE_RANK_CONFIG = {
     // bas (11-16, mini-championnat aller-retour, 16e relegue direct, 14e-15e barragistes de
     // maintien aller-retour contre la Division 2).
     rankMarkers: [
-      { rank: 1, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 2, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 3, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 4, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 5, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 6, icon: '🅰️', tooltip: 'Mini-championnat du haut (places 1 à 6)' },
-      { rank: 7, icon: '🅱️', tooltip: 'Groupe barrage européen (places 7 à 10)' },
-      { rank: 8, icon: '🅱️', tooltip: 'Groupe barrage européen (places 7 à 10)' },
-      { rank: 9, icon: '🅱️', tooltip: 'Groupe barrage européen (places 7 à 10)' },
-      { rank: 10, icon: '🅱️', tooltip: 'Groupe barrage européen (places 7 à 10)' },
-      { rank: 11, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' },
-      { rank: 12, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' },
-      { rank: 13, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' },
-      { rank: 14, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' },
-      { rank: 15, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' },
-      { rank: 16, icon: '🅲️', tooltip: 'Mini-championnat du bas (places 11 à 16)' }
+      ...rankRange(1, 6, '🅰️', 'Mini-championnat du haut (places 1 à 6)'),
+      ...rankRange(7, 10, '🅱️', 'Groupe barrage européen (places 7 à 10)'),
+      ...rankRange(11, 16, '🅲️', 'Mini-championnat du bas (places 11 à 16)')
     ],
     legend: [
       '🅰️ Mini-championnat du haut (places 1 à 6)',
@@ -925,23 +720,12 @@ const rankConfig = computed(() => league.value ? LEAGUE_RANK_CONFIG[league.value
 
 const rawMatches = ref([])
 
-function roundNumber(m) {
-  const found = (m.roundLabel ?? '').match(/(\d+)/)
-  return found ? Number.parseInt(found[1], 10) : null
-}
-
 // Detecte les "cycles" de confrontations (1ere fois qu'une paire ordonnee d'equipes se
 // rencontre = cycle 1, 2e fois = cycle 2...), exactement comme ResultsGrid.vue - sert ici a
 // isoler les matchs de la saison reguliere (avant scission en mini-championnats) de ceux de
 // la 2e phase (entre membres du meme groupe final).
 const allCycles = computed(() => {
-  const sorted = rawMatches.value.slice().sort((a, b) => {
-    const ra = roundNumber(a), rb = roundNumber(b)
-    if (ra != null && rb != null && ra !== rb) return ra - rb
-    const ad = a.date ?? '', bd = b.date ?? ''
-    if (ad !== bd) return ad.localeCompare(bd)
-    return a.id - b.id
-  })
+  const sorted = rawMatches.value.toSorted(compareByRoundThenDate)
   const seenCount = new Map()
   const byCycle = new Map()
   for (const m of sorted) {
@@ -1051,18 +835,8 @@ function malteGroupSplit(regularMatches, poolMatches) {
 }
 
 const MALTE_REGULAR_RANK_MARKERS = [
-  { rank: 1, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
-  { rank: 2, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
-  { rank: 3, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
-  { rank: 4, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
-  { rank: 5, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
-  { rank: 6, icon: '🅰️', tooltip: 'Groupe Championnat (places 1 à 6)' },
-  { rank: 7, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' },
-  { rank: 8, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' },
-  { rank: 9, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' },
-  { rank: 10, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' },
-  { rank: 11, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' },
-  { rank: 12, icon: '🅱️', tooltip: 'Groupe Maintien (places 7 à 12)' }
+  ...rankRange(1, 6, '🅰️', 'Groupe Championnat (places 1 à 6)'),
+  ...rankRange(7, 12, '🅱️', 'Groupe Maintien (places 7 à 12)')
 ]
 
 const malteBlocks = computed(() => {
@@ -1092,8 +866,7 @@ const malteBlocks = computed(() => {
         label: topLabel,
         rows: standingsFromMatches(inGroup(top)),
         rankMarkers: [
-          { rank: 1, icon: '🎟️', tooltip: 'Qualifié pour les playoffs' },
-          { rank: 2, icon: '🎟️', tooltip: 'Qualifié pour les playoffs' }
+          ...rankRange(1, 2, '🎟️', 'Qualifié pour les playoffs')
         ]
       },
       bottom: {

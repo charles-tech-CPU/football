@@ -1,7 +1,6 @@
 package com.charles.footresults.domain;
 
 import jakarta.persistence.*;
-import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,7 +16,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class ClubUefaRanking {
+public class ClubUefaRanking extends UefaPointsHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,22 +40,4 @@ public class ClubUefaRanking {
     /** Coupe d'Europe jouee cette saison ("LDC"/"EL"/"EC") ; null si le club n'est pas (ou plus) engage. */
     @Column(name = "current_cup", length = 10)
     private String currentCup;
-
-    private BigDecimal total;
-
-    /** Valeur "PTS 2027" du fichier Excel au moment de l'import ; a titre d'audit uniquement, jamais affichee telle quelle (cf. UefaRankingService). */
-    @Column(name = "points_2027_imported")
-    private BigDecimal points2027Imported;
-
-    @Column(name = "points_2026")
-    private BigDecimal points2026;
-
-    @Column(name = "points_2025")
-    private BigDecimal points2025;
-
-    @Column(name = "points_2024")
-    private BigDecimal points2024;
-
-    @Column(name = "points_2023")
-    private BigDecimal points2023;
 }
