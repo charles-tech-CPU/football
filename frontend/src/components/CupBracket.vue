@@ -134,6 +134,7 @@ import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
 import FlagIcon from './FlagIcon.vue'
 import AppModal from './AppModal.vue'
+import { summarizeTie } from '../utils/cupTies.js'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },
@@ -271,40 +272,7 @@ function buildTies(roundMatches) {
       else tieMap.set(`match-${m.id}`, [m])
     }
   }
-  return [...tieMap.values()].map(legs => {
-    const sorted = legs.slice().sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
-    const first = sorted[0]
-    const teamAId = first.team1Id
-    const teamAName = first.team1Name
-    const teamBId = first.team2Id
-    const teamBName = first.team2Name
-    let aggA = 0, aggB = 0, hasAllScores = true
-    for (const leg of sorted) {
-      if (leg.score1 == null || leg.score2 == null) { hasAllScores = false; continue }
-      if (leg.team1Id === teamAId) { aggA += leg.score1; aggB += leg.score2 }
-      else { aggA += leg.score2; aggB += leg.score1 }
-    }
-    // Tirs au but : uniquement pertinents si l'aggregat (ou le match unique) est a egalite -
-    // portes par le dernier match joue (celui qui a effectivement ete suivi de la seance).
-    const decider = sorted[sorted.length - 1]
-    const aggTied = hasAllScores && aggA === aggB
-    let penA = null, penB = null
-    if (aggTied && decider.penaltyScore1 != null && decider.penaltyScore2 != null) {
-      if (decider.team1Id === teamAId) { penA = decider.penaltyScore1; penB = decider.penaltyScore2 }
-      else { penA = decider.penaltyScore2; penB = decider.penaltyScore1 }
-    }
-    const wentToPenalties = penA != null && penB != null
-    let winnerId = null
-    if (wentToPenalties) {
-      winnerId = penA > penB ? teamAId : teamBId
-    } else if (hasAllScores && aggA !== aggB) {
-      winnerId = aggA > aggB ? teamAId : teamBId
-    }
-    return {
-      teamAId, teamAName, teamBId, teamBName, legs: sorted, aggA, aggB, hasAllScores, winnerId,
-      decider, needsPenalty: aggTied && !wentToPenalties, wentToPenalties, penA, penB
-    }
-  })
+  return [...tieMap.values()].map(summarizeTie)
 }
 
 // Reordonne les confrontations d'un tour pour que chacune se retrouve visuellement a la

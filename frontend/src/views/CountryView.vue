@@ -209,6 +209,7 @@ import UpcomingMatches from '../components/UpcomingMatches.vue'
 import ResultsGrid from '../components/ResultsGrid.vue'
 import CupBracket from '../components/CupBracket.vue'
 import StatusDropdown from '../components/StatusDropdown.vue'
+import { groupAssignment, twoPoolSplit } from '../utils/groupSplit.js'
 
 const props = defineProps({
   country: { type: String, required: true }
@@ -992,47 +993,7 @@ const frozenStandings = computed(() => {
 // reel (LAHTI en bas, VPS en haut) contredisait l'ordre du classement de phase 1.
 function groupAssignmentFromMatches(sizes) {
   const phase2Matches = allCycles.value.filter(c => c.cycle > regularSeasonCycles.value).flatMap(c => c.list)
-  const adjacency = new Map()
-  for (const m of phase2Matches) {
-    if (!adjacency.has(m.team1Id)) adjacency.set(m.team1Id, new Set())
-    if (!adjacency.has(m.team2Id)) adjacency.set(m.team2Id, new Set())
-    adjacency.get(m.team1Id).add(m.team2Id)
-    adjacency.get(m.team2Id).add(m.team1Id)
-  }
-  if (adjacency.size !== frozenStandings.value.length) return null
-
-  const visited = new Set()
-  const components = []
-  for (const teamId of adjacency.keys()) {
-    if (visited.has(teamId)) continue
-    const stack = [teamId]
-    const comp = []
-    visited.add(teamId)
-    while (stack.length) {
-      const cur = stack.pop()
-      comp.push(cur)
-      for (const next of adjacency.get(cur) ?? []) {
-        if (!visited.has(next)) { visited.add(next); stack.push(next) }
-      }
-    }
-    components.push(comp)
-  }
-  if (components.length !== sizes.length || !components.every((c, i) => c.length === sizes[i])) {
-    // Composants de taille inattendue (ex: donnees incompletes) : impossible de mapper
-    // fiablement aux groupes configures, on se rabat sur le classement de phase 1.
-    const bySize = [...components].sort((a, b) => b.length - a.length)
-    if (!bySize.every((c, i) => c.length === sizes[i])) return null
-  }
-
-  const frozenRank = new Map(frozenStandings.value.map((r, i) => [r.teamId, i]))
-  components.sort((a, b) => {
-    const avgA = a.reduce((s, id) => s + (frozenRank.get(id) ?? 0), 0) / a.length
-    const avgB = b.reduce((s, id) => s + (frozenRank.get(id) ?? 0), 0) / b.length
-    return avgA - avgB
-  })
-  const groupOfTeam = new Map()
-  components.forEach((comp, i) => { for (const id of comp) groupOfTeam.set(id, i) })
-  return groupOfTeam
+  return groupAssignment(phase2Matches, frozenStandings.value.map(r => r.teamId), sizes)
 }
 
 // Classements des mini-championnats : la composition de chaque groupe est reelle (voir
@@ -1086,42 +1047,7 @@ function malteMatchesInRange(list, [lo, hi]) {
 // classement de la saison reguliere de CETTE phase (pas le classement general, qui n'a pas
 // de sens ici vu que ce sont 2 tournois distincts).
 function malteGroupSplit(regularMatches, poolMatches) {
-  const regularStandings = standingsFromMatches(regularMatches)
-  const adjacency = new Map()
-  for (const m of poolMatches) {
-    if (!adjacency.has(m.team1Id)) adjacency.set(m.team1Id, new Set())
-    if (!adjacency.has(m.team2Id)) adjacency.set(m.team2Id, new Set())
-    adjacency.get(m.team1Id).add(m.team2Id)
-    adjacency.get(m.team2Id).add(m.team1Id)
-  }
-  if (adjacency.size === regularStandings.length && regularStandings.length > 0) {
-    const visited = new Set()
-    const components = []
-    for (const teamId of adjacency.keys()) {
-      if (visited.has(teamId)) continue
-      const stack = [teamId]
-      const comp = []
-      visited.add(teamId)
-      while (stack.length) {
-        const cur = stack.pop()
-        comp.push(cur)
-        for (const next of adjacency.get(cur) ?? []) {
-          if (!visited.has(next)) { visited.add(next); stack.push(next) }
-        }
-      }
-      components.push(comp)
-    }
-    if (components.length === 2 && components.every(c => c.length === 6)) {
-      const rankOf = new Map(regularStandings.map((r, i) => [r.teamId, i]))
-      components.sort((a, b) => {
-        const avgA = a.reduce((s, id) => s + (rankOf.get(id) ?? 0), 0) / a.length
-        const avgB = b.reduce((s, id) => s + (rankOf.get(id) ?? 0), 0) / b.length
-        return avgA - avgB
-      })
-      return { top: components[0], bottom: components[1] }
-    }
-  }
-  return { top: regularStandings.slice(0, 6).map(r => r.teamId), bottom: regularStandings.slice(6, 12).map(r => r.teamId) }
+  return twoPoolSplit(standingsFromMatches(regularMatches).map(r => r.teamId), poolMatches)
 }
 
 const MALTE_REGULAR_RANK_MARKERS = [
