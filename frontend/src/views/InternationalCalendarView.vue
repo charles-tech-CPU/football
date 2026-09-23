@@ -10,10 +10,10 @@
       <option value="all">Toutes les confédérations</option>
       <option v-for="c in CONFEDERATIONS" :key="c.code" :value="c.code">{{ c.label }}</option>
     </select>
-    <span class="page-info" v-if="filteredMatches.length">{{ filteredMatches.length }} match{{ filteredMatches.length > 1 ? 's' : '' }}</span>
+    <span v-if="filteredMatches.length" class="page-info">{{ filteredMatches.length }} match{{ filteredMatches.length > 1 ? 's' : '' }}</span>
   </div>
 
-  <div class="table-scroll" v-if="filteredMatches.length">
+  <div v-if="filteredMatches.length" class="table-scroll">
     <table>
       <thead>
         <tr>
@@ -31,9 +31,9 @@
       </thead>
       <tbody>
         <tr v-for="m in filteredMatches" :key="m.id" :class="rowClass(m)">
-          <td><input class="date-input" type="date" v-model="edits[m.id].date" /></td>
+          <td><input v-model="edits[m.id].date" class="date-input" type="date" /></td>
           <td>
-            <input class="time-input" type="time" v-model="edits[m.id].time" />
+            <input v-model="edits[m.id].time" class="time-input" type="time" />
             <span v-if="!edits[m.id].time" class="no-time-tag">Sans horaire</span>
           </td>
           <td>
@@ -47,10 +47,10 @@
             </span>
           </td>
           <td>
-            <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score1" />
+            <input v-model.number="edits[m.id].score1" class="score-input" type="number" min="0" />
           </td>
           <td>
-            <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score2" />
+            <input v-model.number="edits[m.id].score2" class="score-input" type="number" min="0" />
           </td>
           <td>
             <span class="team-cell">
@@ -77,7 +77,7 @@
     Aucun match programmé pour cette confédération pour la saison 2026-2027{{ confederationFilter !== 'all' ? " ('" + confederationLabel + "')" : '' }}.
   </p>
 
-  <ul class="standings-legend" v-if="matches.length">
+  <ul v-if="matches.length" class="standings-legend">
     <li v-for="c in CONFEDERATIONS" :key="c.code"><span class="legend-swatch" :class="c.legendClass"></span>{{ c.label }}</li>
   </ul>
 

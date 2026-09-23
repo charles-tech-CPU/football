@@ -50,7 +50,7 @@
   </template>
   <p v-else class="empty-state">Aucun match joué pour l'instant dans cette compétition.</p>
 
-  <ul class="standings-legend" v-if="rows.length && showBaseLegend">
+  <ul v-if="rows.length && showBaseLegend" class="standings-legend">
     <li><span class="legend-swatch legend-blue"></span>Champion sortant</li>
     <li><span class="legend-swatch legend-purple"></span>Vainqueur de la coupe (préc.)</li>
     <li><span class="legend-swatch legend-red"></span>Promu</li>
@@ -58,7 +58,7 @@
     <li><span class="legend-swatch legend-orange-dark"></span>A joué l'Europa League (préc.)</li>
     <li><span class="legend-swatch legend-yellow"></span>A joué la Conference League (préc.)</li>
   </ul>
-  <ul class="standings-legend" v-if="rows.length && (ldcSlots > 0 || elSlots > 0 || eclSlots > 0 || barrageSlots > 0 || relegationSlots > 0)">
+  <ul v-if="rows.length && (ldcSlots > 0 || elSlots > 0 || eclSlots > 0 || barrageSlots > 0 || relegationSlots > 0)" class="standings-legend">
     <li v-if="ldcSlots > 0">🏆 Champion</li>
     <li v-if="ldcSlots > 1">🔷 Qualifié Ligue des Champions</li>
     <li v-if="elSlots > 0">🎖️ Qualifié Europa League</li>

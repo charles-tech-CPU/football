@@ -4,7 +4,7 @@
     <button type="button" class="action-btn action-btn--secondary" @click="showTeamModal = true">+ Ajouter un club</button>
   </div>
 
-  <Modal v-model="showMatchModal" title="Ajouter un match">
+  <AppModal v-model="showMatchModal" title="Ajouter un match">
     <form class="inline" @submit.prevent="submitMatch">
       <select v-model.number="newMatch.team1Id" required>
         <option disabled value="">Équipe 1</option>
@@ -17,43 +17,43 @@
       <input v-model="newMatch.roundLabel" placeholder="Round (ex: Coupe nationale)" required />
       <input v-model="newMatch.date" type="date" />
       <input v-model="newMatch.time" type="time" />
-      <input class="score-input" type="number" min="0" v-model.number="newMatch.score1" placeholder="B1" />
-      <input class="score-input" type="number" min="0" v-model.number="newMatch.score2" placeholder="B2" />
+      <input v-model.number="newMatch.score1" class="score-input" type="number" min="0" placeholder="B1" />
+      <input v-model.number="newMatch.score2" class="score-input" type="number" min="0" placeholder="B2" />
       <button type="submit">Ajouter</button>
     </form>
-  </Modal>
+  </AppModal>
 
-  <Modal v-model="showTeamModal" title="Ajouter un club">
+  <AppModal v-model="showTeamModal" title="Ajouter un club">
     <form class="inline" @submit.prevent="submitNewTeam">
       <input v-model="newTeam.name" placeholder="Nom du club" required />
       <button type="submit">Ajouter</button>
     </form>
     <p v-if="teamError" class="error-text">{{ teamError }}</p>
-  </Modal>
+  </AppModal>
 
-  <div class="bracket-scroll" v-if="rounds.length">
+  <div v-if="rounds.length" class="bracket-scroll">
     <div class="bracket">
       <div
-        class="bracket-round"
         v-for="(r, ri) in rounds"
         :key="r.round"
+        class="bracket-round"
         :class="{ 'bracket-round--last': ri === rounds.length - 1 }"
       >
         <h3 class="round-badge">{{ r.label }}</h3>
         <div class="bracket-round-body">
           <div
-            class="match-pair"
             v-for="(pair, pi) in pairChunks(r.ties)"
             :key="pi"
+            class="match-pair"
             :class="{ 'match-pair--connect': ri < rounds.length - 1, 'match-pair--single': pair.length === 1 }"
           >
             <div
-              class="tie-box"
-              :class="{ 'tie-box--decided': tie.winnerId, 'tie-box--incoming': ri > 0 }"
               v-for="tie in pair"
               :key="tieKey(tie)"
+              class="tie-box"
+              :class="{ 'tie-box--decided': tie.winnerId, 'tie-box--incoming': ri > 0 }"
             >
-              <div class="tie-leg-wrap" v-for="(leg, li) in tie.legs" :key="leg.id">
+              <div v-for="(leg, li) in tie.legs" :key="leg.id" class="tie-leg-wrap">
                 <span v-if="tie.legs.length > 1" class="leg-tag">{{ legLabel(li, tie.legs.length) }}</span>
                 <div class="tie-leg">
                   <template v-if="teamEditingKey === teamKey(leg, 1)">
@@ -71,8 +71,8 @@
                   </span>
                   <template v-if="editingId === leg.id">
                     <span class="grid-edit">
-                      <input class="score-input" type="number" min="0" v-model.number="editScore1" @click.stop />
-                      <input class="score-input" type="number" min="0" v-model.number="editScore2" @click.stop />
+                      <input v-model.number="editScore1" class="score-input" type="number" min="0" @click.stop />
+                      <input v-model.number="editScore2" class="score-input" type="number" min="0" @click.stop />
                       <button type="button" @click.stop="confirmEdit(leg)">✓</button>
                     </span>
                   </template>
@@ -94,24 +94,24 @@
                   </span>
                 </div>
               </div>
-              <div class="tie-aggregate" v-if="tie.legs.length > 1">
+              <div v-if="tie.legs.length > 1" class="tie-aggregate">
                 <span class="tie-aggregate-tag">Agrégat</span>
                 <span class="tie-aggregate-team" :class="{ 'tie-winner': tie.winnerId === tie.teamAId }">{{ tie.teamAName }}</span>
                 <span class="tie-aggregate-score">{{ tie.aggA }} – {{ tie.aggB }}</span>
                 <span class="tie-aggregate-team" :class="{ 'tie-winner': tie.winnerId === tie.teamBId }">{{ tie.teamBName }}</span>
               </div>
-              <div class="tie-penalties" v-if="tie.wentToPenalties">
+              <div v-if="tie.wentToPenalties" class="tie-penalties">
                 <span class="tie-penalties-tag">Tab</span>
                 <span class="tie-aggregate-team" :class="{ 'tie-winner': tie.winnerId === tie.teamAId }">{{ tie.teamAName }}</span>
                 <span class="tie-aggregate-score" @click="startPenaltyEdit(tie)">{{ tie.penA }} – {{ tie.penB }}</span>
                 <span class="tie-aggregate-team" :class="{ 'tie-winner': tie.winnerId === tie.teamBId }">{{ tie.teamBName }}</span>
               </div>
-              <div class="tie-penalties" v-else-if="tie.needsPenalty">
+              <div v-else-if="tie.needsPenalty" class="tie-penalties">
                 <template v-if="editingPenaltyId === tie.decider.id">
                   <span class="tie-penalties-tag">Tab</span>
                   <span class="grid-edit">
-                    <input class="score-input" type="number" min="0" v-model.number="editPen1" @click.stop />
-                    <input class="score-input" type="number" min="0" v-model.number="editPen2" @click.stop />
+                    <input v-model.number="editPen1" class="score-input" type="number" min="0" @click.stop />
+                    <input v-model.number="editPen2" class="score-input" type="number" min="0" @click.stop />
                     <button type="button" @click.stop="confirmPenaltyEdit(tie)">✓</button>
                   </span>
                 </template>
@@ -133,7 +133,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
 import FlagIcon from './FlagIcon.vue'
-import Modal from './Modal.vue'
+import AppModal from './AppModal.vue'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },

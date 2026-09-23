@@ -1,5 +1,5 @@
 <template>
-  <div class="results-grid-header" v-if="allowAdd">
+  <div v-if="allowAdd" class="results-grid-header">
     <h2>Grille des résultats</h2>
     <button type="button" class="add-match-btn" @click="showAddForm = !showAddForm">
       {{ showAddForm ? '✕ Fermer' : '+ Ajouter un match' }}
@@ -7,7 +7,7 @@
   </div>
   <h2 v-else>Grille des résultats</h2>
 
-  <form class="inline add-match-form" v-if="allowAdd && showAddForm" @submit.prevent="submitMatch">
+  <form v-if="allowAdd && showAddForm" class="inline add-match-form" @submit.prevent="submitMatch">
     <select v-model.number="newMatch.team1Id" required>
       <option disabled value="">Équipe 1</option>
       <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
@@ -18,14 +18,14 @@
     </select>
     <input v-model="newMatch.date" type="date" />
     <input v-model="newMatch.time" type="time" />
-    <input class="score-input" type="number" min="0" v-model.number="newMatch.score1" placeholder="B1" />
-    <input class="score-input" type="number" min="0" v-model.number="newMatch.score2" placeholder="B2" />
+    <input v-model.number="newMatch.score1" class="score-input" type="number" min="0" placeholder="B1" />
+    <input v-model.number="newMatch.score2" class="score-input" type="number" min="0" placeholder="B2" />
     <button type="submit">Ajouter</button>
   </form>
 
   <div v-for="c in cycles" :key="c.cycle" class="results-grid-block">
     <h3 v-if="cycles.length > 1">{{ cycleLabel(c.cycle) }}</h3>
-    <div class="grid-scroll" v-if="teamOrder.length">
+    <div v-if="teamOrder.length" class="grid-scroll">
       <table class="results-grid">
         <thead>
           <tr>
@@ -51,8 +51,8 @@
               <template v-if="row.id === col.id">—</template>
               <template v-else-if="editingKey === cellKey(c.cycle, row.id, col.id)">
                 <span class="grid-edit">
-                  <input class="score-input" type="number" min="0" v-model.number="editScore1" @click.stop />
-                  <input class="score-input" type="number" min="0" v-model.number="editScore2" @click.stop />
+                  <input v-model.number="editScore1" class="score-input" type="number" min="0" @click.stop />
+                  <input v-model.number="editScore2" class="score-input" type="number" min="0" @click.stop />
                   <button type="button" @click.stop="confirmEdit">✓</button>
                 </span>
               </template>
@@ -69,7 +69,7 @@
 
   <div v-if="expectSecondPhase && cycles.length === 1" class="results-grid-block">
     <h3>2e phase <span class="pending-note">(à venir)</span></h3>
-    <div class="grid-scroll" v-if="teamOrder.length">
+    <div v-if="teamOrder.length" class="grid-scroll">
       <table class="results-grid">
         <thead>
           <tr>
@@ -98,7 +98,7 @@
   <template v-if="groupSplit || maltePhases">
     <div v-for="(grp, gi) in groupBlocks" :key="`grp-${gi}`" class="results-grid-block">
       <h3>{{ grp.label }}<span v-if="!grp.matchByPair.size" class="pending-note"> (à venir)</span></h3>
-      <div class="grid-scroll" v-if="grp.teams.length">
+      <div v-if="grp.teams.length" class="grid-scroll">
         <table class="results-grid">
           <thead>
             <tr>
@@ -124,8 +124,8 @@
                 <template v-if="row.id === col.id">—</template>
                 <template v-else-if="editingKey === cellKey(`group-${gi}`, row.id, col.id)">
                   <span class="grid-edit">
-                    <input class="score-input" type="number" min="0" v-model.number="editScore1" @click.stop />
-                    <input class="score-input" type="number" min="0" v-model.number="editScore2" @click.stop />
+                    <input v-model.number="editScore1" class="score-input" type="number" min="0" @click.stop />
+                    <input v-model.number="editScore2" class="score-input" type="number" min="0" @click.stop />
                     <button type="button" @click.stop="confirmEdit">✓</button>
                   </span>
                 </template>
@@ -161,8 +161,8 @@
               <template v-if="rowPos === colPos">—</template>
               <template v-else-if="miniEditingKey === `${rowPos}-${colPos}`">
                 <span class="grid-edit">
-                  <input class="score-input" type="number" min="0" v-model.number="editScore1" @click.stop />
-                  <input class="score-input" type="number" min="0" v-model.number="editScore2" @click.stop />
+                  <input v-model.number="editScore1" class="score-input" type="number" min="0" @click.stop />
+                  <input v-model.number="editScore2" class="score-input" type="number" min="0" @click.stop />
                   <button type="button" @click.stop="confirmMiniEdit">✓</button>
                 </span>
               </template>

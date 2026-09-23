@@ -3,11 +3,11 @@
   <div class="page-header">
     <h1>{{ competition?.name ?? '...' }}</h1>
   </div>
-  <p class="section-intro" v-if="competition">
+  <p v-if="competition" class="section-intro">
     <span class="badge badge-continental">Coupe d'Europe</span>
   </p>
 
-  <div class="tab-bar" v-if="competition">
+  <div v-if="competition" class="tab-bar">
     <button class="tab-btn" :class="{ active: activeTab === 'classement' }" @click="activeTab = 'classement'">Classement</button>
     <button class="tab-btn" :class="{ active: activeTab === 'resultats' }" @click="activeTab = 'resultats'">Résultats</button>
     <button class="tab-btn" :class="{ active: activeTab === 'qualifs' }" @click="activeTab = 'qualifs'">Qualifications</button>
@@ -22,12 +22,12 @@
         :show-flags="true"
         :rank-bands="[{ count: 8, class: 'standing-blue' }, { count: 16, class: 'standing-green' }]"
       />
-      <ul class="standings-legend" v-if="leaguePhaseStandings.length">
+      <ul v-if="leaguePhaseStandings.length" class="standings-legend">
         <li><span class="legend-swatch legend-blue"></span>1re-8e : qualifié direct (8es de finale)</li>
         <li><span class="legend-swatch legend-green"></span>9e-24e : barrage</li>
         <li><span class="legend-swatch legend-red"></span>25e-36e : éliminé</li>
       </ul>
-      <p class="section-intro" v-if="!leaguePhaseStandings.length">
+      <p v-if="!leaguePhaseStandings.length" class="section-intro">
         Aucun match de phase de ligue joué pour l'instant.
       </p>
     </template>

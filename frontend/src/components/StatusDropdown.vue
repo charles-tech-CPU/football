@@ -1,12 +1,12 @@
 <template>
-  <div class="status-dropdown" ref="root">
+  <div ref="root" class="status-dropdown">
     <button type="button" class="status-dropdown-trigger" @click="open = !open">
       {{ summary }}
       <span class="chevron">▾</span>
     </button>
-    <div class="status-dropdown-menu" v-if="open">
+    <div v-if="open" class="status-dropdown-menu">
       <label v-for="opt in options" :key="opt.key">
-        <input type="checkbox" v-model="local[opt.key]" @change="emitChange" />
+        <input v-model="local[opt.key]" type="checkbox" @change="emitChange" />
         {{ opt.label }}
       </label>
       <label class="europe-select">

@@ -11,11 +11,11 @@
       <option value="ec">Conference League</option>
       <option value="all">Toutes les compétitions</option>
     </select>
-    <span class="page-info" v-if="totalCount">{{ totalCount }} match{{ totalCount > 1 ? 's' : '' }}</span>
+    <span v-if="totalCount" class="page-info">{{ totalCount }} match{{ totalCount > 1 ? 's' : '' }}</span>
     <router-link to="/reportes-suspendus" class="action-btn action-btn--secondary">Reportés / Suspendus</router-link>
   </div>
 
-  <div class="table-scroll" v-if="matches.length">
+  <div v-if="matches.length" class="table-scroll">
   <table>
     <thead>
       <tr>
@@ -33,9 +33,9 @@
     </thead>
     <tbody>
       <tr v-for="m in matches" :key="m.id" :class="rowClass(m)">
-        <td><input class="date-input" type="date" v-model="edits[m.id].date" /></td>
+        <td><input v-model="edits[m.id].date" class="date-input" type="date" /></td>
         <td>
-          <input class="time-input" type="time" v-model="edits[m.id].time" />
+          <input v-model="edits[m.id].time" class="time-input" type="time" />
           <span v-if="!edits[m.id].time" class="no-time-tag">Sans horaire</span>
         </td>
         <td>
@@ -57,10 +57,10 @@
           </span>
         </td>
         <td>
-          <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score1" />
+          <input v-model.number="edits[m.id].score1" class="score-input" type="number" min="0" />
         </td>
         <td>
-          <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score2" />
+          <input v-model.number="edits[m.id].score2" class="score-input" type="number" min="0" />
         </td>
         <td>
           <span class="team-cell">
@@ -90,7 +90,7 @@
   </div>
   <p v-else-if="loaded" class="empty-state">Aucun match pour ce filtre.</p>
 
-  <div class="pagination" v-if="totalPages > 1">
+  <div v-if="totalPages > 1" class="pagination">
     <button type="button" :disabled="currentPage === 0" @click="prevPage">← Précédent</button>
     <span>Page {{ currentPage + 1 }} / {{ totalPages }}</span>
     <button type="button" :disabled="currentPage >= totalPages - 1" @click="nextPage">Suivant →</button>

@@ -18,8 +18,8 @@
     <tbody>
       <tr v-for="m in upcoming" :key="m.id" :class="rowClass(m)">
         <td>{{ m.roundLabel }}</td>
-        <td><input class="date-input" type="date" v-model="edits[m.id].date" /></td>
-        <td><input class="time-input" type="time" v-model="edits[m.id].time" /></td>
+        <td><input v-model="edits[m.id].date" class="date-input" type="date" /></td>
+        <td><input v-model="edits[m.id].time" class="time-input" type="time" /></td>
         <td>
           <span class="team-cell">
             <TeamLogo :name="m.team1Name" :logo-path="m.team1LogoPath" />
@@ -29,10 +29,10 @@
           </span>
         </td>
         <td>
-          <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score1" />
+          <input v-model.number="edits[m.id].score1" class="score-input" type="number" min="0" />
         </td>
         <td>
-          <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score2" />
+          <input v-model.number="edits[m.id].score2" class="score-input" type="number" min="0" />
         </td>
         <td>
           <span class="team-cell">

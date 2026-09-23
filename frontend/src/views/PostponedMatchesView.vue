@@ -2,7 +2,7 @@
   <h1>Reportés / Suspendus</h1>
   <p class="section-intro">Tous les matchs reportés ou suspendus, toutes compétitions confondues.</p>
 
-  <div class="table-scroll" v-if="matches.length">
+  <div v-if="matches.length" class="table-scroll">
   <table>
     <thead>
       <tr>
@@ -20,8 +20,8 @@
     </thead>
     <tbody>
       <tr v-for="m in matches" :key="m.id" :class="rowClass(m)">
-        <td><input class="date-input" type="date" v-model="edits[m.id].date" /></td>
-        <td><input class="time-input" type="time" v-model="edits[m.id].time" /></td>
+        <td><input v-model="edits[m.id].date" class="date-input" type="date" /></td>
+        <td><input v-model="edits[m.id].time" class="time-input" type="time" /></td>
         <td>
           <span class="team-cell" :class="competitionBadgeClass(m)">
             <FlagIcon v-if="m.competitionCountry" :country="m.competitionCountry" />
@@ -35,10 +35,10 @@
           </select>
         </td>
         <td>
-          <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score1" />
+          <input v-model.number="edits[m.id].score1" class="score-input" type="number" min="0" />
         </td>
         <td>
-          <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score2" />
+          <input v-model.number="edits[m.id].score2" class="score-input" type="number" min="0" />
         </td>
         <td>
           <select v-model.number="edits[m.id].team2Id">

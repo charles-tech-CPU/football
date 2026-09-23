@@ -12,7 +12,7 @@
   </div>
 
   <template v-if="activeTab === 'clubs'">
-    <div class="table-scroll" v-if="clubs.length">
+    <div v-if="clubs.length" class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -52,7 +52,7 @@
   </template>
 
   <template v-else>
-    <div class="table-scroll" v-if="countries.length">
+    <div v-if="countries.length" class="table-scroll">
       <table>
         <thead>
           <tr>
@@ -91,7 +91,7 @@
     </div>
     <p v-else-if="loaded" class="empty-state">Aucun classement disponible.</p>
 
-    <ul class="standings-legend" v-if="countries.length">
+    <ul v-if="countries.length" class="standings-legend">
       <li><span class="legend-swatch legend-blue"></span>Encore un club en Ligue des Champions</li>
       <li><span class="legend-swatch legend-orange-dark"></span>Encore un club en Europa League</li>
       <li><span class="legend-swatch legend-yellow"></span>Encore un club en Conference League</li>

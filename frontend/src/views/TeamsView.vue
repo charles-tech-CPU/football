@@ -21,7 +21,7 @@
           </span>
         </td>
         <td>
-          <span class="team-country" v-if="t.country">
+          <span v-if="t.country" class="team-country">
             <FlagIcon :country="t.country" />
             {{ canonicalCountry(t.country) }}
           </span>

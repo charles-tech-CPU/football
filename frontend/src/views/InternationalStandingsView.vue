@@ -21,7 +21,7 @@
         :show-base-legend="false"
         :group-row-classes="(groupName, rows) => internationalRowClasses(comp.code, groupName, rows)"
       />
-      <ul class="standings-legend" v-if="internationalLegend(comp.code).length">
+      <ul v-if="internationalLegend(comp.code).length" class="standings-legend">
         <li v-for="(item, i) in internationalLegend(comp.code)" :key="i">
           <span class="legend-swatch" :class="item.legendClass"></span>{{ item.label }}
         </li>

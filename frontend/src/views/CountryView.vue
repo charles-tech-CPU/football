@@ -4,7 +4,7 @@
     <FlagIcon :country="country" />
     <h1>{{ country }}</h1>
   </div>
-  <p class="section-intro" v-if="loaded">Saison {{ season }}</p>
+  <p v-if="loaded" class="section-intro">Saison {{ season }}</p>
 
   <div class="tab-bar">
     <button class="tab-btn" :class="{ active: activeTab === 'classement' }" @click="activeTab = 'classement'">Classement</button>
@@ -26,7 +26,7 @@
       <template v-if="league">
         <div class="tab-bar sub-tab-bar">
           <button class="tab-btn" :class="{ active: avenirSubTab === 'championnat' }" @click="avenirSubTab = 'championnat'">Championnat</button>
-          <button class="tab-btn" v-if="cup" :class="{ active: avenirSubTab === 'coupe' }" @click="avenirSubTab = 'coupe'">Coupe</button>
+          <button v-if="cup" class="tab-btn" :class="{ active: avenirSubTab === 'coupe' }" @click="avenirSubTab = 'coupe'">Coupe</button>
           <button class="tab-btn" :class="{ active: avenirSubTab === 'barrage' }" @click="avenirSubTab = 'barrage'">Barrage</button>
         </div>
         <UpcomingMatches v-if="avenirSubTab === 'championnat'" :competition-id="league.id" :round-excludes="['BARRAGE']" />
@@ -114,7 +114,7 @@
             :barrage-slots="rankConfig?.resultsGroupSplit ? 0 : league.barrageSlots"
             :rank-markers="rankConfig?.rankMarkers"
           />
-          <ul class="standings-legend" v-if="rankConfig?.rankMarkers">
+          <ul v-if="rankConfig?.rankMarkers" class="standings-legend">
             <li v-for="(item, ii) in rankConfig.legend" :key="ii">{{ item }}</li>
           </ul>
 
@@ -141,19 +141,19 @@
 
           <form class="inline" @submit.prevent="saveSlots">
             <label>Places LDC
-              <input class="score-input" type="number" min="0" v-model.number="slots.ldcSlots" />
+              <input v-model.number="slots.ldcSlots" class="score-input" type="number" min="0" />
             </label>
             <label>Places Europa League
-              <input class="score-input" type="number" min="0" v-model.number="slots.elSlots" />
+              <input v-model.number="slots.elSlots" class="score-input" type="number" min="0" />
             </label>
             <label>Places Conference League
-              <input class="score-input" type="number" min="0" v-model.number="slots.eclSlots" />
+              <input v-model.number="slots.eclSlots" class="score-input" type="number" min="0" />
             </label>
             <label>Places barrage de maintien
-              <input class="score-input" type="number" min="0" v-model.number="slots.barrageSlots" />
+              <input v-model.number="slots.barrageSlots" class="score-input" type="number" min="0" />
             </label>
             <label>Places de relégation
-              <input class="score-input" type="number" min="0" v-model.number="slots.relegationSlots" />
+              <input v-model.number="slots.relegationSlots" class="score-input" type="number" min="0" />
             </label>
             <button type="submit">Enregistrer</button>
           </form>
@@ -183,8 +183,8 @@
                 </td>
                 <td>
                   <input
-                    class="group-input"
                     v-model="statusEdits[row.teamId].groupName"
+                    class="group-input"
                     placeholder="ex: Championnat"
                     @change="saveStatus(row.teamId, statusEdits[row.teamId])"
                   />

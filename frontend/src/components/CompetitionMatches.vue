@@ -4,7 +4,7 @@
     <button type="button" class="action-btn action-btn--secondary" @click="showTeamModal = true">+ Ajouter un club</button>
   </div>
 
-  <Modal v-model="showMatchModal" title="Ajouter un match">
+  <AppModal v-model="showMatchModal" title="Ajouter un match">
     <form class="inline" @submit.prevent="submitMatch">
       <select v-model.number="newMatch.team1Id" required>
         <option disabled value="">Équipe 1</option>
@@ -17,21 +17,21 @@
       <input v-model="newMatch.roundLabel" placeholder="Round (ex: J1, 8e de finale)" required />
       <input v-model="newMatch.date" type="date" />
       <input v-model="newMatch.time" type="time" />
-      <input class="score-input" type="number" min="0" v-model.number="newMatch.score1" placeholder="B1" />
-      <input class="score-input" type="number" min="0" v-model.number="newMatch.score2" placeholder="B2" />
+      <input v-model.number="newMatch.score1" class="score-input" type="number" min="0" placeholder="B1" />
+      <input v-model.number="newMatch.score2" class="score-input" type="number" min="0" placeholder="B2" />
       <button type="submit">Ajouter</button>
     </form>
-  </Modal>
+  </AppModal>
 
-  <Modal v-model="showTeamModal" title="Ajouter un club">
+  <AppModal v-model="showTeamModal" title="Ajouter un club">
     <form class="inline" @submit.prevent="submitNewTeam">
       <input v-model="newTeam.name" placeholder="Nom du club" required />
       <button type="submit">Ajouter</button>
     </form>
     <p v-if="teamError" class="error-text">{{ teamError }}</p>
-  </Modal>
+  </AppModal>
 
-  <div class="filters" v-if="rounds.length > 1">
+  <div v-if="rounds.length > 1" class="filters">
     <select v-model="roundFilter">
       <option value="">Toutes les journées / tous les tours</option>
       <option v-for="r in rounds" :key="r" :value="r">{{ r }}</option>
@@ -70,10 +70,10 @@
           </span>
         </td>
         <td>
-          <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score1" />
+          <input v-model.number="edits[m.id].score1" class="score-input" type="number" min="0" />
         </td>
         <td>
-          <input class="score-input" type="number" min="0" v-model.number="edits[m.id].score2" />
+          <input v-model.number="edits[m.id].score2" class="score-input" type="number" min="0" />
         </td>
         <td>
           <span class="team-cell">
@@ -99,7 +99,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
-import Modal from './Modal.vue'
+import AppModal from './AppModal.vue'
 import { formatTime } from '../utils/format'
 
 const props = defineProps({
