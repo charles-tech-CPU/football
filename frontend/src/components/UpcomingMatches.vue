@@ -18,32 +18,32 @@
     <tbody>
       <tr v-for="m in upcoming" :key="m.id" :class="rowClass(m)">
         <td>{{ m.roundLabel }}</td>
-        <td><input v-model="edits[m.id].date" class="date-input" type="date" /></td>
-        <td><input v-model="edits[m.id].time" class="time-input" type="time" /></td>
+        <td><input v-model="edits[m.id].date" aria-label="Date" class="date-input" type="date" /></td>
+        <td><input v-model="edits[m.id].time" aria-label="Heure" class="time-input" type="time" /></td>
         <td>
           <span class="team-cell">
             <TeamLogo :name="m.team1Name" :logo-path="m.team1LogoPath" />
-            <select v-model.number="edits[m.id].team1Id">
+            <select v-model.number="edits[m.id].team1Id" aria-label="Équipe domicile">
               <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </span>
         </td>
         <td>
-          <input v-model.number="edits[m.id].score1" class="score-input" type="number" min="0" />
+          <input v-model.number="edits[m.id].score1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" />
         </td>
         <td>
-          <input v-model.number="edits[m.id].score2" class="score-input" type="number" min="0" />
+          <input v-model.number="edits[m.id].score2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" />
         </td>
         <td>
           <span class="team-cell">
             <TeamLogo :name="m.team2Name" :logo-path="m.team2LogoPath" />
-            <select v-model.number="edits[m.id].team2Id">
+            <select v-model.number="edits[m.id].team2Id" aria-label="Équipe extérieur">
               <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </span>
         </td>
         <td>
-          <select v-model="edits[m.id].status">
+          <select v-model="edits[m.id].status" aria-label="Statut">
             <option value="">À venir</option>
             <option value="POSTPONED">Reporté</option>
             <option value="SUSPENDED">Suspendu</option>

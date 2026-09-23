@@ -6,33 +6,33 @@
 
   <AppModal v-model="showMatchModal" title="Ajouter un match">
     <form class="inline" @submit.prevent="submitMatch">
-      <select v-model.number="newMatch.team1Id" required>
+      <select v-model.number="newMatch.team1Id" aria-label="Équipe domicile" required>
         <option disabled value="">Équipe 1</option>
         <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
       </select>
-      <select v-model.number="newMatch.team2Id" required>
+      <select v-model.number="newMatch.team2Id" aria-label="Équipe extérieur" required>
         <option disabled value="">Équipe 2</option>
         <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
       </select>
-      <input v-model="newMatch.roundLabel" placeholder="Round (ex: J1, 8e de finale)" required />
-      <input v-model="newMatch.date" type="date" />
-      <input v-model="newMatch.time" type="time" />
-      <input v-model.number="newMatch.score1" class="score-input" type="number" min="0" placeholder="B1" />
-      <input v-model.number="newMatch.score2" class="score-input" type="number" min="0" placeholder="B2" />
+      <input v-model="newMatch.roundLabel" aria-label="Tour" placeholder="Round (ex: J1, 8e de finale)" required />
+      <input v-model="newMatch.date" aria-label="Date" type="date" />
+      <input v-model="newMatch.time" aria-label="Heure" type="time" />
+      <input v-model.number="newMatch.score1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" placeholder="B1" />
+      <input v-model.number="newMatch.score2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" placeholder="B2" />
       <button type="submit">Ajouter</button>
     </form>
   </AppModal>
 
   <AppModal v-model="showTeamModal" title="Ajouter un club">
     <form class="inline" @submit.prevent="submitNewTeam">
-      <input v-model="newTeam.name" placeholder="Nom du club" required />
+      <input v-model="newTeam.name" aria-label="Nom du club" placeholder="Nom du club" required />
       <button type="submit">Ajouter</button>
     </form>
     <p v-if="teamError" class="error-text">{{ teamError }}</p>
   </AppModal>
 
   <div v-if="rounds.length > 1" class="filters">
-    <select v-model="roundFilter">
+    <select v-model="roundFilter" aria-label="Filtrer par tour">
       <option value="">Toutes les journées / tous les tours</option>
       <option v-for="r in rounds" :key="r" :value="r">{{ r }}</option>
     </select>
@@ -64,21 +64,21 @@
         <td>
           <span class="team-cell">
             <TeamLogo :name="m.team1Name" :logo-path="m.team1LogoPath" />
-            <select v-model.number="edits[m.id].team1Id">
+            <select v-model.number="edits[m.id].team1Id" aria-label="Équipe domicile">
               <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </span>
         </td>
         <td>
-          <input v-model.number="edits[m.id].score1" class="score-input" type="number" min="0" />
+          <input v-model.number="edits[m.id].score1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" />
         </td>
         <td>
-          <input v-model.number="edits[m.id].score2" class="score-input" type="number" min="0" />
+          <input v-model.number="edits[m.id].score2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" />
         </td>
         <td>
           <span class="team-cell">
             <TeamLogo :name="m.team2Name" :logo-path="m.team2LogoPath" />
-            <select v-model.number="edits[m.id].team2Id">
+            <select v-model.number="edits[m.id].team2Id" aria-label="Équipe extérieur">
               <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
           </span>

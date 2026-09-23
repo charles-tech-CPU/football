@@ -8,18 +8,18 @@
   <h2 v-else>Grille des résultats</h2>
 
   <form v-if="allowAdd && showAddForm" class="inline add-match-form" @submit.prevent="submitMatch">
-    <select v-model.number="newMatch.team1Id" required>
+    <select v-model.number="newMatch.team1Id" aria-label="Équipe domicile" required>
       <option disabled value="">Équipe 1</option>
       <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
     </select>
-    <select v-model.number="newMatch.team2Id" required>
+    <select v-model.number="newMatch.team2Id" aria-label="Équipe extérieur" required>
       <option disabled value="">Équipe 2</option>
       <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
     </select>
-    <input v-model="newMatch.date" type="date" />
-    <input v-model="newMatch.time" type="time" />
-    <input v-model.number="newMatch.score1" class="score-input" type="number" min="0" placeholder="B1" />
-    <input v-model.number="newMatch.score2" class="score-input" type="number" min="0" placeholder="B2" />
+    <input v-model="newMatch.date" aria-label="Date" type="date" />
+    <input v-model="newMatch.time" aria-label="Heure" type="time" />
+    <input v-model.number="newMatch.score1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" placeholder="B1" />
+    <input v-model.number="newMatch.score2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" placeholder="B2" />
     <button type="submit">Ajouter</button>
   </form>
 
@@ -46,13 +46,15 @@
               v-for="col in teamOrder"
               :key="`c-${row.id}-${col.id}`"
               :class="cellClass(c.matchByPair, row.id, col.id)"
+              tabindex="0"
               @click="startEdit(c.cycle, c.matchByPair, row.id, col.id)"
+              @keydown.enter="startEdit(c.cycle, c.matchByPair, row.id, col.id)"
             >
               <template v-if="row.id === col.id">—</template>
               <template v-else-if="editingKey === cellKey(c.cycle, row.id, col.id)">
                 <span class="grid-edit">
-                  <input v-model.number="editScore1" class="score-input" type="number" min="0" @click.stop />
-                  <input v-model.number="editScore2" class="score-input" type="number" min="0" @click.stop />
+                  <input v-model.number="editScore1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" @click.stop />
+                  <input v-model.number="editScore2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" @click.stop />
                   <button type="button" @click.stop="confirmEdit">✓</button>
                 </span>
               </template>
@@ -119,13 +121,15 @@
                 v-for="col in grp.teams"
                 :key="`gc-${gi}-${row.id}-${col.id}`"
                 :class="cellClass(grp.matchByPair, row.id, col.id)"
+                tabindex="0"
                 @click="startEdit(`group-${gi}`, grp.matchByPair, row.id, col.id)"
+                @keydown.enter="startEdit(`group-${gi}`, grp.matchByPair, row.id, col.id)"
               >
                 <template v-if="row.id === col.id">—</template>
                 <template v-else-if="editingKey === cellKey(`group-${gi}`, row.id, col.id)">
                   <span class="grid-edit">
-                    <input v-model.number="editScore1" class="score-input" type="number" min="0" @click.stop />
-                    <input v-model.number="editScore2" class="score-input" type="number" min="0" @click.stop />
+                    <input v-model.number="editScore1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" @click.stop />
+                    <input v-model.number="editScore2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" @click.stop />
                     <button type="button" @click.stop="confirmEdit">✓</button>
                   </span>
                 </template>
@@ -156,13 +160,15 @@
               v-for="colPos in miniLeaguePositions"
               :key="`mc-${rowPos}-${colPos}`"
               :class="miniCellClass(rowPos, colPos)"
+              tabindex="0"
               @click="startMiniEdit(rowPos, colPos)"
+              @keydown.enter="startMiniEdit(rowPos, colPos)"
             >
               <template v-if="rowPos === colPos">—</template>
               <template v-else-if="miniEditingKey === `${rowPos}-${colPos}`">
                 <span class="grid-edit">
-                  <input v-model.number="editScore1" class="score-input" type="number" min="0" @click.stop />
-                  <input v-model.number="editScore2" class="score-input" type="number" min="0" @click.stop />
+                  <input v-model.number="editScore1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" @click.stop />
+                  <input v-model.number="editScore2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" @click.stop />
                   <button type="button" @click.stop="confirmMiniEdit">✓</button>
                 </span>
               </template>
@@ -273,7 +279,7 @@ function isPendingTeam(name) {
 
 function roundNumber(m) {
   const found = (m.roundLabel ?? '').match(/(\d+)/)
-  return found ? parseInt(found[1], 10) : null
+  return found ? Number.parseInt(found[1], 10) : null
 }
 
 // Certains championnats (ex: Albanie) rejouent un aller-retour complet une 2e fois
@@ -326,7 +332,7 @@ function cycleLabel(n) {
 // determiner : 1ER-2E)" etc, un seul match par paire de POSITIONS finales (pas encore de
 // vraies equipes). On extrait les positions directement du round_label pour construire une
 // petite grille dediee, distincte du reste (equipes generiques partagees, sinon collision).
-const MINI_LEAGUE_RE = /Mini-championnat \(a d[ée]terminer\s*:\s*(.+?)-(.+?)\)/i
+const MINI_LEAGUE_RE = /Mini-championnat \(a d[ée]terminer\s*:([^)-]+)-([^)]+)\)/i
 
 const miniLeagueFixtures = computed(() => {
   const list = []
@@ -499,13 +505,11 @@ const groupBlocks = computed(() => {
         label: `${phase.label} - Saison régulière`,
         teams: malteTeamsFromIds([...phase.topIds, ...phase.bottomIds]),
         matchByPair: malteBuildMatchByPair(regularMatches)
-      })
-      blocks.push({
+      }, {
         label: phase.topLabel,
         teams: malteTeamsFromIds(phase.topIds),
         matchByPair: malteBuildMatchByPair(poolMatches.filter(m => phase.topIds.includes(m.team1Id) && phase.topIds.includes(m.team2Id)))
-      })
-      blocks.push({
+      }, {
         label: phase.bottomLabel,
         teams: malteTeamsFromIds(phase.bottomIds),
         matchByPair: malteBuildMatchByPair(poolMatches.filter(m => phase.bottomIds.includes(m.team1Id) && phase.bottomIds.includes(m.team2Id)))

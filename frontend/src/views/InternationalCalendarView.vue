@@ -6,7 +6,7 @@
   </p>
 
   <div class="filters">
-    <select v-model="confederationFilter">
+    <select v-model="confederationFilter" aria-label="Filtrer par confédération">
       <option value="all">Toutes les confédérations</option>
       <option v-for="c in CONFEDERATIONS" :key="c.code" :value="c.code">{{ c.label }}</option>
     </select>
@@ -31,9 +31,9 @@
       </thead>
       <tbody>
         <tr v-for="m in filteredMatches" :key="m.id" :class="rowClass(m)">
-          <td><input v-model="edits[m.id].date" class="date-input" type="date" /></td>
+          <td><input v-model="edits[m.id].date" aria-label="Date" class="date-input" type="date" /></td>
           <td>
-            <input v-model="edits[m.id].time" class="time-input" type="time" />
+            <input v-model="edits[m.id].time" aria-label="Heure" class="time-input" type="time" />
             <span v-if="!edits[m.id].time" class="no-time-tag">Sans horaire</span>
           </td>
           <td>
@@ -47,10 +47,10 @@
             </span>
           </td>
           <td>
-            <input v-model.number="edits[m.id].score1" class="score-input" type="number" min="0" />
+            <input v-model.number="edits[m.id].score1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" />
           </td>
           <td>
-            <input v-model.number="edits[m.id].score2" class="score-input" type="number" min="0" />
+            <input v-model.number="edits[m.id].score2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" />
           </td>
           <td>
             <span class="team-cell">
@@ -59,7 +59,7 @@
             </span>
           </td>
           <td>
-            <select v-model="edits[m.id].status">
+            <select v-model="edits[m.id].status" aria-label="Statut">
               <option value="">À venir</option>
               <option value="POSTPONED">Reporté</option>
               <option value="SUSPENDED">Suspendu</option>

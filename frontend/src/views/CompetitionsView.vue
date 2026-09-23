@@ -3,7 +3,7 @@
   <p class="section-intro">54 championnats européens, leurs coupes nationales, et les coupes d'Europe.</p>
 
   <div class="filters">
-    <input v-model="search" placeholder="Rechercher un pays ou une compétition..." />
+    <input v-model="search" aria-label="Rechercher un pays ou une compétition" placeholder="Rechercher un pays ou une compétition..." />
   </div>
 
   <template v-if="filteredContinental.length">
@@ -51,15 +51,15 @@
   <details class="add-form">
     <summary>Ajouter une compétition</summary>
     <form class="inline" @submit.prevent="submit">
-      <input v-model="form.code" placeholder="Code (ex: FRANCE, LDC)" required />
-      <input v-model="form.name" placeholder="Nom (ex: France - Championnat 2027)" required />
-      <select v-model="form.type">
+      <input v-model="form.code" aria-label="Code" placeholder="Code (ex: FRANCE, LDC)" required />
+      <input v-model="form.name" aria-label="Nom" placeholder="Nom (ex: France - Championnat 2027)" required />
+      <select v-model="form.type" aria-label="Type">
         <option value="LEAGUE">Championnat</option>
         <option value="DOMESTIC_CUP">Coupe nationale</option>
         <option value="CONTINENTAL_CUP">Coupe d'Europe</option>
       </select>
-      <input v-model="form.country" placeholder="Pays (vide si continentale)" />
-      <input v-model.number="form.season" type="number" placeholder="Saison" required />
+      <input v-model="form.country" aria-label="Pays" placeholder="Pays (vide si continentale)" />
+      <input v-model.number="form.season" aria-label="Saison" type="number" placeholder="Saison" required />
       <button type="submit">Ajouter</button>
     </form>
     <p v-if="error" class="error-text">{{ error }}</p>

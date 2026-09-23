@@ -118,7 +118,9 @@ public class UefaRankingService {
                     case "LDC" -> counts[0]++;
                     case "EL" -> counts[1]++;
                     case "EC" -> counts[2]++;
-                    default -> {}
+                    default -> {
+                        // Autre code de competition : rien a decompter
+                    }
                 }
             }
         }
@@ -195,7 +197,7 @@ public class UefaRankingService {
 
     private RoundCategory categorize(Match m, Map<Long, LocalDate> leaguePhaseStart) {
         String label = trim(m.getRoundLabel());
-        if (label.contains("PHASE DE LIGUE")) {
+        if (label.contains(LEAGUE_PHASE_ROUND)) {
             return RoundCategory.LEAGUE_PHASE;
         }
         if (label.contains("SEIZIEME")
@@ -236,7 +238,14 @@ public class UefaRankingService {
         BigDecimal draw = (category == RoundCategory.QUALIFYING_TIE || category == RoundCategory.PRE_LEAGUE_BARRAGE)
                 ? DRAW_QUALIFYING
                 : DRAW_MAIN;
-        BigDecimal earned = goalsFor > goalsAgainst ? win : goalsFor == goalsAgainst ? draw : BigDecimal.ZERO;
+        BigDecimal earned;
+        if (goalsFor > goalsAgainst) {
+            earned = win;
+        } else if (goalsFor == goalsAgainst) {
+            earned = draw;
+        } else {
+            earned = BigDecimal.ZERO;
+        }
         points.merge(teamId, earned, BigDecimal::add);
     }
 
@@ -258,7 +267,8 @@ public class UefaRankingService {
         Match first = legs.get(0);
         long teamA = first.getTeam1().getId();
         long teamB = first.getTeam2().getId();
-        int aggA = 0, aggB = 0;
+        int aggA = 0;
+        int aggB = 0;
         for (Match m : legs) {
             if (m.getTeam1().getId() == teamA) {
                 aggA += m.getScore1();
@@ -273,7 +283,8 @@ public class UefaRankingService {
         }
         Match decider = legs.get(legs.size() - 1);
         if (decider.getPenaltyScore1() != null && decider.getPenaltyScore2() != null) {
-            int penA, penB;
+            int penA;
+            int penB;
             if (decider.getTeam1().getId() == teamA) {
                 penA = decider.getPenaltyScore1();
                 penB = decider.getPenaltyScore2();

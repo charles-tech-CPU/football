@@ -183,7 +183,7 @@
                 </td>
                 <td>
                   <input
-                    v-model="statusEdits[row.teamId].groupName"
+                    v-model="statusEdits[row.teamId].groupName" aria-label="Groupe"
                     class="group-input"
                     placeholder="ex: Championnat"
                     @change="saveStatus(row.teamId, statusEdits[row.teamId])"
@@ -926,7 +926,7 @@ const rawMatches = ref([])
 
 function roundNumber(m) {
   const found = (m.roundLabel ?? '').match(/(\d+)/)
-  return found ? parseInt(found[1], 10) : null
+  return found ? Number.parseInt(found[1], 10) : null
 }
 
 // Detecte les "cycles" de confrontations (1ere fois qu'une paire ordonnee d'equipes se

@@ -142,11 +142,11 @@ public class MatchService {
         match.setScore2(dto.score2());
         match.setPenaltyScore1(dto.penaltyScore1());
         match.setPenaltyScore2(dto.penaltyScore2());
-        match.setStatus(
-                dto.status() != null
-                        ? dto.status()
-                        : (dto.score1() != null && dto.score2() != null
-                                ? MatchStatus.COMPLETED
-                                : MatchStatus.SCHEDULED));
+        match.setStatus(dto.status() != null ? dto.status() : statusFromScores(dto));
+    }
+
+    /** Sans statut force : un match dont les deux scores sont saisis est termine, sinon a venir. */
+    private static MatchStatus statusFromScores(MatchCreateDto dto) {
+        return dto.score1() != null && dto.score2() != null ? MatchStatus.COMPLETED : MatchStatus.SCHEDULED;
     }
 }

@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="modelValue" class="modal-overlay" @click.self="close">
+    <div v-if="modelValue" class="modal-overlay" @click.self="close" @keydown.esc="close">
       <div class="modal-box">
         <div class="modal-header">
           <h3>{{ title }}</h3>

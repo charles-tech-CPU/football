@@ -6,26 +6,26 @@
 
   <AppModal v-model="showMatchModal" title="Ajouter un match">
     <form class="inline" @submit.prevent="submitMatch">
-      <select v-model.number="newMatch.team1Id" required>
+      <select v-model.number="newMatch.team1Id" aria-label="Équipe domicile" required>
         <option disabled value="">Équipe 1</option>
         <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
       </select>
-      <select v-model.number="newMatch.team2Id" required>
+      <select v-model.number="newMatch.team2Id" aria-label="Équipe extérieur" required>
         <option disabled value="">Équipe 2</option>
         <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
       </select>
-      <input v-model="newMatch.roundLabel" placeholder="Round (ex: Coupe nationale)" required />
-      <input v-model="newMatch.date" type="date" />
-      <input v-model="newMatch.time" type="time" />
-      <input v-model.number="newMatch.score1" class="score-input" type="number" min="0" placeholder="B1" />
-      <input v-model.number="newMatch.score2" class="score-input" type="number" min="0" placeholder="B2" />
+      <input v-model="newMatch.roundLabel" aria-label="Tour" placeholder="Round (ex: Coupe nationale)" required />
+      <input v-model="newMatch.date" aria-label="Date" type="date" />
+      <input v-model="newMatch.time" aria-label="Heure" type="time" />
+      <input v-model.number="newMatch.score1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" placeholder="B1" />
+      <input v-model.number="newMatch.score2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" placeholder="B2" />
       <button type="submit">Ajouter</button>
     </form>
   </AppModal>
 
   <AppModal v-model="showTeamModal" title="Ajouter un club">
     <form class="inline" @submit.prevent="submitNewTeam">
-      <input v-model="newTeam.name" placeholder="Nom du club" required />
+      <input v-model="newTeam.name" aria-label="Nom du club" placeholder="Nom du club" required />
       <button type="submit">Ajouter</button>
     </form>
     <p v-if="teamError" class="error-text">{{ teamError }}</p>
@@ -57,37 +57,37 @@
                 <span v-if="tie.legs.length > 1" class="leg-tag">{{ legLabel(li, tie.legs.length) }}</span>
                 <div class="tie-leg">
                   <template v-if="teamEditingKey === teamKey(leg, 1)">
-                    <span class="grid-edit" @click.stop>
-                      <select v-model.number="editTeamValue">
+                    <span class="grid-edit" @click.stop @keydown.stop>
+                      <select v-model.number="editTeamValue" aria-label="Équipe">
                         <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
                       </select>
                       <button type="button" @click.stop="confirmTeamEdit(leg, 1)">✓</button>
                     </span>
                   </template>
-                  <span v-else class="tie-team" :class="{ 'tie-winner': tie.winnerId === leg.team1Id }" @click="startTeamEdit(leg, 1)">
+                  <span v-else class="tie-team" :class="{ 'tie-winner': tie.winnerId === leg.team1Id }" tabindex="0" @click="startTeamEdit(leg, 1)" @keydown.enter="startTeamEdit(leg, 1)">
                     <TeamLogo :name="leg.team1Name" :logo-path="leg.team1LogoPath" />
                     <FlagIcon v-if="showFlags" :country="leg.team1Country" />
                     <span class="tie-team-name">{{ leg.team1Name }}</span>
                   </span>
                   <template v-if="editingId === leg.id">
                     <span class="grid-edit">
-                      <input v-model.number="editScore1" class="score-input" type="number" min="0" @click.stop />
-                      <input v-model.number="editScore2" class="score-input" type="number" min="0" @click.stop />
+                      <input v-model.number="editScore1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" @click.stop />
+                      <input v-model.number="editScore2" aria-label="Buts équipe extérieur" class="score-input" type="number" min="0" @click.stop />
                       <button type="button" @click.stop="confirmEdit(leg)">✓</button>
                     </span>
                   </template>
-                  <span v-else class="tie-score" @click="startEdit(leg)">
+                  <span v-else class="tie-score" tabindex="0" @click="startEdit(leg)" @keydown.enter="startEdit(leg)">
                     {{ leg.score1 ?? '-' }}<span class="tie-score-sep">:</span>{{ leg.score2 ?? '-' }}
                   </span>
                   <template v-if="teamEditingKey === teamKey(leg, 2)">
-                    <span class="grid-edit" @click.stop>
-                      <select v-model.number="editTeamValue">
+                    <span class="grid-edit" @click.stop @keydown.stop>
+                      <select v-model.number="editTeamValue" aria-label="Équipe">
                         <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
                       </select>
                       <button type="button" @click.stop="confirmTeamEdit(leg, 2)">✓</button>
                     </span>
                   </template>
-                  <span v-else class="tie-team tie-team--right" :class="{ 'tie-winner': tie.winnerId === leg.team2Id }" @click="startTeamEdit(leg, 2)">
+                  <span v-else class="tie-team tie-team--right" :class="{ 'tie-winner': tie.winnerId === leg.team2Id }" tabindex="0" @click="startTeamEdit(leg, 2)" @keydown.enter="startTeamEdit(leg, 2)">
                     <span class="tie-team-name">{{ leg.team2Name }}</span>
                     <FlagIcon v-if="showFlags" :country="leg.team2Country" />
                     <TeamLogo :name="leg.team2Name" :logo-path="leg.team2LogoPath" />
@@ -103,15 +103,15 @@
               <div v-if="tie.wentToPenalties" class="tie-penalties">
                 <span class="tie-penalties-tag">Tab</span>
                 <span class="tie-aggregate-team" :class="{ 'tie-winner': tie.winnerId === tie.teamAId }">{{ tie.teamAName }}</span>
-                <span class="tie-aggregate-score" @click="startPenaltyEdit(tie)">{{ tie.penA }} – {{ tie.penB }}</span>
+                <span class="tie-aggregate-score" tabindex="0" @click="startPenaltyEdit(tie)" @keydown.enter="startPenaltyEdit(tie)">{{ tie.penA }} – {{ tie.penB }}</span>
                 <span class="tie-aggregate-team" :class="{ 'tie-winner': tie.winnerId === tie.teamBId }">{{ tie.teamBName }}</span>
               </div>
               <div v-else-if="tie.needsPenalty" class="tie-penalties">
                 <template v-if="editingPenaltyId === tie.decider.id">
                   <span class="tie-penalties-tag">Tab</span>
                   <span class="grid-edit">
-                    <input v-model.number="editPen1" class="score-input" type="number" min="0" @click.stop />
-                    <input v-model.number="editPen2" class="score-input" type="number" min="0" @click.stop />
+                    <input v-model.number="editPen1" aria-label="Tirs au but équipe domicile" class="score-input" type="number" min="0" @click.stop />
+                    <input v-model.number="editPen2" aria-label="Tirs au but équipe extérieur" class="score-input" type="number" min="0" @click.stop />
                     <button type="button" @click.stop="confirmPenaltyEdit(tie)">✓</button>
                   </span>
                 </template>
@@ -191,15 +191,25 @@ const ALLER_RETOUR_SUFFIX_RE = /-\s*(Aller|Retour)\s*$/i
 // un simple comptage se desynchronise des que certaines confrontations d'un tour sont
 // resolues avant les autres. On fusionne aussi Aller/Retour d'un meme tour, et on
 // reconnait les libelles "en attente de tirage" pour leur donner un nom lisible.
-function roundBucketFor(label) {
-  const raw = label ?? ''
+function roundBucketFor(raw = '') {
   const pending = raw.match(PENDING_DRAW_RE)
   if (pending) {
     const code = pending[1].toUpperCase()
     return { key: `PENDING-${code}`, label: PENDING_DRAW_LABELS[code] ?? raw, order: PENDING_DRAW_ORDER[code] }
   }
-  const stripped = raw.replace(/-?\s*(aller|retour)\s*$/i, '').trim()
+  const stripped = stripLegSuffix(raw)
   return { key: (stripped || raw).toUpperCase(), label: stripped || raw || 'Autre', order: null }
+}
+
+// "8E DE FINALE - Aller" -> "8E DE FINALE" (sans regex, pour eviter le backtracking)
+function stripLegSuffix(label) {
+  const trimmed = label.trimEnd()
+  const lower = trimmed.toLowerCase()
+  const suffix = ['aller', 'retour'].find(s => lower.endsWith(s))
+  if (!suffix) return trimmed.trim()
+  let rest = trimmed.slice(0, -suffix.length).trimEnd()
+  if (rest.endsWith('-')) rest = rest.slice(0, -1)
+  return rest.trim()
 }
 
 function tieKey(tie) {
@@ -284,9 +294,12 @@ function buildTies(roundMatches) {
       else { penA = decider.penaltyScore2; penB = decider.penaltyScore1 }
     }
     const wentToPenalties = penA != null && penB != null
-    const winnerId = wentToPenalties
-      ? (penA > penB ? teamAId : teamBId)
-      : (hasAllScores && aggA !== aggB ? (aggA > aggB ? teamAId : teamBId) : null)
+    let winnerId = null
+    if (wentToPenalties) {
+      winnerId = penA > penB ? teamAId : teamBId
+    } else if (hasAllScores && aggA !== aggB) {
+      winnerId = aggA > aggB ? teamAId : teamBId
+    }
     return {
       teamAId, teamAName, teamBId, teamBName, legs: sorted, aggA, aggB, hasAllScores, winnerId,
       decider, needsPenalty: aggTied && !wentToPenalties, wentToPenalties, penA, penB

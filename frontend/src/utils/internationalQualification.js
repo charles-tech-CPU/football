@@ -17,7 +17,7 @@ const KINDS = {
 
 // Pays hotes de la CAN 2027, qualifies d'office : dans leur groupe, l'hote est qualifie
 // quelle que soit sa place, et seul le meilleur non-hote prend l'autre place.
-const CAN_2027_HOSTS = ['Kenya', 'Ouganda', 'Tanzanie']
+const CAN_2027_HOSTS = new Set(['Kenya', 'Ouganda', 'Tanzanie'])
 
 // Pour chaque competition : liste de regles { league (prefixe du nom de groupe, optionnel),
 // ranks, kind, label }. Le label sert a la legende.
@@ -59,10 +59,10 @@ export function internationalRowClasses(competitionCode, groupName, rows) {
   const rules = rulesFor(competitionCode, groupName)
   const kindForRank = rank => rules.find(r => r.ranks.includes(rank))?.kind
 
-  if (competitionCode === 'CAF_CAN_2027' && rows.some(r => CAN_2027_HOSTS.includes(r.teamName))) {
+  if (competitionCode === 'CAF_CAN_2027' && rows.some(r => CAN_2027_HOSTS.has(r.teamName))) {
     // Groupe avec un hote : l'hote + le meilleur non-hote sont qualifies.
-    const bestOther = rows.find(r => !CAN_2027_HOSTS.includes(r.teamName))
-    return rows.map(r => (CAN_2027_HOSTS.includes(r.teamName) || r === bestOther) ? KINDS.qualified.cls : '')
+    const bestOther = rows.find(r => !CAN_2027_HOSTS.has(r.teamName))
+    return rows.map(r => (CAN_2027_HOSTS.has(r.teamName) || r === bestOther) ? KINDS.qualified.cls : '')
   }
 
   return rows.map((_, index) => {

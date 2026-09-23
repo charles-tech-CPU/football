@@ -2,7 +2,7 @@
   <h1>Équipes</h1>
 
   <div class="filters">
-    <input v-model="search" placeholder="Filtrer par nom ou pays..." />
+    <input v-model="search" aria-label="Filtrer par nom ou pays" placeholder="Filtrer par nom ou pays..." />
   </div>
 
   <table v-if="filtered.length">
@@ -35,8 +35,8 @@
 
   <h2>Ajouter une équipe</h2>
   <form class="inline" @submit.prevent="submit">
-    <input v-model="form.name" placeholder="Nom du club" required />
-    <input v-model="form.country" placeholder="Pays" />
+    <input v-model="form.name" aria-label="Nom du club" placeholder="Nom du club" required />
+    <input v-model="form.country" aria-label="Pays" placeholder="Pays" />
     <button type="submit">Ajouter</button>
   </form>
   <p v-if="error" class="error-text">{{ error }}</p>
@@ -49,11 +49,11 @@
       tous ses matchs sont réaffectés avant suppression.
     </p>
     <form class="inline" @submit.prevent="submitMerge">
-      <select v-model.number="mergeForm.sourceId" required>
+      <select v-model.number="mergeForm.sourceId" aria-label="Club à fusionner" required>
         <option disabled value="">Équipe à supprimer (doublon)</option>
         <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }} ({{ canonicalCountry(t.country) ?? '—' }})</option>
       </select>
-      <select v-model.number="mergeForm.targetId" required>
+      <select v-model.number="mergeForm.targetId" aria-label="Club cible" required>
         <option disabled value="">Équipe à conserver</option>
         <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }} ({{ canonicalCountry(t.country) ?? '—' }})</option>
       </select>

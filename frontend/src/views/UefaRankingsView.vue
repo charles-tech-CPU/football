@@ -113,7 +113,7 @@ const loaded = ref(false)
 
 function formatNumber(v) {
   if (v == null) return '—'
-  return Number.isInteger(v) ? String(v) : v.toFixed(3).replace(/\.?0+$/, '')
+  return Number.isInteger(v) ? String(v) : String(Number(v.toFixed(3)))
 }
 
 function cupClass(cup) {
