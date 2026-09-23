@@ -51,3 +51,37 @@ jobs:
 
       - name: Build de production
         run: npm run build
+
+  sonar:
+    name: Analyse SonarQube Cloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Historique complet : Sonar en a besoin pour attribuer les nouveaux problemes
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      # Sonar analyse le bytecode Java et lit le rapport de couverture JaCoCo :
+      # on compile et on lance les tests avant le scan
+      - name: Compilation, tests et couverture du backend
+        run: mvn -B verify
+        working-directory: backend
+
+      - name: Scan SonarQube Cloud
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Fait echouer la CI si le code ne respecte pas le Quality Gate SonarQube Cloud
+      - name: Verification du Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
