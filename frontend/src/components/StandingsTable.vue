@@ -18,7 +18,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(row, index) in grp.rows" :key="row.teamId" :class="rowClass(row, grp.baseIndex + index)">
+          <tr v-for="(row, index) in grp.rows" :key="row.teamId" :class="rowClass(row, grp.baseIndex + index, grp)">
             <td>
               {{ grp.baseIndex + index + 1 }}
               <span
@@ -92,7 +92,11 @@ const props = defineProps({
   // Icone + infobulle supplementaire(s) a afficher a cote d'un rang precis, en plus des
   // icones automatiques LDC/EL/ECL/barrage/relegation (ex: mini-championnat top 4 en
   // Albanie) : [{ rank: 1, icon: '🏅', tooltip: '...' }]
-  rankMarkers: { type: Array, default: null }
+  rankMarkers: { type: Array, default: null },
+  // Couleur par ligne calculee groupe par groupe (selections nationales : places
+  // qualificatives propres a chaque ligue/groupe) : (groupName, rows) => [classe par ligne].
+  // Prioritaire sur rankBands et sur les statuts de club.
+  groupRowClasses: { type: Function, default: null }
 })
 
 // Icones automatiques de qualification/barrage/relegation, calculees a partir des places
@@ -129,17 +133,19 @@ function markersFor(rank) {
 
 const groupedRows = computed(() => {
   if (!props.rows.length) return []
-  if (!props.rows.some(r => r.group)) return [{ name: null, rows: props.rows, baseIndex: 0 }]
+  const withClasses = grp => ({ ...grp, classes: props.groupRowClasses?.(grp.name, grp.rows) ?? null })
+  if (!props.rows.some(r => r.group)) return [withClasses({ name: null, rows: props.rows, baseIndex: 0 })]
   const map = new Map()
   for (const r of props.rows) {
     const key = r.group ?? '—'
     if (!map.has(key)) map.set(key, [])
     map.get(key).push(r)
   }
-  return [...map.entries()].map(([name, rows]) => ({ name, rows, baseIndex: 0 }))
+  return [...map.entries()].map(([name, rows]) => withClasses({ name, rows, baseIndex: 0 }))
 })
 
-function rowClass(row, index) {
+function rowClass(row, index, grp) {
+  if (grp?.classes) return grp.classes[index] ?? ''
   const rank = index + 1
   // La couleur de ligne est reservee aux faits sur le club (saison precedente) : champion,
   // coupe, promu, campagne europeenne. Les places qualificatives/barrage/relegation de la
