@@ -64,7 +64,7 @@
                       <button type="button" @click.stop="confirmTeamEdit(leg, 1)">✓</button>
                     </span>
                   </template>
-                  <span v-else class="tie-team" :class="{ 'tie-winner': tie.winnerId === leg.team1Id }" tabindex="0" @click="startTeamEdit(leg, 1)" @keydown.enter="startTeamEdit(leg, 1)">
+                  <span v-else class="tie-team" :class="{ 'tie-winner': tie.winnerId === leg.team1Id }" role="button" tabindex="0" @click="startTeamEdit(leg, 1)" @keydown.enter="startTeamEdit(leg, 1)">
                     <TeamLogo :name="leg.team1Name" :logo-path="leg.team1LogoPath" />
                     <FlagIcon v-if="showFlags" :country="leg.team1Country" />
                     <span class="tie-team-name">{{ leg.team1Name }}</span>
@@ -76,7 +76,7 @@
                       <button type="button" @click.stop="confirmEdit(leg)">✓</button>
                     </span>
                   </template>
-                  <span v-else class="tie-score" tabindex="0" @click="startEdit(leg)" @keydown.enter="startEdit(leg)">
+                  <span v-else class="tie-score" role="button" tabindex="0" @click="startEdit(leg)" @keydown.enter="startEdit(leg)">
                     {{ leg.score1 ?? '-' }}<span class="tie-score-sep">:</span>{{ leg.score2 ?? '-' }}
                   </span>
                   <template v-if="teamEditingKey === teamKey(leg, 2)">
@@ -87,7 +87,7 @@
                       <button type="button" @click.stop="confirmTeamEdit(leg, 2)">✓</button>
                     </span>
                   </template>
-                  <span v-else class="tie-team tie-team--right" :class="{ 'tie-winner': tie.winnerId === leg.team2Id }" tabindex="0" @click="startTeamEdit(leg, 2)" @keydown.enter="startTeamEdit(leg, 2)">
+                  <span v-else class="tie-team tie-team--right" :class="{ 'tie-winner': tie.winnerId === leg.team2Id }" role="button" tabindex="0" @click="startTeamEdit(leg, 2)" @keydown.enter="startTeamEdit(leg, 2)">
                     <span class="tie-team-name">{{ leg.team2Name }}</span>
                     <FlagIcon v-if="showFlags" :country="leg.team2Country" />
                     <TeamLogo :name="leg.team2Name" :logo-path="leg.team2LogoPath" />
@@ -103,7 +103,7 @@
               <div v-if="tie.wentToPenalties" class="tie-penalties">
                 <span class="tie-penalties-tag">Tab</span>
                 <span class="tie-aggregate-team" :class="{ 'tie-winner': tie.winnerId === tie.teamAId }">{{ tie.teamAName }}</span>
-                <span class="tie-aggregate-score" tabindex="0" @click="startPenaltyEdit(tie)" @keydown.enter="startPenaltyEdit(tie)">{{ tie.penA }} – {{ tie.penB }}</span>
+                <span class="tie-aggregate-score" role="button" tabindex="0" @click="startPenaltyEdit(tie)" @keydown.enter="startPenaltyEdit(tie)">{{ tie.penA }} – {{ tie.penB }}</span>
                 <span class="tie-aggregate-team" :class="{ 'tie-winner': tie.winnerId === tie.teamBId }">{{ tie.teamBName }}</span>
               </div>
               <div v-else-if="tie.needsPenalty" class="tie-penalties">

@@ -13,6 +13,7 @@ import com.charles.footresults.repository.MatchRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -135,13 +136,7 @@ public class UefaRankingService {
     /** Etat de la saison en cours pour les 3 coupes d'Europe, calcule une seule fois par requete. */
     private SeasonState computeSeasonState() {
         List<Match> matches = matchRepository.findByCompetition_CodeIn(CONTINENTAL_CODES);
-
-        Map<Long, LocalDate> leaguePhaseStart = new HashMap<>();
-        for (Match m : matches) {
-            if (m.getDate() != null && LEAGUE_PHASE_ROUND.equalsIgnoreCase(trim(m.getRoundLabel()))) {
-                leaguePhaseStart.merge(m.getCompetition().getId(), m.getDate(), (a, b) -> a.isBefore(b) ? a : b);
-            }
-        }
+        Map<Long, LocalDate> leaguePhaseStart = leaguePhaseStartByCompetition(matches);
 
         Map<Long, BigDecimal> pointsByTeam = new HashMap<>();
         Map<TieKey, List<Match>> ties = new HashMap<>();
@@ -158,34 +153,60 @@ public class UefaRankingService {
                 TieKey key = tieKeyFor(m, category);
                 ties.computeIfAbsent(key, k -> new ArrayList<>()).add(m);
             }
-            if (m.getStatus() == MatchStatus.COMPLETED && m.getScore1() != null && m.getScore2() != null) {
+            if (hasFinalScore(m)) {
                 addResult(pointsByTeam, m.getTeam1().getId(), category, m.getScore1(), m.getScore2());
                 addResult(pointsByTeam, m.getTeam2().getId(), category, m.getScore2(), m.getScore1());
             }
         }
 
         Set<Long> eliminated = new HashSet<>();
-        for (List<Match> legs : ties.values()) {
+        eliminated.addAll(tieLosers(ties.values()));
+        eliminated.addAll(leaguePhaseEliminated(leaguePhaseByCompetition));
+        return new SeasonState(pointsByTeam, eliminated);
+    }
+
+    /** Date du premier match de phase de ligue de chaque competition (sert a situer les barrages). */
+    private Map<Long, LocalDate> leaguePhaseStartByCompetition(List<Match> matches) {
+        Map<Long, LocalDate> leaguePhaseStart = new HashMap<>();
+        for (Match m : matches) {
+            if (m.getDate() != null && LEAGUE_PHASE_ROUND.equalsIgnoreCase(trim(m.getRoundLabel()))) {
+                leaguePhaseStart.merge(m.getCompetition().getId(), m.getDate(), (a, b) -> a.isBefore(b) ? a : b);
+            }
+        }
+        return leaguePhaseStart;
+    }
+
+    /** Perdants des confrontations a elimination directe deja entierement jouees. */
+    private Set<Long> tieLosers(Collection<List<Match>> ties) {
+        Set<Long> losers = new HashSet<>();
+        for (List<Match> legs : ties) {
             legs.sort(Comparator.comparing(Match::getDate, Comparator.nullsLast(Comparator.naturalOrder())));
             Long loser = tieLoser(legs);
             if (loser != null) {
-                eliminated.add(loser);
+                losers.add(loser);
             }
         }
+        return losers;
+    }
 
+    /** Clubs classes au-dela du rang d'elimination, pour chaque phase de ligue entierement terminee. */
+    private Set<Long> leaguePhaseEliminated(Map<Long, List<Match>> leaguePhaseByCompetition) {
+        Set<Long> eliminated = new HashSet<>();
         for (Map.Entry<Long, List<Match>> entry : leaguePhaseByCompetition.entrySet()) {
             boolean complete = entry.getValue().stream().allMatch(m -> m.getStatus() == MatchStatus.COMPLETED);
-            if (!complete) {
-                continue;
-            }
-            List<StandingRowDto> standings =
-                    standingsService.computeStandingsForRound(entry.getKey(), LEAGUE_PHASE_ROUND);
-            for (int i = LEAGUE_PHASE_ELIMINATION_RANK; i < standings.size(); i++) {
-                eliminated.add(standings.get(i).teamId());
+            if (complete) {
+                List<StandingRowDto> standings =
+                        standingsService.computeStandingsForRound(entry.getKey(), LEAGUE_PHASE_ROUND);
+                for (int i = LEAGUE_PHASE_ELIMINATION_RANK; i < standings.size(); i++) {
+                    eliminated.add(standings.get(i).teamId());
+                }
             }
         }
+        return eliminated;
+    }
 
-        return new SeasonState(pointsByTeam, eliminated);
+    private boolean hasFinalScore(Match m) {
+        return m.getStatus() == MatchStatus.COMPLETED && m.getScore1() != null && m.getScore2() != null;
     }
 
     private boolean isTieCategory(RoundCategory category) {
@@ -259,44 +280,38 @@ public class UefaRankingService {
 
     /** Vainqueur d'une confrontation (1 ou plusieurs manches) une fois TOUTES les manches jouees ; null si pas encore decidee. */
     private Long tieLoser(List<Match> legs) {
-        for (Match m : legs) {
-            if (m.getStatus() != MatchStatus.COMPLETED || m.getScore1() == null || m.getScore2() == null) {
-                return null;
-            }
+        if (!legs.stream().allMatch(this::hasFinalScore)) {
+            return null;
         }
         Match first = legs.get(0);
         long teamA = first.getTeam1().getId();
         long teamB = first.getTeam2().getId();
-        int aggA = 0;
-        int aggB = 0;
-        for (Match m : legs) {
-            if (m.getTeam1().getId() == teamA) {
-                aggA += m.getScore1();
-                aggB += m.getScore2();
-            } else {
-                aggA += m.getScore2();
-                aggB += m.getScore1();
-            }
-        }
+        int aggA = legs.stream().mapToInt(m -> goalsOf(m, teamA)).sum();
+        int aggB = legs.stream().mapToInt(m -> goalsOf(m, teamB)).sum();
         if (aggA != aggB) {
-            return aggA > aggB ? teamB : teamA;
+            return loserOf(teamA, aggA, teamB, aggB);
         }
         Match decider = legs.get(legs.size() - 1);
-        if (decider.getPenaltyScore1() != null && decider.getPenaltyScore2() != null) {
-            int penA;
-            int penB;
-            if (decider.getTeam1().getId() == teamA) {
-                penA = decider.getPenaltyScore1();
-                penB = decider.getPenaltyScore2();
-            } else {
-                penA = decider.getPenaltyScore2();
-                penB = decider.getPenaltyScore1();
-            }
-            if (penA != penB) {
-                return penA > penB ? teamB : teamA;
-            }
+        if (decider.getPenaltyScore1() == null || decider.getPenaltyScore2() == null) {
+            return null;
         }
-        return null;
+        return loserOf(teamA, penaltiesOf(decider, teamA), teamB, penaltiesOf(decider, teamB));
+    }
+
+    private int goalsOf(Match m, long teamId) {
+        return m.getTeam1().getId() == teamId ? m.getScore1() : m.getScore2();
+    }
+
+    private int penaltiesOf(Match m, long teamId) {
+        return m.getTeam1().getId() == teamId ? m.getPenaltyScore1() : m.getPenaltyScore2();
+    }
+
+    /** Equipe au plus petit score, ou null en cas d'egalite. */
+    private Long loserOf(long teamA, int scoreA, long teamB, int scoreB) {
+        if (scoreA == scoreB) {
+            return null;
+        }
+        return scoreA > scoreB ? teamB : teamA;
     }
 
     /** Coupe actuellement jouee par ce club, ou null s'il en a ete elimine (ou n'en joue aucune). */
