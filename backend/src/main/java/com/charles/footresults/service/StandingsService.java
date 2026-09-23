@@ -1,5 +1,6 @@
 package com.charles.footresults.service;
 
+import com.charles.footresults.domain.CompetitionType;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.MatchStatus;
 import com.charles.footresults.domain.Team;
@@ -68,13 +69,18 @@ public class StandingsService {
 
     public List<StandingRowDto> computeStandings(Long competitionId) {
         Map<Long, String> teamGroup = new LinkedHashMap<>();
+        // Une equipe inscrite dans un groupe apparait des le depart (0 match, 0 pt),
+        // meme avant son premier match : un groupe s'affiche toujours complet.
+        Map<Long, TeamTally> byTeam = new LinkedHashMap<>();
+        boolean international = false;
         for (TeamCompetitionStatus s : statusRepository.findByCompetitionId(competitionId)) {
+            international = s.getCompetition().getType() == CompetitionType.INTERNATIONAL;
             if (s.getGroupName() != null && !s.getGroupName().isBlank()) {
                 teamGroup.put(s.getTeam().getId(), s.getGroupName());
+                tallyFor(byTeam, s.getTeam());
             }
         }
 
-        Map<Long, TeamTally> byTeam = new LinkedHashMap<>();
         for (Match m : playedMatches(competitionId)) {
             tallyFor(byTeam, m.getTeam1()).addResult(m.getScore1(), m.getScore2());
             tallyFor(byTeam, m.getTeam2()).addResult(m.getScore2(), m.getScore1());
@@ -98,11 +104,16 @@ public class StandingsService {
             }
         }
 
-        List<StandingRowDto> result = byGroup.values().stream()
-                .map(this::sortRows)
-                .sorted(Comparator.comparingInt(
-                        (List<StandingRowDto> groupRows) -> groupRows.stream().mapToInt(StandingRowDto::points).max().orElse(0)
-                ).reversed())
+        // Championnat scinde : le groupe du haut (plus de points) d'abord. Selections
+        // nationales : ordre alphabetique ("Groupe A" avant "Groupe B", "Ligue A - ..."
+        // avant "Ligue B - ..."), independant des resultats.
+        Comparator<Map.Entry<String, List<StandingRowDto>>> groupOrder = international
+                ? Map.Entry.comparingByKey()
+                : Comparator.comparingInt((Map.Entry<String, List<StandingRowDto>> e) ->
+                        e.getValue().stream().mapToInt(StandingRowDto::points).max().orElse(0)).reversed();
+        List<StandingRowDto> result = byGroup.entrySet().stream()
+                .sorted(groupOrder)
+                .map(e -> sortRows(e.getValue()))
                 .flatMap(List::stream)
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         result.addAll(sortRows(ungrouped));
