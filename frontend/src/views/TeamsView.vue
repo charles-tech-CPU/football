@@ -1,5 +1,8 @@
 <template>
-  <h1>Équipes</h1>
+  <section class="hero">
+    <span class="hero-eyebrow">Clubs</span>
+    <h1>Équipes</h1>
+  </section>
 
   <div class="filters">
     <input v-model="search" aria-label="Filtrer par nom ou pays" placeholder="Filtrer par nom ou pays..." />

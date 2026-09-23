@@ -1,6 +1,9 @@
 <template>
-  <h1>Reportés / Suspendus</h1>
-  <p class="section-intro">Tous les matchs reportés ou suspendus, toutes compétitions confondues.</p>
+  <section class="hero">
+    <span class="hero-eyebrow">Clubs</span>
+    <h1>Reportés / Suspendus</h1>
+    <p class="section-intro">Tous les matchs reportés ou suspendus, toutes compétitions confondues.</p>
+  </section>
 
   <div v-if="matches.length" class="table-scroll">
   <table>

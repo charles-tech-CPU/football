@@ -1,34 +1,55 @@
 :root {
-  --bg: #f4f6f5;
+  --bg: #f3f5f4;
   --surface: #ffffff;
-  --surface-muted: #f0f3f1;
-  --border: #e2e8e4;
-  --text: #1c2521;
-  --text-muted: #667370;
-  --primary: #1c8a52;
-  --primary-dark: #146b3f;
-  --primary-soft: #e6f4ec;
+  --surface-muted: #f1f4f2;
+  --border: #e1e7e3;
+  --text: #16201b;
+  --text-muted: #5f6d68;
+  --primary: #16874d;
+  --primary-dark: #0f6b3b;
+  --primary-soft: #e3f3ea;
+  --pitch-900: #062515;
+  --pitch-800: #0b3d24;
+  --pitch-700: #11532f;
+  --gold: #f5c542;
   --accent: #2563eb;
   --danger: #d5443a;
   --shadow: 0 1px 2px rgba(20, 30, 25, 0.04), 0 4px 16px rgba(20, 30, 25, 0.06);
-  --radius: 12px;
+  --shadow-lg: 0 6px 14px rgba(20, 30, 25, 0.08), 0 18px 40px rgba(20, 30, 25, 0.10);
+  --radius: 14px;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
-  background: var(--bg);
+  font-family: "Inter", -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+  background:
+    radial-gradient(1200px 400px at 50% -120px, rgba(22, 135, 77, 0.10), transparent 70%),
+    var(--bg);
   color: var(--text);
   margin: 0;
+  -webkit-font-smoothing: antialiased;
 }
 
 #app {
-  max-width: 1080px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page {
+  flex: 1;
+  width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 20px 48px;
+  padding: 28px 24px 56px;
 }
 
 a {
@@ -41,72 +62,414 @@ a:hover {
 }
 
 h1 {
-  font-size: 1.7em;
-  margin: 0 0 4px;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-size: 2.3em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+  margin: 0 0 6px;
 }
 
 h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 1.15em;
-  margin: 32px 0 12px;
+  margin: 32px 0 14px;
   letter-spacing: -0.01em;
 }
 
-/* ---- Top navigation ---- */
+/* Petite barre verte/or devant chaque titre de section. */
+h2::before {
+  content: "";
+  width: 4px;
+  height: 1.05em;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--primary), var(--gold));
+  flex-shrink: 0;
+}
+
+::selection {
+  background: var(--primary-soft);
+}
+
+/* ---- Apparition de page (animation CSS rejouee a chaque changement de route) ---- */
+.page-enter {
+  animation: page-enter 0.25s ease;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+}
+
+/* ---- Top navigation : bandeau "pelouse de nuit" ---- */
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  color: white;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 60px, transparent 60px 120px),
+    linear-gradient(120deg, var(--pitch-900), var(--pitch-800) 55%, var(--pitch-700));
+  box-shadow: 0 2px 18px rgba(6, 37, 21, 0.35);
+}
+
+.topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.7;
+}
+
+.topbar-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 12px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 20px 0;
-  margin-bottom: 28px;
-  border-bottom: 1px solid var(--border);
+  gap: 20px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 700;
-  font-size: 1.15em;
-  color: var(--text);
+  gap: 12px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.brand:hover {
+  text-decoration: none;
 }
 
 .brand-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--primary);
-  color: white;
-  font-size: 1.05em;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #ffffff, #d9f0e3);
+  color: var(--pitch-800);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: transform 0.4s ease;
+}
+
+.brand:hover .brand-mark {
+  transform: rotate(-20deg);
+}
+
+.brand-mark svg {
+  width: 26px;
+  height: 26px;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 1.5em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.brand-sub {
+  font-size: 0.72em;
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 500;
 }
 
 nav.tabs-nav {
   display: flex;
-  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
 nav.tabs-nav a {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.75);
   font-weight: 600;
-  font-size: 0.95em;
+  font-size: 0.9em;
   padding: 8px 14px;
   border-radius: 999px;
   text-decoration: none;
+  white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 nav.tabs-nav a:hover {
-  background: var(--surface-muted);
-  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
 }
 
 nav.tabs-nav a.router-link-exact-active {
-  background: var(--primary-soft);
-  color: var(--primary-dark);
+  background: white;
+  color: var(--pitch-800);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 1100px) {
+  .topbar-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  nav.tabs-nav {
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+}
+
+/* ---- Footer ---- */
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 22px 24px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85em;
+  background: var(--pitch-900);
+}
+
+.site-footer-sep {
+  opacity: 0.5;
+}
+
+/* ---- Hero (bandeaux d'en-tete de page) ---- */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 32px 36px;
+  margin-bottom: 28px;
+  color: white;
+  background:
+    radial-gradient(600px 300px at 85% 10%, rgba(245, 197, 66, 0.22), transparent 70%),
+    linear-gradient(130deg, var(--pitch-900), var(--pitch-800) 50%, var(--pitch-700));
+  box-shadow: var(--shadow-lg);
+  isolation: isolate;
+}
+
+/* Lignes de terrain en filigrane : rond central + ligne mediane. */
+.hero::before {
+  content: "";
+  position: absolute;
+  right: -60px;
+  top: 50%;
+  width: 320px;
+  height: 320px;
+  transform: translateY(-50%);
+  border: 2px solid rgba(255, 255, 255, 0.10);
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  right: 98px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.10);
+  z-index: -1;
+}
+
+.hero h1 {
+  font-size: 2.8em;
+  margin: 0 0 6px;
+}
+
+.hero .section-intro {
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0;
+  max-width: 640px;
+}
+
+.hero-eyebrow {
+  display: inline-block;
+  font-size: 0.75em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+
+.hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.hero-stat {
+  min-width: 130px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hero-stat-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 2.1em;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hero-stat-label {
+  font-size: 0.8em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.hero-search {
+  position: relative;
+  margin-top: 24px;
+  max-width: 520px;
+}
+
+.hero-search input {
+  width: 100%;
+  padding: 13px 16px 13px 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  font-size: 1em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.hero-search::before {
+  content: "🔍";
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.95em;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Variante pays : le drapeau en grand, floute, en fond du bandeau. */
+.hero--country {
+  padding: 26px 32px;
+}
+
+.hero-flag-bg {
+  position: absolute;
+  inset: -40px;
+  z-index: -2;
+  filter: blur(30px) saturate(1.2);
+  opacity: 0.4;
+}
+
+/* Assombrit le cote gauche pour garder le titre lisible quel que soit le drapeau. */
+.hero-flag-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(6, 37, 21, 0.9), rgba(6, 37, 21, 0.35) 55%, transparent);
+}
+
+.hero-flag-bg .flag-icon {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+.hero .page-header .flag-icon {
+  width: 3.4em;
+  height: 2.55em;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.hero .back-link {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.hero .back-link:hover {
+  color: white;
+}
+
+.hero .page-header h1 {
+  margin: 0;
+}
+
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: white;
+}
+
+/* Bandeaux Coupes d'Europe : une ambiance par competition. */
+.hero--ldc {
+  background:
+    radial-gradient(500px 260px at 85% 0%, rgba(120, 160, 255, 0.35), transparent 70%),
+    linear-gradient(130deg, #050b2e, #0b1f6b 55%, #1d3aa8);
+}
+
+.hero--el {
+  background:
+    radial-gradient(500px 260px at 85% 0%, rgba(255, 190, 110, 0.35), transparent 70%),
+    linear-gradient(130deg, #2a0f02, #8a3a07 55%, #e0680f);
+}
+
+.hero--ec {
+  background:
+    radial-gradient(500px 260px at 85% 0%, rgba(130, 255, 180, 0.3), transparent 70%),
+    linear-gradient(130deg, #03231a, #0b5a3e 55%, #10a36a);
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding: 20px 16px 40px;
+  }
+
+  .hero {
+    padding: 22px 20px;
+  }
+
+  .hero h1 {
+    font-size: 2.1em;
+  }
 }
 
 /* ---- Generic surfaces ---- */
@@ -146,10 +509,26 @@ input, select, button {
   padding: 8px 12px;
 }
 
+input, select {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:hover, select:hover {
+  border-color: #c9d4ce;
+}
+
 input:focus, select:focus, button:focus {
-  outline: 2px solid var(--primary-soft);
-  outline-offset: 1px;
+  outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(22, 135, 77, 0.18);
+}
+
+.filters {
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 .filters input {
@@ -159,15 +538,21 @@ input:focus, select:focus, button:focus {
 
 button {
   cursor: pointer;
-  background: var(--primary);
+  background: linear-gradient(180deg, #1a9656, var(--primary));
   color: white;
   border-color: var(--primary);
   font-weight: 600;
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 button:hover {
   background: var(--primary-dark);
   border-color: var(--primary-dark);
+  box-shadow: 0 2px 8px rgba(15, 107, 59, 0.25);
+}
+
+button:active {
+  transform: translateY(1px);
 }
 
 /* ---- Tables ---- */
@@ -179,6 +564,10 @@ table {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: var(--shadow);
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 th, td {
@@ -189,12 +578,16 @@ th, td {
 }
 
 thead th {
-  background: var(--surface-muted);
+  background: linear-gradient(180deg, #f7faf8, var(--surface-muted));
   color: var(--text-muted);
   font-weight: 700;
-  font-size: 0.78em;
+  font-size: 0.74em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
+}
+
+tbody tr {
+  transition: background 0.12s ease;
 }
 
 tbody tr:last-child td {
@@ -374,15 +767,16 @@ form.inline {
 /* ---- Country grid (Compétitions) ---- */
 .country-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
   margin-bottom: 8px;
 }
 
 .country-card {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   padding: 14px 16px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -390,25 +784,68 @@ form.inline {
   box-shadow: var(--shadow);
   color: var(--text);
   text-decoration: none;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+/* Liseré vert qui se deploie au survol + fleche d'acces. */
+.country-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--primary), var(--gold));
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+}
+
+.country-card::after {
+  content: "→";
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  color: var(--primary);
+  font-weight: 700;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .country-card:hover {
   text-decoration: none;
-  transform: translateY(-2px);
-  border-color: var(--primary);
-  box-shadow: 0 4px 10px rgba(20, 30, 25, 0.06), 0 8px 24px rgba(20, 30, 25, 0.08);
+  transform: translateY(-3px);
+  border-color: rgba(22, 135, 77, 0.45);
+  box-shadow: var(--shadow-lg);
+}
+
+.country-card:hover::before {
+  transform: scaleY(1);
+}
+
+.country-card:hover::after {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .country-card .flag-icon {
-  width: 2em;
-  height: 1.5em;
+  width: 2.6em;
+  height: 1.95em;
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease;
+}
+
+.country-card:hover .flag-icon {
+  transform: scale(1.08) rotate(-3deg);
 }
 
 .country-card-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -421,95 +858,166 @@ form.inline {
 
 .country-card-badges {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
 /* ---- Continental competitions ---- */
 .continental-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
   margin-bottom: 8px;
 }
 
 .continental-card {
+  --cc-from: #050b2e;
+  --cc-to: #1d3aa8;
+  --cc-glow: rgba(120, 160, 255, 0.45);
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  background: linear-gradient(135deg, #eef4ff, #ffffff);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  color: var(--text);
+  gap: 16px;
+  min-height: 108px;
+  padding: 20px 22px;
+  background:
+    radial-gradient(260px 140px at 100% 0%, var(--cc-glow), transparent 70%),
+    linear-gradient(135deg, var(--cc-from), var(--cc-to));
+  border: none;
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+  color: white;
   text-decoration: none;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+/* Etoiles en filigrane, clin d'oeil au logo des coupes d'Europe. */
+.continental-card::after {
+  content: "★";
+  position: absolute;
+  right: -10px;
+  bottom: -38px;
+  font-size: 130px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.08);
+  z-index: -1;
+  transition: transform 0.4s ease;
 }
 
 .continental-card:hover {
   text-decoration: none;
-  border-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: 0 14px 34px rgba(5, 11, 46, 0.35);
+}
+
+.continental-card:hover::after {
+  transform: rotate(25deg) scale(1.1);
+}
+
+.continental-card--el {
+  --cc-from: #3a1403;
+  --cc-to: #e0680f;
+  --cc-glow: rgba(255, 200, 120, 0.45);
+}
+
+.continental-card--ec {
+  --cc-from: #03231a;
+  --cc-to: #10a36a;
+  --cc-glow: rgba(150, 255, 190, 0.4);
 }
 
 .continental-card .country-card-name {
   white-space: normal;
+  font-family: var(--font-display);
+  font-size: 1.45em;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+
+.continental-card .badge-continental {
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .continental-mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 50px;
+  height: 50px;
   border-radius: 999px;
-  background: var(--accent);
-  color: white;
-  font-size: 1.1em;
+  background: rgba(255, 255, 255, 0.14);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  color: var(--gold);
+  font-size: 1.5em;
   flex-shrink: 0;
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.15);
 }
 
-/* ---- Tabs (country / competition detail) ---- */
+/* ---- Tabs (country / competition detail) : barre segmentee ---- */
 .tab-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 20px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px;
+  margin-bottom: 22px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
 }
 
 .tab-btn {
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
+  border-radius: 999px;
   color: var(--text-muted);
   font-weight: 600;
-  padding: 10px 4px;
-  margin-right: 22px;
+  padding: 8px 18px;
+  box-shadow: none;
 }
 
 .tab-btn:hover {
-  background: transparent;
+  background: var(--surface-muted);
   color: var(--text);
+  box-shadow: none;
 }
 
 .tab-btn.active {
-  color: var(--primary-dark);
-  border-bottom-color: var(--primary);
+  color: white;
+  background: linear-gradient(135deg, var(--pitch-800), var(--primary));
+  box-shadow: 0 3px 10px rgba(15, 107, 59, 0.3);
 }
 
 .sub-tab-bar {
   margin-top: -8px;
   margin-bottom: 16px;
+  padding: 4px;
+  box-shadow: none;
+  background: var(--surface-muted);
 }
 
 .sub-tab-bar .tab-btn {
-  font-size: 0.88em;
-  padding: 8px 4px;
-  margin-right: 16px;
+  font-size: 0.86em;
+  padding: 6px 14px;
+}
+
+.sub-tab-bar .tab-btn.active {
+  background: var(--surface);
+  color: var(--primary-dark);
+  box-shadow: 0 1px 4px rgba(20, 30, 25, 0.12);
 }
 
 .tab-btn:disabled {
   color: #c2cac5;
   cursor: not-allowed;
+  background: transparent;
 }
 
 .page-header {
@@ -534,11 +1042,20 @@ form.inline {
 
 .empty-state {
   color: var(--text-muted);
-  padding: 24px;
+  padding: 32px 24px;
   text-align: center;
-  background: var(--surface-muted);
+  background: var(--surface);
+  border: 1px dashed #cbd6d0;
   border-radius: var(--radius);
   margin-bottom: 24px;
+}
+
+.empty-state::before {
+  content: "⚽";
+  display: block;
+  font-size: 1.8em;
+  margin-bottom: 8px;
+  opacity: 0.5;
 }
 
 details.add-form {

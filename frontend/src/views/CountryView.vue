@@ -1,10 +1,17 @@
 <template>
-  <router-link class="back-link" to="/">← Toutes les compétitions</router-link>
-  <div class="page-header">
-    <FlagIcon :country="country" />
-    <h1>{{ country }}</h1>
-  </div>
-  <p v-if="loaded" class="section-intro">Saison {{ season }}</p>
+  <section class="hero hero--country">
+    <div class="hero-flag-bg" aria-hidden="true"><FlagIcon :country="country" /></div>
+    <router-link class="back-link" to="/">← Toutes les compétitions</router-link>
+    <div class="page-header">
+      <FlagIcon :country="country" />
+      <h1>{{ country }}</h1>
+    </div>
+    <div v-if="loaded" class="hero-meta">
+      <span class="hero-chip">📅 Saison {{ season }}</span>
+      <span v-if="league" class="hero-chip">🏟️ Championnat</span>
+      <span v-if="cup" class="hero-chip">🏆 Coupe nationale</span>
+    </div>
+  </section>
 
   <div class="tab-bar">
     <button class="tab-btn" :class="{ active: activeTab === 'classement' }" @click="activeTab = 'classement'">Classement</button>

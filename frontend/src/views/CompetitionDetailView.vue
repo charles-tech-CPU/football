@@ -1,11 +1,15 @@
 <template>
-  <router-link class="back-link" to="/">← Toutes les compétitions</router-link>
-  <div class="page-header">
-    <h1>{{ competition?.name ?? '...' }}</h1>
-  </div>
-  <p v-if="competition" class="section-intro">
-    <span class="badge badge-continental">Coupe d'Europe</span>
-  </p>
+  <section class="hero" :class="competition ? `hero--${competition.code.toLowerCase()}` : null">
+    <router-link class="back-link" to="/">← Toutes les compétitions</router-link>
+    <div class="page-header">
+      <span class="continental-mark">★</span>
+      <h1>{{ competition?.name ?? '...' }}</h1>
+    </div>
+    <div v-if="competition" class="hero-meta">
+      <span class="hero-chip">🏆 Coupe d'Europe</span>
+      <span class="hero-chip">📅 Saison {{ competition.season }}</span>
+    </div>
+  </section>
 
   <div v-if="competition" class="tab-bar">
     <button class="tab-btn" :class="{ active: activeTab === 'classement' }" @click="activeTab = 'classement'">Classement</button>

@@ -19,8 +19,8 @@
         </thead>
         <tbody>
           <tr v-for="(row, index) in grp.rows" :key="row.teamId" :class="rowClass(row, grp.baseIndex + index, grp)">
-            <td>
-              {{ grp.baseIndex + index + 1 }}
+            <td class="col-rank">
+              <span class="rank-num">{{ grp.baseIndex + index + 1 }}</span>
               <span
                 v-for="(m, mi) in markersFor(grp.baseIndex + index + 1)"
                 :key="mi"
@@ -32,7 +32,7 @@
               <span class="team-cell">
                 <TeamLogo :name="row.teamName" :logo-path="row.teamLogoPath" />
                 <FlagIcon v-if="showFlags" :country="row.teamCountry" />
-                {{ row.teamName }}
+                <span class="team-name">{{ row.teamName }}</span>
               </span>
             </td>
             <td>{{ row.played }}</td>
@@ -41,8 +41,8 @@
             <td>{{ row.lost }}</td>
             <td>{{ row.goalsFor }}</td>
             <td>{{ row.goalsAgainst }}</td>
-            <td>{{ row.goalDifference > 0 ? '+' : '' }}{{ row.goalDifference }}</td>
-            <td><strong>{{ row.points }}</strong></td>
+            <td :class="row.goalDifference > 0 ? 'diff-pos' : row.goalDifference < 0 ? 'diff-neg' : ''">{{ row.goalDifference > 0 ? '+' : '' }}{{ row.goalDifference }}</td>
+            <td><span class="pts-pill">{{ row.points }}</span></td>
           </tr>
         </tbody>
       </table>
@@ -181,5 +181,48 @@ function rowClass(row, index, grp) {
 .rank-marker {
   margin-left: 4px;
   cursor: help;
+}
+
+.col-rank {
+  white-space: nowrap;
+}
+
+.rank-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9em;
+  height: 1.9em;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9em;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.team-name {
+  font-weight: 600;
+}
+
+.diff-pos {
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.diff-neg {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.pts-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.3em;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-weight: 800;
+  color: white;
+  background: linear-gradient(135deg, var(--pitch-800), var(--primary));
 }
 </style>

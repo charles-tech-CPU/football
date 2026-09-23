@@ -1,6 +1,9 @@
 <template>
-  <h1>Calendrier</h1>
-  <p class="section-intro">Matchs pas encore joués (hors reportés/suspendus), du plus proche au plus lointain. Filtrable par type de compétition, 20 par page.</p>
+  <section class="hero">
+    <span class="hero-eyebrow">Clubs</span>
+    <h1>Calendrier</h1>
+    <p class="section-intro">Matchs pas encore joués (hors reportés/suspendus), du plus proche au plus lointain. Filtrable par type de compétition, 20 par page.</p>
+  </section>
 
   <div class="filters">
     <select v-model="typeFilter" aria-label="Filtrer par type de compétition" @change="onFilterChange">

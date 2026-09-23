@@ -1,6 +1,9 @@
 <template>
-  <h1>Classements internationaux</h1>
-  <p class="section-intro">Classements des compétitions de sélections nationales, saison 2026-2027, recalculés en direct comme pour les championnats de clubs.</p>
+  <section class="hero">
+    <span class="hero-eyebrow">Sélections nationales</span>
+    <h1>Classements internationaux</h1>
+    <p class="section-intro">Classements des compétitions de sélections nationales, saison 2026-2027, recalculés en direct comme pour les championnats de clubs.</p>
+  </section>
 
   <div class="tab-bar">
     <button

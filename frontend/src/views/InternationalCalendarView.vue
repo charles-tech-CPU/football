@@ -1,9 +1,12 @@
 <template>
-  <h1>Calendrier international</h1>
-  <p class="section-intro">
-    Sélections nationales, saison 2026-2027, toutes confédérations. Équipes fixes (pas de
-    correction possible ici) ; date, heure, score et statut restent modifiables au fil des rencontres.
-  </p>
+  <section class="hero">
+    <span class="hero-eyebrow">Sélections nationales</span>
+    <h1>Calendrier international</h1>
+    <p class="section-intro">
+      Sélections nationales, saison 2026-2027, toutes confédérations. Équipes fixes (pas de
+      correction possible ici) ; date, heure, score et statut restent modifiables au fil des rencontres.
+    </p>
+  </section>
 
   <div class="filters">
     <select v-model="confederationFilter" aria-label="Filtrer par confédération">

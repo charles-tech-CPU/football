@@ -1,10 +1,13 @@
 <template>
-  <h1>Classement UEFA</h1>
-  <p class="section-intro">
-    Coefficient UEFA des clubs et des pays. Colonnes reprises telles quelles du fichier source,
-    sauf "Pts 2027" (saison en cours) : recalculee en direct a partir des matchs de phase de
-    ligue LDC/EL/EC deja saisis (victoire = 2 pts, nul = 1 pt, defaite = 0 pt).
-  </p>
+  <section class="hero">
+    <span class="hero-eyebrow">Coefficients</span>
+    <h1>Classement UEFA</h1>
+    <p class="section-intro">
+      Coefficient UEFA des clubs et des pays. Colonnes reprises telles quelles du fichier source,
+      sauf "Pts 2027" (saison en cours) : recalculee en direct a partir des matchs de phase de
+      ligue LDC/EL/EC deja saisis (victoire = 2 pts, nul = 1 pt, defaite = 0 pt).
+    </p>
+  </section>
 
   <div class="tab-bar">
     <button class="tab-btn" :class="{ active: activeTab === 'clubs' }" @click="activeTab = 'clubs'">Clubs</button>

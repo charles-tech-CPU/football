@@ -1,10 +1,32 @@
 <template>
-  <h1>Compétitions</h1>
-  <p class="section-intro">54 championnats européens, leurs coupes nationales, et les coupes d'Europe.</p>
+  <section class="hero">
+    <span class="hero-eyebrow">Football européen</span>
+    <h1>Compétitions</h1>
+    <p class="section-intro">Championnats européens, leurs coupes nationales, et les coupes d'Europe.</p>
 
-  <div class="filters">
-    <input v-model="search" aria-label="Rechercher un pays ou une compétition" placeholder="Rechercher un pays ou une compétition..." />
-  </div>
+    <div v-if="loaded" class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-value">{{ countries.length }}</span>
+        <span class="hero-stat-label">Pays</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value">{{ leagueCount }}</span>
+        <span class="hero-stat-label">Championnats</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value">{{ cupCount }}</span>
+        <span class="hero-stat-label">Coupes nationales</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-value">{{ continental.length }}</span>
+        <span class="hero-stat-label">Coupes d'Europe</span>
+      </div>
+    </div>
+
+    <div class="hero-search">
+      <input v-model="search" aria-label="Rechercher un pays ou une compétition" placeholder="Rechercher un pays ou une compétition..." />
+    </div>
+  </section>
 
   <template v-if="filteredContinental.length">
     <h2>Coupes d'Europe</h2>
@@ -13,6 +35,7 @@
         v-for="c in filteredContinental"
         :key="c.id"
         class="continental-card"
+        :class="`continental-card--${c.code.toLowerCase()}`"
         :to="`/competitions/${c.id}`"
       >
         <span class="continental-mark">★</span>
@@ -96,7 +119,19 @@ const countries = computed(() => {
   return [...byCountry.values()].sort((a, b) => a.country.localeCompare(b.country))
 })
 
-const continental = computed(() => competitions.value.filter(c => c.type === 'CONTINENTAL_CUP'))
+// LDC > EL > EC, puis le reste par ordre alphabetique.
+const CONTINENTAL_ORDER = ['LDC', 'EL', 'EC']
+const continentalRank = c => {
+  const i = CONTINENTAL_ORDER.indexOf(c.code)
+  return i === -1 ? CONTINENTAL_ORDER.length : i
+}
+const continental = computed(() =>
+  competitions.value
+    .filter(c => c.type === 'CONTINENTAL_CUP')
+    .sort((a, b) => continentalRank(a) - continentalRank(b) || a.name.localeCompare(b.name))
+)
+const leagueCount = computed(() => countries.value.filter(c => c.league).length)
+const cupCount = computed(() => countries.value.filter(c => c.cup).length)
 
 const filteredCountries = computed(() => {
   const q = search.value.trim().toLowerCase()
