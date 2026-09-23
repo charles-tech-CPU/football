@@ -26,6 +26,4 @@ public record CountryUefaRankingDto(
         Integer nb2024,
         Integer nb2023,
         /** "BLUE" (LDC), "ORANGE" (EL), "YELLOW" (EC) ou "RED" (aucun) : cf. UefaRankingService.colorCode. */
-        String colorCode
-) {
-}
+        String colorCode) {}

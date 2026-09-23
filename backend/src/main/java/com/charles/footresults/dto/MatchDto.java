@@ -3,7 +3,6 @@ package com.charles.footresults.dto;
 import com.charles.footresults.domain.CompetitionType;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.MatchStatus;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -29,8 +28,7 @@ public record MatchDto(
         Integer score2,
         Integer penaltyScore1,
         Integer penaltyScore2,
-        MatchStatus status
-) {
+        MatchStatus status) {
     public static MatchDto from(Match m) {
         return new MatchDto(
                 m.getId(),
@@ -54,7 +52,6 @@ public record MatchDto(
                 m.getScore2(),
                 m.getPenaltyScore1(),
                 m.getPenaltyScore2(),
-                m.getStatus()
-        );
+                m.getStatus());
     }
 }

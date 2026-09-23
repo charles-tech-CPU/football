@@ -3,13 +3,12 @@ package com.charles.footresults.repository;
 import com.charles.footresults.domain.CompetitionType;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.MatchStatus;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.util.List;
 
 public interface MatchRepository extends JpaRepository<Match, Long> {
 
@@ -48,8 +47,9 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
             + "AND (:type IS NULL OR m.competition.type = :type) "
             + "AND (:code IS NULL OR m.competition.code = :code) "
             + "ORDER BY m.date ASC NULLS LAST, m.time ASC NULLS LAST")
-    Page<Match> findUpcomingFiltered(@Param("excludedStatuses") List<MatchStatus> excludedStatuses,
-                                      @Param("type") CompetitionType type,
-                                      @Param("code") String code,
-                                      Pageable pageable);
+    Page<Match> findUpcomingFiltered(
+            @Param("excludedStatuses") List<MatchStatus> excludedStatuses,
+            @Param("type") CompetitionType type,
+            @Param("code") String code,
+            Pageable pageable);
 }

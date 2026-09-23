@@ -9,13 +9,12 @@ import com.charles.footresults.dto.HeadToHeadCellDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
-import org.springframework.stereotype.Service;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Service;
 
 /**
  * Classement et tete-a-tete ne sont jamais stockes : ils sont recalcules a
@@ -58,12 +57,14 @@ public class StandingsService {
      */
     public List<StandingRowDto> computeStandingsForRound(Long competitionId, String roundLabelPart) {
         Map<Long, TeamTally> byTeam = new LinkedHashMap<>();
-        for (Match m : matchRepository.findByCompetitionIdAndStatusAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
-                competitionId, MatchStatus.COMPLETED, roundLabelPart)) {
+        for (Match m :
+                matchRepository.findByCompetitionIdAndStatusAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
+                        competitionId, MatchStatus.COMPLETED, roundLabelPart)) {
             tallyFor(byTeam, m.getTeam1()).addResult(m.getScore1(), m.getScore2());
             tallyFor(byTeam, m.getTeam2()).addResult(m.getScore2(), m.getScore1());
         }
-        List<StandingRowDto> rows = byTeam.values().stream().map(t -> t.toDto(null)).toList();
+        List<StandingRowDto> rows =
+                byTeam.values().stream().map(t -> t.toDto(null)).toList();
         return sortRows(rows);
     }
 
@@ -109,8 +110,11 @@ public class StandingsService {
         // avant "Ligue B - ..."), independant des resultats.
         Comparator<Map.Entry<String, List<StandingRowDto>>> groupOrder = international
                 ? Map.Entry.comparingByKey()
-                : Comparator.comparingInt((Map.Entry<String, List<StandingRowDto>> e) ->
-                        e.getValue().stream().mapToInt(StandingRowDto::points).max().orElse(0)).reversed();
+                : Comparator.comparingInt((Map.Entry<String, List<StandingRowDto>> e) -> e.getValue().stream()
+                                .mapToInt(StandingRowDto::points)
+                                .max()
+                                .orElse(0))
+                        .reversed();
         List<StandingRowDto> result = byGroup.entrySet().stream()
                 .sorted(groupOrder)
                 .map(e -> sortRows(e.getValue()))
@@ -122,10 +126,12 @@ public class StandingsService {
 
     private List<StandingRowDto> sortRows(List<StandingRowDto> rows) {
         return rows.stream()
-                .sorted(Comparator
-                        .comparingInt(StandingRowDto::points).reversed()
-                        .thenComparing(Comparator.comparingInt(StandingRowDto::goalDifference).reversed())
-                        .thenComparing(Comparator.comparingInt(StandingRowDto::goalsFor).reversed()))
+                .sorted(Comparator.comparingInt(StandingRowDto::points)
+                        .reversed()
+                        .thenComparing(Comparator.comparingInt(StandingRowDto::goalDifference)
+                                .reversed())
+                        .thenComparing(Comparator.comparingInt(StandingRowDto::goalsFor)
+                                .reversed()))
                 .toList();
     }
 
@@ -138,8 +144,8 @@ public class StandingsService {
         }
 
         List<HeadToHeadCellDto> result = new ArrayList<>();
-        tally.forEach((teamAId, opponents) -> opponents.forEach((teamBId, wdl) ->
-                result.add(new HeadToHeadCellDto(teamAId, teamBId, wdl[0], wdl[1], wdl[2]))));
+        tally.forEach((teamAId, opponents) -> opponents.forEach(
+                (teamBId, wdl) -> result.add(new HeadToHeadCellDto(teamAId, teamBId, wdl[0], wdl[1], wdl[2]))));
         return result;
     }
 
@@ -155,8 +161,8 @@ public class StandingsService {
         if (goalsA == null || goalsB == null) {
             return;
         }
-        int[] wdl = tally.computeIfAbsent(teamAId, id -> new LinkedHashMap<>())
-                .computeIfAbsent(teamBId, id -> new int[3]);
+        int[] wdl =
+                tally.computeIfAbsent(teamAId, id -> new LinkedHashMap<>()).computeIfAbsent(teamBId, id -> new int[3]);
         if (goalsA > goalsB) {
             wdl[0]++;
         } else if (goalsA.equals(goalsB)) {
@@ -198,8 +204,20 @@ public class StandingsService {
 
         private StandingRowDto toDto(String group) {
             int points = won * POINTS_WIN + drawn * POINTS_DRAW;
-            return new StandingRowDto(team.getId(), team.getName(), team.getLogoPath(), team.getCountry(), played, won, drawn, lost,
-                    goalsFor, goalsAgainst, goalsFor - goalsAgainst, points, group);
+            return new StandingRowDto(
+                    team.getId(),
+                    team.getName(),
+                    team.getLogoPath(),
+                    team.getCountry(),
+                    played,
+                    won,
+                    drawn,
+                    lost,
+                    goalsFor,
+                    goalsAgainst,
+                    goalsFor - goalsAgainst,
+                    points,
+                    group);
         }
     }
 }

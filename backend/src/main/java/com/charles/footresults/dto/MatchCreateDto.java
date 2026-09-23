@@ -2,7 +2,6 @@ package com.charles.footresults.dto;
 
 import com.charles.footresults.domain.MatchStatus;
 import jakarta.validation.constraints.NotNull;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -19,6 +18,4 @@ public record MatchCreateDto(
         Integer penaltyScore1,
         Integer penaltyScore2,
         /** Optionnel : force un statut (REPORTE/SUSPENDU/FORFAIT). Si null, deduit des scores (COMPLETED/SCHEDULED). */
-        MatchStatus status
-) {
-}
+        MatchStatus status) {}

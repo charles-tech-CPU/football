@@ -12,7 +12,8 @@ import lombok.Setter;
  * fichier source), donc saisis a la main plutot que calcules.
  */
 @Entity
-@Table(name = "team_competition_status",
+@Table(
+        name = "team_competition_status",
         uniqueConstraints = @UniqueConstraint(columnNames = {"competition_id", "team_id"}))
 @Getter
 @Setter

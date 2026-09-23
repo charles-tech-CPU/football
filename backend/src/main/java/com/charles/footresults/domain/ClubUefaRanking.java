@@ -1,11 +1,10 @@
 package com.charles.footresults.domain;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.math.BigDecimal;
 
 /**
  * Une ligne de l'onglet UEFA du fichier Excel source (classement des clubs, coefficient

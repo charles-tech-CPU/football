@@ -11,11 +11,10 @@ import com.charles.footresults.repository.TeamRepository;
 import com.charles.footresults.service.TeamService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/teams")
@@ -26,8 +25,11 @@ public class TeamController {
     private final TeamCompetitionStatusRepository teamCompetitionStatusRepository;
     private final TeamService teamService;
 
-    public TeamController(TeamRepository teamRepository, CompetitionRepository competitionRepository,
-                           TeamCompetitionStatusRepository teamCompetitionStatusRepository, TeamService teamService) {
+    public TeamController(
+            TeamRepository teamRepository,
+            CompetitionRepository competitionRepository,
+            TeamCompetitionStatusRepository teamCompetitionStatusRepository,
+            TeamService teamService) {
         this.teamRepository = teamRepository;
         this.competitionRepository = competitionRepository;
         this.teamCompetitionStatusRepository = teamCompetitionStatusRepository;
@@ -43,13 +45,14 @@ public class TeamController {
      * dans cette competition (tours de qualification) en repli.
      */
     @GetMapping
-    public List<TeamDto> findAll(@RequestParam(required = false) String country,
-                                  @RequestParam(required = false) Long competitionId) {
+    public List<TeamDto> findAll(
+            @RequestParam(required = false) String country, @RequestParam(required = false) Long competitionId) {
         List<Team> source = teamRepository.findAll();
         String countryFilter = country;
 
         if (competitionId != null) {
-            Competition competition = competitionRepository.findById(competitionId)
+            Competition competition = competitionRepository
+                    .findById(competitionId)
                     .orElseThrow(() -> new EntityNotFoundException("Competition introuvable : " + competitionId));
             if (competition.getCountry() != null) {
                 countryFilter = competition.getCountry();
@@ -71,7 +74,9 @@ public class TeamController {
 
     @GetMapping("/{id}")
     public TeamDto findOne(@PathVariable Long id) {
-        return teamRepository.findById(id).map(TeamDto::from)
+        return teamRepository
+                .findById(id)
+                .map(TeamDto::from)
                 .orElseThrow(() -> new EntityNotFoundException("Equipe introuvable : " + id));
     }
 
@@ -84,7 +89,8 @@ public class TeamController {
 
     @PutMapping("/{id}")
     public TeamDto update(@PathVariable Long id, @Valid @RequestBody TeamCreateDto dto) {
-        Team team = teamRepository.findById(id)
+        Team team = teamRepository
+                .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Equipe introuvable : " + id));
         team.setName(dto.name());
         team.setCountry(dto.country());

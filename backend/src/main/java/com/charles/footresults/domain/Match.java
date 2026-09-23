@@ -1,12 +1,11 @@
 package com.charles.footresults.domain;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.LocalDate;
-import java.time.LocalTime;
 
 /**
  * Un match de football (un seul match, pas de "best of" comme au LoL).

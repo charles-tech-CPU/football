@@ -17,6 +17,4 @@ public record ClubUefaRankingDto(
         BigDecimal points2026,
         BigDecimal points2025,
         BigDecimal points2024,
-        BigDecimal points2023
-) {
-}
+        BigDecimal points2023) {}

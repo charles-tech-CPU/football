@@ -9,6 +9,4 @@ public record CompetitionCreateDto(
         @NotBlank String name,
         @NotNull CompetitionType type,
         String country,
-        @NotNull Integer season
-) {
-}
+        @NotNull Integer season) {}

@@ -3,11 +3,10 @@ package com.charles.footresults.web;
 import com.charles.footresults.dto.ClubUefaRankingDto;
 import com.charles.footresults.dto.CountryUefaRankingDto;
 import com.charles.footresults.service.UefaRankingService;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/uefa-rankings")

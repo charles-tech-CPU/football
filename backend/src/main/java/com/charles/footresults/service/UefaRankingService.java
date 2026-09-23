@@ -10,8 +10,6 @@ import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.ClubUefaRankingRepository;
 import com.charles.footresults.repository.CountryUefaRankingRepository;
 import com.charles.footresults.repository.MatchRepository;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -22,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.springframework.stereotype.Service;
 
 /**
  * Classements UEFA (clubs et pays), importes des onglets UEFA/PAYS du fichier Excel source
@@ -66,15 +65,25 @@ public class UefaRankingService {
 
     private static final Pattern LEG_SUFFIX = Pattern.compile("-\\s*(ALLER|RETOUR)\\s*$", Pattern.CASE_INSENSITIVE);
 
-    private enum RoundCategory { QUALIFYING_TIE, PRE_LEAGUE_BARRAGE, LEAGUE_PHASE, POST_LEAGUE_BARRAGE, KNOCKOUT_TIE, UNKNOWN }
+    private enum RoundCategory {
+        QUALIFYING_TIE,
+        PRE_LEAGUE_BARRAGE,
+        LEAGUE_PHASE,
+        POST_LEAGUE_BARRAGE,
+        KNOCKOUT_TIE,
+        UNKNOWN
+    }
 
     private final ClubUefaRankingRepository clubRepository;
     private final CountryUefaRankingRepository countryRepository;
     private final MatchRepository matchRepository;
     private final StandingsService standingsService;
 
-    public UefaRankingService(ClubUefaRankingRepository clubRepository, CountryUefaRankingRepository countryRepository,
-                               MatchRepository matchRepository, StandingsService standingsService) {
+    public UefaRankingService(
+            ClubUefaRankingRepository clubRepository,
+            CountryUefaRankingRepository countryRepository,
+            MatchRepository matchRepository,
+            StandingsService standingsService) {
         this.clubRepository = clubRepository;
         this.countryRepository = countryRepository;
         this.matchRepository = matchRepository;
@@ -98,7 +107,8 @@ public class UefaRankingService {
                 continue;
             }
             Long teamId = r.getTeam() != null ? r.getTeam().getId() : null;
-            BigDecimal earned = teamId != null ? state.pointsByTeam.getOrDefault(teamId, BigDecimal.ZERO) : BigDecimal.ZERO;
+            BigDecimal earned =
+                    teamId != null ? state.pointsByTeam.getOrDefault(teamId, BigDecimal.ZERO) : BigDecimal.ZERO;
             pointsByCountry.merge(r.getCountry(), earned, BigDecimal::add);
 
             String liveCup = liveCurrentCup(r, state);
@@ -108,12 +118,14 @@ public class UefaRankingService {
                     case "LDC" -> counts[0]++;
                     case "EL" -> counts[1]++;
                     case "EC" -> counts[2]++;
-                    default -> { }
+                    default -> {}
                 }
             }
         }
         return countryRepository.findAllByOrderByUefaRankAsc().stream()
-                .map(r -> toDto(r, pointsByCountry.getOrDefault(r.getCountry(), BigDecimal.ZERO),
+                .map(r -> toDto(
+                        r,
+                        pointsByCountry.getOrDefault(r.getCountry(), BigDecimal.ZERO),
                         aliveCountByCountry.getOrDefault(r.getCountry(), new int[3])))
                 .toList();
     }
@@ -125,8 +137,7 @@ public class UefaRankingService {
         Map<Long, LocalDate> leaguePhaseStart = new HashMap<>();
         for (Match m : matches) {
             if (m.getDate() != null && LEAGUE_PHASE_ROUND.equalsIgnoreCase(trim(m.getRoundLabel()))) {
-                leaguePhaseStart.merge(m.getCompetition().getId(), m.getDate(),
-                        (a, b) -> a.isBefore(b) ? a : b);
+                leaguePhaseStart.merge(m.getCompetition().getId(), m.getDate(), (a, b) -> a.isBefore(b) ? a : b);
             }
         }
 
@@ -137,7 +148,9 @@ public class UefaRankingService {
         for (Match m : matches) {
             RoundCategory category = categorize(m, leaguePhaseStart);
             if (category == RoundCategory.LEAGUE_PHASE) {
-                leaguePhaseByCompetition.computeIfAbsent(m.getCompetition().getId(), k -> new ArrayList<>()).add(m);
+                leaguePhaseByCompetition
+                        .computeIfAbsent(m.getCompetition().getId(), k -> new ArrayList<>())
+                        .add(m);
             }
             if (isTieCategory(category)) {
                 TieKey key = tieKeyFor(m, category);
@@ -163,7 +176,8 @@ public class UefaRankingService {
             if (!complete) {
                 continue;
             }
-            List<StandingRowDto> standings = standingsService.computeStandingsForRound(entry.getKey(), LEAGUE_PHASE_ROUND);
+            List<StandingRowDto> standings =
+                    standingsService.computeStandingsForRound(entry.getKey(), LEAGUE_PHASE_ROUND);
             for (int i = LEAGUE_PHASE_ELIMINATION_RANK; i < standings.size(); i++) {
                 eliminated.add(standings.get(i).teamId());
             }
@@ -173,8 +187,10 @@ public class UefaRankingService {
     }
 
     private boolean isTieCategory(RoundCategory category) {
-        return category == RoundCategory.QUALIFYING_TIE || category == RoundCategory.PRE_LEAGUE_BARRAGE
-                || category == RoundCategory.POST_LEAGUE_BARRAGE || category == RoundCategory.KNOCKOUT_TIE;
+        return category == RoundCategory.QUALIFYING_TIE
+                || category == RoundCategory.PRE_LEAGUE_BARRAGE
+                || category == RoundCategory.POST_LEAGUE_BARRAGE
+                || category == RoundCategory.KNOCKOUT_TIE;
     }
 
     private RoundCategory categorize(Match m, Map<Long, LocalDate> leaguePhaseStart) {
@@ -182,13 +198,18 @@ public class UefaRankingService {
         if (label.contains("PHASE DE LIGUE")) {
             return RoundCategory.LEAGUE_PHASE;
         }
-        if (label.contains("SEIZIEME") || label.contains("HUITIEME") || label.contains("HUITEME")
-                || label.contains("QUART") || label.contains("DEMI") || label.contains("FINALE")) {
+        if (label.contains("SEIZIEME")
+                || label.contains("HUITIEME")
+                || label.contains("HUITEME")
+                || label.contains("QUART")
+                || label.contains("DEMI")
+                || label.contains("FINALE")) {
             return RoundCategory.KNOCKOUT_TIE;
         }
         if (label.contains("BARRAGE")) {
             LocalDate start = leaguePhaseStart.get(m.getCompetition().getId());
-            boolean postLeague = start != null && m.getDate() != null && !m.getDate().isBefore(start);
+            boolean postLeague =
+                    start != null && m.getDate() != null && !m.getDate().isBefore(start);
             return postLeague ? RoundCategory.POST_LEAGUE_BARRAGE : RoundCategory.PRE_LEAGUE_BARRAGE;
         }
         if (label.contains("QUALIF") || label.contains("VOIE PRINCIPALE")) {
@@ -201,23 +222,27 @@ public class UefaRankingService {
         return label == null ? "" : label.toUpperCase();
     }
 
-    private void addResult(Map<Long, BigDecimal> points, Long teamId, RoundCategory category, int goalsFor, int goalsAgainst) {
-        BigDecimal win = switch (category) {
-            case QUALIFYING_TIE, PRE_LEAGUE_BARRAGE -> WIN_QUALIFYING;
-            case LEAGUE_PHASE, POST_LEAGUE_BARRAGE, KNOCKOUT_TIE -> WIN_MAIN;
-            default -> null;
-        };
+    private void addResult(
+            Map<Long, BigDecimal> points, Long teamId, RoundCategory category, int goalsFor, int goalsAgainst) {
+        BigDecimal win =
+                switch (category) {
+                    case QUALIFYING_TIE, PRE_LEAGUE_BARRAGE -> WIN_QUALIFYING;
+                    case LEAGUE_PHASE, POST_LEAGUE_BARRAGE, KNOCKOUT_TIE -> WIN_MAIN;
+                    default -> null;
+                };
         if (win == null) {
             return;
         }
         BigDecimal draw = (category == RoundCategory.QUALIFYING_TIE || category == RoundCategory.PRE_LEAGUE_BARRAGE)
-                ? DRAW_QUALIFYING : DRAW_MAIN;
+                ? DRAW_QUALIFYING
+                : DRAW_MAIN;
         BigDecimal earned = goalsFor > goalsAgainst ? win : goalsFor == goalsAgainst ? draw : BigDecimal.ZERO;
         points.merge(teamId, earned, BigDecimal::add);
     }
 
     private TieKey tieKeyFor(Match m, RoundCategory category) {
-        String stripped = LEG_SUFFIX.matcher(trim(m.getRoundLabel())).replaceAll("").trim();
+        String stripped =
+                LEG_SUFFIX.matcher(trim(m.getRoundLabel())).replaceAll("").trim();
         long lo = Math.min(m.getTeam1().getId(), m.getTeam2().getId());
         long hi = Math.max(m.getTeam1().getId(), m.getTeam2().getId());
         return new TieKey(m.getCompetition().getId(), category, stripped, lo, hi);
@@ -277,23 +302,47 @@ public class UefaRankingService {
 
     private ClubUefaRankingDto toDto(ClubUefaRanking r, SeasonState state) {
         Long teamId = r.getTeam() != null ? r.getTeam().getId() : null;
-        BigDecimal points2027 = teamId != null ? state.pointsByTeam.getOrDefault(teamId, BigDecimal.ZERO) : BigDecimal.ZERO;
+        BigDecimal points2027 =
+                teamId != null ? state.pointsByTeam.getOrDefault(teamId, BigDecimal.ZERO) : BigDecimal.ZERO;
         return new ClubUefaRankingDto(
-                r.getId(), r.getUefaRank(), teamId, r.getClubName(),
+                r.getId(),
+                r.getUefaRank(),
+                teamId,
+                r.getClubName(),
                 r.getTeam() != null ? r.getTeam().getLogoPath() : null,
-                r.getCountry(), liveCurrentCup(r, state), r.getTotal(), points2027,
-                r.getPoints2026(), r.getPoints2025(), r.getPoints2024(), r.getPoints2023()
-        );
+                r.getCountry(),
+                liveCurrentCup(r, state),
+                r.getTotal(),
+                points2027,
+                r.getPoints2026(),
+                r.getPoints2025(),
+                r.getPoints2024(),
+                r.getPoints2023());
     }
 
     private CountryUefaRankingDto toDto(CountryUefaRanking r, BigDecimal points2027, int[] aliveCounts) {
         return new CountryUefaRankingDto(
-                r.getId(), r.getUefaRank(), r.getCountry(), r.getTotal(), points2027,
-                r.getPoints2026(), r.getPoints2025(), r.getPoints2024(), r.getPoints2023(),
-                aliveCounts[0], aliveCounts[1], aliveCounts[2], r.getLdcDebut(), r.getElDebut(), r.getEcDebut(),
-                r.getNb2027(), r.getNb2026(), r.getNb2025(), r.getNb2024(), r.getNb2023(),
-                colorCode(aliveCounts)
-        );
+                r.getId(),
+                r.getUefaRank(),
+                r.getCountry(),
+                r.getTotal(),
+                points2027,
+                r.getPoints2026(),
+                r.getPoints2025(),
+                r.getPoints2024(),
+                r.getPoints2023(),
+                aliveCounts[0],
+                aliveCounts[1],
+                aliveCounts[2],
+                r.getLdcDebut(),
+                r.getElDebut(),
+                r.getEcDebut(),
+                r.getNb2027(),
+                r.getNb2026(),
+                r.getNb2025(),
+                r.getNb2024(),
+                r.getNb2023(),
+                colorCode(aliveCounts));
     }
 
     private String colorCode(int[] aliveCounts) {
@@ -303,7 +352,8 @@ public class UefaRankingService {
         return "RED";
     }
 
-    private record TieKey(Long competitionId, RoundCategory category, String strippedLabel, long teamLow, long teamHigh) { }
+    private record TieKey(
+            Long competitionId, RoundCategory category, String strippedLabel, long teamLow, long teamHigh) {}
 
-    private record SeasonState(Map<Long, BigDecimal> pointsByTeam, Set<Long> eliminatedTeamIds) { }
+    private record SeasonState(Map<Long, BigDecimal> pointsByTeam, Set<Long> eliminatedTeamIds) {}
 }

@@ -4,9 +4,8 @@ import com.charles.footresults.dto.TeamStatusDto;
 import com.charles.footresults.dto.TeamStatusUpdateDto;
 import com.charles.footresults.service.TeamStatusService;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/team-status")
@@ -26,8 +25,8 @@ public class TeamStatusController {
 
     /** PUT /api/team-status?competitionId=1&teamId=3 */
     @PutMapping
-    public TeamStatusDto upsert(@RequestParam Long competitionId, @RequestParam Long teamId,
-                                 @Valid @RequestBody TeamStatusUpdateDto dto) {
+    public TeamStatusDto upsert(
+            @RequestParam Long competitionId, @RequestParam Long teamId, @Valid @RequestBody TeamStatusUpdateDto dto) {
         return teamStatusService.upsert(competitionId, teamId, dto);
     }
 }

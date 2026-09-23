@@ -8,6 +8,4 @@ public record QualificationSlotsDto(
         @NotNull @Min(0) Integer elSlots,
         @NotNull @Min(0) Integer eclSlots,
         @NotNull @Min(0) Integer relegationSlots,
-        @NotNull @Min(0) Integer barrageSlots
-) {
-}
+        @NotNull @Min(0) Integer barrageSlots) {}

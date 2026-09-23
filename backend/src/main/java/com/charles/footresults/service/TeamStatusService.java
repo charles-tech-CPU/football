@@ -9,10 +9,9 @@ import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import com.charles.footresults.repository.TeamRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @Transactional
@@ -22,9 +21,10 @@ public class TeamStatusService {
     private final CompetitionRepository competitionRepository;
     private final TeamRepository teamRepository;
 
-    public TeamStatusService(TeamCompetitionStatusRepository statusRepository,
-                              CompetitionRepository competitionRepository,
-                              TeamRepository teamRepository) {
+    public TeamStatusService(
+            TeamCompetitionStatusRepository statusRepository,
+            CompetitionRepository competitionRepository,
+            TeamRepository teamRepository) {
         this.statusRepository = statusRepository;
         this.competitionRepository = competitionRepository;
         this.teamRepository = teamRepository;
@@ -32,15 +32,21 @@ public class TeamStatusService {
 
     @Transactional(readOnly = true)
     public List<TeamStatusDto> findByCompetition(Long competitionId) {
-        return statusRepository.findByCompetitionId(competitionId).stream().map(TeamStatusDto::from).toList();
+        return statusRepository.findByCompetitionId(competitionId).stream()
+                .map(TeamStatusDto::from)
+                .toList();
     }
 
     public TeamStatusDto upsert(Long competitionId, Long teamId, TeamStatusUpdateDto dto) {
-        TeamCompetitionStatus status = statusRepository.findByCompetitionIdAndTeamId(competitionId, teamId)
+        TeamCompetitionStatus status = statusRepository
+                .findByCompetitionIdAndTeamId(competitionId, teamId)
                 .orElseGet(() -> {
-                    Competition competition = competitionRepository.findById(competitionId)
-                            .orElseThrow(() -> new EntityNotFoundException("Competition introuvable : " + competitionId));
-                    Team team = teamRepository.findById(teamId)
+                    Competition competition = competitionRepository
+                            .findById(competitionId)
+                            .orElseThrow(
+                                    () -> new EntityNotFoundException("Competition introuvable : " + competitionId));
+                    Team team = teamRepository
+                            .findById(teamId)
                             .orElseThrow(() -> new EntityNotFoundException("Equipe introuvable : " + teamId));
                     return new TeamCompetitionStatus(competition, team);
                 });

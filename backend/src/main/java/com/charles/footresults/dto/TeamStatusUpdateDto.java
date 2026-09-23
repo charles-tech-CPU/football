@@ -5,6 +5,4 @@ public record TeamStatusUpdateDto(
         boolean promoted,
         boolean previousCupWinner,
         String previousEuropeCompetition,
-        String groupName
-) {
-}
+        String groupName) {}

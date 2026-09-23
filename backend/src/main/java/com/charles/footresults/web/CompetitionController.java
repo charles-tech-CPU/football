@@ -8,11 +8,10 @@ import com.charles.footresults.dto.QualificationSlotsDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/competitions")
@@ -27,19 +26,19 @@ public class CompetitionController {
     /** GET /api/competitions  ou  GET /api/competitions?type=INTERNATIONAL */
     @GetMapping
     public List<CompetitionDto> findAll(@RequestParam(required = false) CompetitionType type) {
-        List<Competition> competitions = type != null
-                ? competitionRepository.findByType(type)
-                : competitionRepository.findAll();
+        List<Competition> competitions =
+                type != null ? competitionRepository.findByType(type) : competitionRepository.findAll();
         return competitions.stream()
-                .sorted(Comparator.comparing(Competition::getType)
-                        .thenComparing(Competition::getCode))
+                .sorted(Comparator.comparing(Competition::getType).thenComparing(Competition::getCode))
                 .map(CompetitionDto::from)
                 .toList();
     }
 
     @GetMapping("/{id}")
     public CompetitionDto findOne(@PathVariable Long id) {
-        return competitionRepository.findById(id).map(CompetitionDto::from)
+        return competitionRepository
+                .findById(id)
+                .map(CompetitionDto::from)
                 .orElseThrow(() -> new EntityNotFoundException("Competition introuvable : " + id));
     }
 
@@ -58,8 +57,10 @@ public class CompetitionController {
 
     /** PATCH /api/competitions/{id}/qualification-slots */
     @PatchMapping("/{id}/qualification-slots")
-    public CompetitionDto updateQualificationSlots(@PathVariable Long id, @Valid @RequestBody QualificationSlotsDto dto) {
-        Competition competition = competitionRepository.findById(id)
+    public CompetitionDto updateQualificationSlots(
+            @PathVariable Long id, @Valid @RequestBody QualificationSlotsDto dto) {
+        Competition competition = competitionRepository
+                .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Competition introuvable : " + id));
         competition.setLdcSlots(dto.ldcSlots());
         competition.setElSlots(dto.elSlots());

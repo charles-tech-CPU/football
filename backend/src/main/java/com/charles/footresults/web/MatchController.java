@@ -5,10 +5,9 @@ import com.charles.footresults.dto.MatchDto;
 import com.charles.footresults.dto.MatchPageDto;
 import com.charles.footresults.service.MatchService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/matches")
@@ -22,8 +21,8 @@ public class MatchController {
 
     /** GET /api/matches?competitionId=1  ou  GET /api/matches?teamId=3 */
     @GetMapping
-    public List<MatchDto> find(@RequestParam(required = false) Long competitionId,
-                                @RequestParam(required = false) Long teamId) {
+    public List<MatchDto> find(
+            @RequestParam(required = false) Long competitionId, @RequestParam(required = false) Long teamId) {
         if (competitionId != null) {
             return matchService.findByCompetition(competitionId);
         }
@@ -44,9 +43,10 @@ public class MatchController {
      * filtre optionnel parmi "league"/"cup"/"ldc"/"el"/"ec" (defaut : tout).
      */
     @GetMapping("/upcoming")
-    public MatchPageDto upcoming(@RequestParam(defaultValue = "0") int page,
-                                  @RequestParam(defaultValue = "20") int size,
-                                  @RequestParam(required = false) String filter) {
+    public MatchPageDto upcoming(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String filter) {
         return matchService.findUpcoming(page, size, filter);
     }
 

@@ -8,10 +8,14 @@ public record TeamStatusDto(
         boolean promoted,
         boolean previousCupWinner,
         String previousEuropeCompetition,
-        String groupName
-) {
+        String groupName) {
     public static TeamStatusDto from(TeamCompetitionStatus s) {
-        return new TeamStatusDto(s.getTeam().getId(), s.isDefendingChampion(), s.isPromoted(), s.isPreviousCupWinner(),
-                s.getPreviousEuropeCompetition(), s.getGroupName());
+        return new TeamStatusDto(
+                s.getTeam().getId(),
+                s.isDefendingChampion(),
+                s.isPromoted(),
+                s.isPreviousCupWinner(),
+                s.getPreviousEuropeCompetition(),
+                s.getGroupName());
     }
 }

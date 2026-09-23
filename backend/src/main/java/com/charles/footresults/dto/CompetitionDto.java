@@ -14,10 +14,19 @@ public record CompetitionDto(
         Integer elSlots,
         Integer eclSlots,
         Integer relegationSlots,
-        Integer barrageSlots
-) {
+        Integer barrageSlots) {
     public static CompetitionDto from(Competition c) {
-        return new CompetitionDto(c.getId(), c.getCode(), c.getName(), c.getType(), c.getCountry(), c.getSeason(),
-                c.getLdcSlots(), c.getElSlots(), c.getEclSlots(), c.getRelegationSlots(), c.getBarrageSlots());
+        return new CompetitionDto(
+                c.getId(),
+                c.getCode(),
+                c.getName(),
+                c.getType(),
+                c.getCountry(),
+                c.getSeason(),
+                c.getLdcSlots(),
+                c.getElSlots(),
+                c.getEclSlots(),
+                c.getRelegationSlots(),
+                c.getBarrageSlots());
     }
 }
