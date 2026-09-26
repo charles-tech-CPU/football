@@ -14,7 +14,8 @@ public record CompetitionDto(
         Integer elSlots,
         Integer eclSlots,
         Integer relegationSlots,
-        Integer barrageSlots) {
+        Integer barrageSlots,
+        Integer totalRounds) {
     public static CompetitionDto from(Competition c) {
         return new CompetitionDto(
                 c.getId(),
@@ -27,6 +28,7 @@ public record CompetitionDto(
                 c.getElSlots(),
                 c.getEclSlots(),
                 c.getRelegationSlots(),
-                c.getBarrageSlots());
+                c.getBarrageSlots(),
+                c.getTotalRounds());
     }
 }

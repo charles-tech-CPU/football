@@ -162,6 +162,9 @@
             <label>Places de relégation
               <input v-model.number="slots.relegationSlots" class="score-input" type="number" min="0" />
             </label>
+            <label>Nombre de journées
+              <input v-model.number="slots.totalRounds" class="score-input" type="number" min="1" />
+            </label>
             <button type="submit">Enregistrer</button>
           </form>
 
@@ -230,7 +233,7 @@ const teamStatusMap = ref({})
 const loaded = ref(false)
 const activeTab = ref('classement')
 const avenirSubTab = ref('championnat')
-const slots = reactive({ ldcSlots: 0, elSlots: 0, eclSlots: 0, relegationSlots: 0, barrageSlots: 0 })
+const slots = reactive({ ldcSlots: 0, elSlots: 0, eclSlots: 0, relegationSlots: 0, barrageSlots: 0, totalRounds: null })
 const statusEdits = reactive({})
 
 const season = computed(() => league.value?.season ?? cup.value?.season ?? '')
@@ -913,6 +916,7 @@ async function load() {
     slots.eclSlots = league.value.eclSlots
     slots.relegationSlots = league.value.relegationSlots
     slots.barrageSlots = league.value.barrageSlots
+    slots.totalRounds = league.value.totalRounds
 
     const needsRawMatches = !!rankConfig.value?.resultsGroupSplit || league.value.code === 'MALTE'
     const [standingsList, statuses, matchList] = await Promise.all([
@@ -947,7 +951,7 @@ async function load() {
 }
 
 async function saveSlots() {
-  const updated = await api.updateQualificationSlots(league.value.id, { ...slots })
+  const updated = await api.updateQualificationSlots(league.value.id, { ...slots, totalRounds: slots.totalRounds || null })
   league.value = { ...league.value, ...updated }
 }
 

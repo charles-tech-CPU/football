@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareByRoundThenDate, roundNumber } from './rounds.js'
+import { compareByRoundThenDate, roundNumber, roundsByRecency } from './rounds.js'
 
 describe('roundNumber', () => {
   it('extrait le premier nombre du libelle de journee', () => {
@@ -36,5 +36,23 @@ describe('compareByRoundThenDate', () => {
       { id: 5, roundLabel: 'Finale', date: '2027-05-30' },
       { id: 4, roundLabel: 'Finale', date: '2027-05-30' }
     ])).toEqual([4, 5])
+  })
+})
+
+describe('roundsByRecency', () => {
+  it('du tour le plus recent au plus ancien, selon la premiere date du tour', () => {
+    expect(roundsByRecency([
+      { roundLabel: 'J1', date: '2026-08-10' },
+      { roundLabel: 'J1', date: '2026-10-01' },
+      { roundLabel: 'J3', date: '2026-08-24' },
+      { roundLabel: 'J2', date: '2026-08-17' }
+    ])).toEqual(['J3', 'J2', 'J1'])
+  })
+
+  it('tours sans date en dernier', () => {
+    expect(roundsByRecency([
+      { roundLabel: 'Barrage', date: null },
+      { roundLabel: 'J1', date: '2026-08-10' }
+    ])).toEqual(['J1', 'Barrage'])
   })
 })

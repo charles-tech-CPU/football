@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { editFromMatch, matchPayload, rowClassFor, statusRowClass, teamChangeLines, teamOptionsFor } from './matchEdit.js'
+import { editFromMatch, isPlayed, matchPayload, rowClassFor, statusRowClass, teamChangeLines, teamOptionsFor } from './matchEdit.js'
 
 const MATCH = {
   id: 7,
@@ -133,5 +133,13 @@ describe('teamOptionsFor', () => {
     teamOptionsFor(teams, null, null)
 
     expect(teams).toEqual(copy)
+  })
+})
+
+describe('isPlayed', () => {
+  it('considere un match joue des que les 2 scores sont saisis', () => {
+    expect(isPlayed({ score1: 0, score2: 0 })).toBe(true)
+    expect(isPlayed({ score1: 2, score2: null })).toBe(false)
+    expect(isPlayed({ score1: null, score2: null })).toBe(false)
   })
 })

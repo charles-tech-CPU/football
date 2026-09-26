@@ -5,6 +5,8 @@
     <p class="section-intro">
       Sélections nationales, saison 2026-2027, toutes confédérations. Équipes fixes (pas de
       correction possible ici) ; date, heure, score et statut restent modifiables au fil des rencontres.
+      Un match dont le score est saisi quitte le calendrier : il apparaît dans l'onglet « Résultats »
+      des classements internationaux.
     </p>
   </section>
 
@@ -81,6 +83,7 @@ import MatchDateTimeCells from '../components/MatchDateTimeCells.vue'
 import MatchScoreCells from '../components/MatchScoreCells.vue'
 import MatchStatusSelect from '../components/MatchStatusSelect.vue'
 import { useMatchEdits } from '../composables/useMatchEdits'
+import { isPlayed } from '../utils/matchEdit.js'
 import { CONFEDERATIONS, confederationForCompetitionCode, confederationBadgeClass } from '../utils/confederations'
 
 const matches = ref([])
@@ -95,13 +98,28 @@ const filteredMatches = computed(() => {
 })
 
 // Equipes non modifiables ici (selections nationales) : pas de liste de clubs a proposer.
-const { edits, error, resetEdits, rowClass, saveMatch } = useMatchEdits({ reload: load })
+const { edits, error, resetEdits, rowClass, saveMatch } = useMatchEdits({ reload: reloadKeepingOrder })
+
+// Matchs joues : dans l'onglet Resultats des classements internationaux, plus ici.
+async function fetchUpcoming() {
+  return (await api.getInternationalMatches()).filter(m => !isPlayed(m))
+}
 
 async function load() {
   loaded.value = false
-  matches.value = await api.getInternationalMatches()
+  matches.value = await fetchUpcoming()
   resetEdits(matches.value)
   loaded.value = true
+}
+
+// Apres un enregistrement : on garde l'ordre affiche (sinon un match dont on change
+// l'heure "saute" ailleurs dans la liste, retriee par date/heure) ; seul un match dont
+// le score vient d'etre saisi disparait.
+async function reloadKeepingOrder() {
+  const position = new Map(matches.value.map((m, i) => [m.id, i]))
+  const fresh = await fetchUpcoming()
+  matches.value = fresh.toSorted((a, b) => (position.get(a.id) ?? Infinity) - (position.get(b.id) ?? Infinity))
+  resetEdits(matches.value)
 }
 
 onMounted(load)

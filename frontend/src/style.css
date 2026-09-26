@@ -498,6 +498,11 @@ nav.tabs-nav a.router-link-exact-active {
   margin-bottom: 20px;
   align-items: center;
   flex-wrap: wrap;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 input, select, button {
@@ -521,14 +526,6 @@ input:focus, select:focus, button:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(22, 135, 77, 0.18);
-}
-
-.filters {
-  padding: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
 }
 
 .filters input {
@@ -844,9 +841,17 @@ form.inline {
 
 .country-card-info {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 5px;
   min-width: 0;
+}
+
+/* Drapeau porteur de la pastille "matchs en retard". */
+.card-flag {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
 }
 
 .country-card-name {
@@ -944,6 +949,7 @@ form.inline {
 }
 
 .continental-mark {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1233,4 +1239,189 @@ tbody tr.standing-orange-dark:hover { background: #fdba74; }
   font-size: 0.72em;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* ---- Grille des resultats (championnats, coupes d'Europe) ---- */
+/* Carte arrondie qui reste dans la page : la grille defile horizontalement a l'interieur,
+   colonne des equipes figee a gauche. */
+.grid-scroll {
+  overflow: auto;
+  max-height: 80vh;
+  margin-bottom: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* Remise a zero du style global des <table> (carte, ombre, largeur 100%). */
+table.results-grid {
+  width: 100%;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  border-collapse: separate;
+  border-spacing: 3px;
+  background: transparent;
+}
+
+table.results-grid th,
+table.results-grid td {
+  border: none;
+  padding: 0;
+  font-size: 0.8em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+table.results-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 0 4px;
+  background: var(--surface);
+  text-transform: none;
+  letter-spacing: normal;
+  vertical-align: bottom;
+}
+
+.grid-col {
+  min-width: 40px;
+}
+
+.grid-col .team-logo,
+.grid-col .flag-icon {
+  display: block;
+  margin: 0 auto 3px;
+}
+
+.grid-col-code {
+  display: block;
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+table.results-grid tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  padding: 0 10px 0 8px;
+  background: var(--surface);
+  text-align: left;
+  font-weight: 600;
+  box-shadow: 6px 0 8px -8px rgba(20, 30, 25, 0.35);
+}
+
+table.results-grid .corner {
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  padding-left: 8px;
+  text-align: left;
+  background: var(--surface);
+}
+
+.corner-hint {
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.grid-row-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.grid-team-abbr {
+  display: none;
+}
+
+table.results-grid td {
+  height: 32px;
+  min-width: 40px;
+  border-radius: 7px;
+  background: var(--surface-muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+table.results-grid tbody tr:hover td,
+table.results-grid tbody tr:hover th {
+  background-color: unset;
+}
+
+table.results-grid td:hover,
+table.results-grid td:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+table.results-grid td.grid-diagonal {
+  background: repeating-linear-gradient(135deg, var(--surface-muted) 0 5px, var(--border) 5px 6px);
+  cursor: default;
+  box-shadow: none;
+  color: transparent;
+}
+
+table.results-grid td.grid-empty {
+  background: transparent;
+  color: #c2cac5;
+  font-weight: 400;
+  cursor: default;
+  box-shadow: none;
+}
+
+table.results-grid td.grid-scheduled {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+table.results-grid td.grid-win { background: #dcf5e6; color: var(--primary-dark); }
+table.results-grid td.grid-draw { background: #fbf3c7; color: #7a5d00; }
+table.results-grid td.grid-loss { background: #fbe0de; color: #a8322a; }
+
+.grid-edit {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  padding: 0 3px;
+}
+
+.grid-edit .score-input {
+  width: 34px;
+  padding: 2px;
+  text-align: center;
+}
+
+.grid-edit button {
+  padding: 2px 6px;
+}
+
+/* Mobile : noms abreges et cellules plus serrees pour voir plus de colonnes. */
+@media (max-width: 700px) {
+  .grid-team-name {
+    display: none;
+  }
+
+  .grid-team-abbr {
+    display: inline;
+  }
+
+  table.results-grid td,
+  .grid-col {
+    min-width: 34px;
+  }
+
+  table.results-grid td {
+    height: 28px;
+  }
 }

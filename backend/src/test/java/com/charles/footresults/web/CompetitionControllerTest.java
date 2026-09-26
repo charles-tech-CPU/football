@@ -25,7 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class CompetitionControllerTest {
 
-    private static final QualificationSlotsDto SLOTS = new QualificationSlotsDto(4, 2, 1, 2, 1);
+    private static final QualificationSlotsDto SLOTS = new QualificationSlotsDto(4, 2, 1, 2, 1, 36);
 
     @Mock
     private CompetitionRepository competitionRepository;
@@ -65,7 +65,18 @@ class CompetitionControllerTest {
 
         assertThat(competitionController.findOne(2L))
                 .isEqualTo(new CompetitionDto(
-                        2L, "FRANCE", "Competition FRANCE", CompetitionType.LEAGUE, "France", 2027, 4, 0, 0, 2, 0));
+                        2L,
+                        "FRANCE",
+                        "Competition FRANCE",
+                        CompetitionType.LEAGUE,
+                        "France",
+                        2027,
+                        4,
+                        0,
+                        0,
+                        2,
+                        0,
+                        null));
     }
 
     @Test
@@ -107,8 +118,9 @@ class CompetitionControllerTest {
                         updated.elSlots(),
                         updated.eclSlots(),
                         updated.relegationSlots(),
-                        updated.barrageSlots()))
-                .containsExactly(4, 2, 1, 2, 1);
+                        updated.barrageSlots(),
+                        updated.totalRounds()))
+                .containsExactly(4, 2, 1, 2, 1, 36);
     }
 
     @Test

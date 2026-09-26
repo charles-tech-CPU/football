@@ -7,6 +7,7 @@
           <tr>
             <th>#</th>
             <th>Équipe</th>
+            <th v-if="pointsFirst">PTS</th>
             <th>MJ</th>
             <th>V</th>
             <th>N</th>
@@ -14,7 +15,7 @@
             <th>BP</th>
             <th>BC</th>
             <th>DIFF</th>
-            <th>PTS</th>
+            <th v-if="!pointsFirst">PTS</th>
           </tr>
         </thead>
         <tbody>
@@ -30,11 +31,12 @@
             </td>
             <td>
               <span class="team-cell">
-                <TeamLogo :name="row.teamName" :logo-path="row.teamLogoPath" />
+                <TeamLogo v-if="showLogos" :name="row.teamName" :logo-path="row.teamLogoPath" />
                 <FlagIcon v-if="showFlags" :country="row.teamCountry" />
                 <span class="team-name">{{ row.teamName }}</span>
               </span>
             </td>
+            <td v-if="pointsFirst"><span class="pts-pill">{{ row.points }}</span></td>
             <td>{{ row.played }}</td>
             <td>{{ row.won }}</td>
             <td>{{ row.drawn }}</td>
@@ -42,7 +44,7 @@
             <td>{{ row.goalsFor }}</td>
             <td>{{ row.goalsAgainst }}</td>
             <td :class="row.goalDifference > 0 ? 'diff-pos' : row.goalDifference < 0 ? 'diff-neg' : ''">{{ row.goalDifference > 0 ? '+' : '' }}{{ row.goalDifference }}</td>
-            <td><span class="pts-pill">{{ row.points }}</span></td>
+            <td v-if="!pointsFirst"><span class="pts-pill">{{ row.points }}</span></td>
           </tr>
         </tbody>
       </table>
@@ -83,6 +85,10 @@ const props = defineProps({
   barrageSlots: { type: Number, default: 0 },
   showBaseLegend: { type: Boolean, default: true },
   showFlags: { type: Boolean, default: false },
+  // Selections nationales : drapeau + nom seulement, sans pastille a initiales.
+  showLogos: { type: Boolean, default: true },
+  // Colonne PTS juste apres l'equipe (avant MJ) plutot qu'en fin de ligne (selections nationales).
+  pointsFirst: { type: Boolean, default: false },
   // Cas particulier (phase de ligue continentale LDC/EL/EC) : decoupage en tranches de
   // rang par couleur, ex: [{ count: 8, class: 'standing-blue' }, { count: 16, class:
   // 'standing-green' }] puis 'standing-red' pour le reste. Independant des places

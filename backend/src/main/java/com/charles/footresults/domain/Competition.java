@@ -53,6 +53,10 @@ public class Competition {
     @Column(name = "barrage_slots", nullable = false)
     private Integer barrageSlots = 0;
 
+    /** Nombre de journees attendues (LEAGUE uniquement), pour suivre l'avancement du calendrier. Null si inconnu. */
+    @Column(name = "total_rounds")
+    private Integer totalRounds;
+
     public Competition(String code, String name, CompetitionType type, String country, Integer season) {
         this.code = code;
         this.name = name;

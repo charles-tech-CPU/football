@@ -29,8 +29,12 @@
       <table class="results-grid">
         <thead>
           <tr>
-            <th class="corner"></th>
-            <th v-for="t in teamOrder" :key="`h-${t.id}`" :title="t.name">{{ shortName(t.name) }}</th>
+            <th class="corner"><span class="corner-hint">Dom. \ Ext.</span></th>
+            <th v-for="t in teamOrder" :key="`h-${t.id}`" class="grid-col" :title="t.name">
+              <TeamLogo :name="t.name" :logo-path="t.logoPath" />
+              <FlagIcon v-if="showFlags" :country="t.country" />
+              <span class="grid-col-code">{{ shortName(t.name) }}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -39,7 +43,8 @@
               <span class="grid-row-header">
                 <TeamLogo :name="row.name" :logo-path="row.logoPath" />
                 <FlagIcon v-if="showFlags" :country="row.country" />
-                {{ row.name }}
+                <span class="grid-team-name">{{ row.name }}</span>
+                <span class="grid-team-abbr">{{ shortName(row.name) }}</span>
               </span>
             </th>
             <td
@@ -75,8 +80,12 @@
       <table class="results-grid">
         <thead>
           <tr>
-            <th class="corner"></th>
-            <th v-for="t in teamOrder" :key="`h2-${t.id}`" :title="t.name">{{ shortName(t.name) }}</th>
+            <th class="corner"><span class="corner-hint">Dom. \ Ext.</span></th>
+            <th v-for="t in teamOrder" :key="`h2-${t.id}`" class="grid-col" :title="t.name">
+              <TeamLogo :name="t.name" :logo-path="t.logoPath" />
+              <FlagIcon v-if="showFlags" :country="t.country" />
+              <span class="grid-col-code">{{ shortName(t.name) }}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -85,7 +94,8 @@
               <span class="grid-row-header">
                 <TeamLogo :name="row.name" :logo-path="row.logoPath" />
                 <FlagIcon v-if="showFlags" :country="row.country" />
-                {{ row.name }}
+                <span class="grid-team-name">{{ row.name }}</span>
+                <span class="grid-team-abbr">{{ shortName(row.name) }}</span>
               </span>
             </th>
             <td v-for="col in teamOrder" :key="`c2-${row.id}-${col.id}`" :class="row.id === col.id ? 'grid-diagonal' : 'grid-empty'">
@@ -104,8 +114,12 @@
         <table class="results-grid">
           <thead>
             <tr>
-              <th class="corner"></th>
-              <th v-for="t in grp.teams" :key="`gh-${gi}-${t.id}`" :title="t.name">{{ shortName(t.name) }}</th>
+              <th class="corner"><span class="corner-hint">Dom. \ Ext.</span></th>
+              <th v-for="t in grp.teams" :key="`gh-${gi}-${t.id}`" class="grid-col" :title="t.name">
+              <TeamLogo :name="t.name" :logo-path="t.logoPath" />
+              <FlagIcon v-if="showFlags" :country="t.country" />
+              <span class="grid-col-code">{{ shortName(t.name) }}</span>
+            </th>
             </tr>
           </thead>
           <tbody>
@@ -114,7 +128,8 @@
                 <span class="grid-row-header">
                   <TeamLogo :name="row.name" :logo-path="row.logoPath" />
                   <FlagIcon v-if="showFlags" :country="row.country" />
-                  {{ row.name }}
+                  <span class="grid-team-name">{{ row.name }}</span>
+                <span class="grid-team-abbr">{{ shortName(row.name) }}</span>
                 </span>
               </th>
               <td
@@ -149,7 +164,7 @@
       <table class="results-grid">
         <thead>
           <tr>
-            <th class="corner"></th>
+            <th class="corner"><span class="corner-hint">Dom. \ Ext.</span></th>
             <th v-for="pos in miniLeaguePositions" :key="`mh-${pos}`">{{ pos }}</th>
           </tr>
         </thead>
@@ -643,118 +658,4 @@ onMounted(load)
   margin-bottom: 16px;
 }
 
-.grid-scroll {
-  overflow-x: auto;
-  margin-bottom: 24px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  /* Sort la grille du conteneur centre (#app, max-width: 1080px) pour utiliser
-     toute la largeur de la fenetre et eviter le scroll horizontal avec 36 equipes. */
-  width: 100vw;
-  position: relative;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
-}
-
-table.results-grid {
-  border: none;
-  border-radius: 0;
-  margin-bottom: 0;
-}
-
-table.results-grid th, table.results-grid td {
-  text-align: center;
-  padding: 3px 4px;
-  font-size: 0.72em;
-  white-space: nowrap;
-  border: 1px solid var(--border);
-}
-
-table.results-grid thead th {
-  position: sticky;
-  top: 0;
-  background: var(--surface-muted);
-  z-index: 1;
-}
-
-table.results-grid tbody th {
-  text-align: left;
-  position: sticky;
-  left: 0;
-  background: var(--surface-muted);
-  font-weight: 600;
-  z-index: 1;
-  max-width: 130px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-table.results-grid .corner {
-  position: sticky;
-  left: 0;
-  top: 0;
-  z-index: 2;
-  background: var(--surface-muted);
-}
-
-table.results-grid td {
-  cursor: pointer;
-  min-width: 28px;
-}
-
-table.results-grid tbody tr:hover td {
-  background: unset;
-}
-
-.grid-diagonal {
-  background: #1c2521 !important;
-  cursor: default;
-}
-
-.grid-empty {
-  color: #c2cac5;
-  cursor: default;
-}
-
-.grid-scheduled {
-  color: var(--text-muted);
-}
-
-.grid-win {
-  background: #dcf5e6;
-  font-weight: 700;
-}
-
-.grid-loss {
-  background: #fbe0de;
-}
-
-.grid-draw {
-  background: #fbf3c7;
-  font-weight: 700;
-}
-
-.grid-row-header {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.grid-edit {
-  display: inline-flex;
-  gap: 2px;
-  align-items: center;
-}
-
-.grid-edit .score-input {
-  width: 32px;
-  padding: 2px;
-}
-
-.grid-edit button {
-  padding: 2px 6px;
-}
 </style>

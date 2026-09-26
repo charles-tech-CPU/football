@@ -14,3 +14,16 @@ export function compareByRoundThenDate(a, b) {
   if (ad !== bd) return ad.localeCompare(bd)
   return a.id - b.id
 }
+
+// Libelles de tour du plus recent au plus ancien, dates par la premiere date du tour : un match
+// en retard joue bien apres ne fait pas remonter sa journee d'origine. Tours sans date en dernier.
+export function roundsByRecency(matches) {
+  const start = new Map()
+  for (const m of matches) {
+    const current = start.get(m.roundLabel)
+    if (!start.has(m.roundLabel) || (m.date != null && (current == null || m.date < current))) {
+      start.set(m.roundLabel, m.date ?? null)
+    }
+  }
+  return [...start].sort(([, a], [, b]) => (b ?? '').localeCompare(a ?? '')).map(([label]) => label)
+}

@@ -38,7 +38,10 @@
         :class="`continental-card--${c.code.toLowerCase()}`"
         :to="`/competitions/${c.id}`"
       >
-        <span class="continental-mark">★</span>
+        <span class="continental-mark">
+          ★
+          <LateBadge :count="stats[c.id]?.late" />
+        </span>
         <div class="country-card-info">
           <span class="country-card-name">{{ c.name }}</span>
           <span class="country-card-badges">
@@ -58,13 +61,17 @@
         class="country-card"
         :to="`/pays/${encodeURIComponent(c.country)}`"
       >
-        <FlagIcon :country="c.country" />
+        <span class="card-flag">
+          <FlagIcon :country="c.country" />
+          <LateBadge :count="c.league && stats[c.league.id]?.late" />
+        </span>
         <div class="country-card-info">
           <span class="country-card-name">{{ c.country }}</span>
           <span class="country-card-badges">
             <span v-if="c.league" class="badge badge-league">Championnat</span>
             <span v-if="c.cup" class="badge badge-cup">Coupe</span>
           </span>
+          <CalendarProgress v-if="c.league && stats[c.league.id]?.calendar.total" :progress="stats[c.league.id].calendar" />
         </div>
       </router-link>
     </div>
@@ -93,11 +100,15 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../services/api'
 import FlagIcon from '../components/FlagIcon.vue'
+import LateBadge from '../components/LateBadge.vue'
+import CalendarProgress from '../components/CalendarProgress.vue'
+import { calendarProgress, lateCount } from '../utils/competitionProgress'
 
 const competitions = ref([])
 const loaded = ref(false)
 const error = ref('')
 const search = ref('')
+const stats = reactive({})
 
 const form = reactive({
   code: '',
@@ -145,9 +156,21 @@ const filteredContinental = computed(() => {
   return continental.value.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
 })
 
+// Matchs en retard des championnats et coupes d'Europe, avancement du calendrier des championnats
+// (charge en tache de fond, la grille s'affiche sans attendre).
+async function loadStats() {
+  const today = new Date().toISOString().slice(0, 10)
+  const tracked = competitions.value.filter(c => c.type !== 'DOMESTIC_CUP')
+  await Promise.all(tracked.map(async c => {
+    const matches = await api.getMatchesByCompetition(c.id)
+    stats[c.id] = { late: lateCount(matches, today), calendar: calendarProgress(matches, c.totalRounds) }
+  }))
+}
+
 async function load() {
   competitions.value = await api.getCompetitions()
   loaded.value = true
+  loadStats()
 }
 
 async function submit() {

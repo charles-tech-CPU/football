@@ -14,6 +14,12 @@
     </select>
   </div>
 
+  <div v-if="!roundFilter && pageCount > 1" class="round-pager">
+    <button type="button" :disabled="page >= pageCount - 1" @click="page++">← Journées précédentes</button>
+    <span class="round-pager-label">{{ pageRounds.toReversed().join(' · ') }}</span>
+    <button type="button" :disabled="page === 0" @click="page--">Journées suivantes →</button>
+  </div>
+
   <table v-if="filteredMatches.length">
     <thead>
       <tr>
@@ -78,6 +84,7 @@ import TeamLogo from './TeamLogo.vue'
 import MatchCreationBar from './MatchCreationBar.vue'
 import { teamChangeLines } from '../utils/matchEdit'
 import { formatTime } from '../utils/format'
+import { roundsByRecency } from '../utils/rounds'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },
@@ -108,10 +115,19 @@ const playedMatches = computed(() => {
     return (b.time ?? '').localeCompare(a.time ?? '')
   })
 })
-const rounds = computed(() => [...new Set(playedMatches.value.map(m => m.roundLabel))])
-const filteredMatches = computed(() =>
-  roundFilter.value ? playedMatches.value.filter(m => m.roundLabel === roundFilter.value) : playedMatches.value
-)
+const rounds = computed(() => roundsByRecency(playedMatches.value))
+
+// Sans filtre, les journees sont paginees par ROUNDS_PER_PAGE, les plus recentes d'abord
+// (page 0 = derniere et avant-derniere journee jouees).
+const ROUNDS_PER_PAGE = 2
+const page = ref(0)
+const pageCount = computed(() => Math.ceil(rounds.value.length / ROUNDS_PER_PAGE))
+const pageRounds = computed(() => rounds.value.slice(page.value * ROUNDS_PER_PAGE, (page.value + 1) * ROUNDS_PER_PAGE))
+
+const filteredMatches = computed(() => {
+  if (roundFilter.value) return playedMatches.value.filter(m => m.roundLabel === roundFilter.value)
+  return pageRounds.value.flatMap(r => playedMatches.value.filter(m => m.roundLabel === r))
+})
 
 function isDraw(m) {
   return m.status === 'COMPLETED' && m.score1 === m.score2
@@ -139,6 +155,7 @@ function statusRowClass(status) {
 async function load() {
   loaded.value = false
   roundFilter.value = ''
+  page.value = 0
   const competitionId = Number(props.competitionId)
   const [matchList, teamList, competitions] = await Promise.all([
     api.getMatchesByCompetition(competitionId),
@@ -201,3 +218,16 @@ async function saveScore(match) {
 watch(() => props.competitionId, load)
 onMounted(load)
 </script>
+
+<style scoped>
+.round-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+}
+.round-pager-label {
+  font-weight: 700;
+}
+</style>

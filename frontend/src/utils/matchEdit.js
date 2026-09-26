@@ -24,6 +24,11 @@ export function rowClassFor(status, date, today) {
   return ''
 }
 
+// Match joue = score saisi des 2 cotes (quel que soit le statut, forfait compris).
+export function isPlayed(m) {
+  return m.score1 != null && m.score2 != null
+}
+
 // Valeurs editables d'un match (champs de formulaire : chaines vides plutot que null).
 export function editFromMatch(m) {
   return {

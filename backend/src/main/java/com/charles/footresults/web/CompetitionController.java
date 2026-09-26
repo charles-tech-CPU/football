@@ -67,6 +67,7 @@ public class CompetitionController {
         competition.setEclSlots(dto.eclSlots());
         competition.setRelegationSlots(dto.relegationSlots());
         competition.setBarrageSlots(dto.barrageSlots());
+        competition.setTotalRounds(dto.totalRounds());
         return CompetitionDto.from(competitionRepository.save(competition));
     }
 }
