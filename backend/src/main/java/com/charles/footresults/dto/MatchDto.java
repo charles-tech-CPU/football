@@ -28,7 +28,8 @@ public record MatchDto(
         Integer score2,
         Integer penaltyScore1,
         Integer penaltyScore2,
-        MatchStatus status) {
+        MatchStatus status,
+        Integer bracketPosition) {
     public static MatchDto from(Match m) {
         return new MatchDto(
                 m.getId(),
@@ -52,6 +53,7 @@ public record MatchDto(
                 m.getScore2(),
                 m.getPenaltyScore1(),
                 m.getPenaltyScore2(),
-                m.getStatus());
+                m.getStatus(),
+                m.getBracketPosition());
     }
 }

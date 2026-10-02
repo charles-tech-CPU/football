@@ -152,6 +152,43 @@ class TeamControllerTest {
     }
 
     @Test
+    void creationRefuseUnNomDejaPris() {
+        when(teamRepository.findByNameIgnoreCase("psg")).thenReturn(Optional.of(psg));
+
+        assertThatThrownBy(() -> teamController.create(new TeamCreateDto("  psg ", "France")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("PSG");
+        verify(teamRepository, never()).save(any());
+    }
+
+    @Test
+    void creationNormaliseLesEspaces() {
+        when(teamRepository.save(any(Team.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThat(teamController.create(new TeamCreateDto("  FC   NOAH ", "Armenie")).name())
+                .isEqualTo("FC NOAH");
+    }
+
+    @Test
+    void modificationRefuseLeNomDUnAutreClub() {
+        when(teamRepository.findById(1L)).thenReturn(Optional.of(psg));
+        when(teamRepository.findByNameIgnoreCase("OM")).thenReturn(Optional.of(om));
+
+        assertThatThrownBy(() -> teamController.update(1L, new TeamCreateDto("OM", "France")))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(teamRepository, never()).save(any());
+    }
+
+    @Test
+    void modificationAccepteSonPropreNom() {
+        when(teamRepository.findById(1L)).thenReturn(Optional.of(psg));
+        when(teamRepository.findByNameIgnoreCase("psg")).thenReturn(Optional.of(psg));
+        when(teamRepository.save(psg)).thenReturn(psg);
+
+        assertThat(teamController.update(1L, new TeamCreateDto("psg", "France")).name()).isEqualTo("psg");
+    }
+
+    @Test
     void suppression() {
         teamController.delete(1L);
 

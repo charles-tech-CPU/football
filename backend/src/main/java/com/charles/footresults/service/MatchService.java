@@ -122,6 +122,9 @@ public class MatchService {
     }
 
     private void applyFields(Match match, MatchCreateDto dto) {
+        if (dto.team1Id().equals(dto.team2Id())) {
+            throw new IllegalArgumentException("Un club ne peut pas s'affronter lui-meme");
+        }
         Competition competition = competitionRepository
                 .findById(dto.competitionId())
                 .orElseThrow(() -> new EntityNotFoundException("Competition introuvable : " + dto.competitionId()));
@@ -143,6 +146,10 @@ public class MatchService {
         match.setPenaltyScore1(dto.penaltyScore1());
         match.setPenaltyScore2(dto.penaltyScore2());
         match.setStatus(dto.status() != null ? dto.status() : statusFromScores(dto));
+        // Les ecrans hors bracket n'envoient pas la position : on ne l'efface pas.
+        if (dto.bracketPosition() != null) {
+            match.setBracketPosition(dto.bracketPosition());
+        }
     }
 
     /** Sans statut force : un match dont les deux scores sont saisis est termine, sinon a venir. */

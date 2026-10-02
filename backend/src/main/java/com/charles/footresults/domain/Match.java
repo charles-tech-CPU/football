@@ -69,6 +69,13 @@ public class Match {
     @Column(name = "penalty_score2")
     private Integer penaltyScore2;
 
+    /**
+     * Position de la confrontation dans son tour de coupe (1 = en haut du tableau), pour
+     * reorganiser le bracket a la main. Null = ordre par defaut (date / tour precedent).
+     */
+    @Column(name = "bracket_position")
+    private Integer bracketPosition;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MatchStatus status = MatchStatus.SCHEDULED;

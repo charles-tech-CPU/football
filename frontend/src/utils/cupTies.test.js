@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { summarizeTie } from './cupTies.js'
+import { moveTie, sortByBracketPosition, summarizeTie, tiePosition } from './cupTies.js'
 
 const PSG = { id: 1, name: 'PSG' }
 const OM = { id: 2, name: 'OM' }
@@ -101,5 +101,49 @@ describe('summarizeTie', () => {
     const sansDate = leg(null, PSG, OM, 0, 0)
 
     expect(summarizeTie([datee, sansDate]).legs).toEqual([sansDate, datee])
+  })
+})
+
+function tieAt(id, ...positions) {
+  return { id, legs: positions.map((bracketPosition, i) => ({ id: id * 10 + i, bracketPosition })) }
+}
+
+describe('tiePosition', () => {
+  it("null tant que le tour n'a pas ete reorganise", () => {
+    expect(tiePosition(tieAt(1, null, null))).toBeNull()
+  })
+
+  it('la plus petite position de ses manches', () => {
+    expect(tiePosition(tieAt(1, 4, null))).toBe(4)
+  })
+})
+
+describe('sortByBracketPosition', () => {
+  it("sans position, garde l'ordre par defaut", () => {
+    const ties = [tieAt(1, null), tieAt(2, null)]
+    expect(sortByBracketPosition(ties)).toBe(ties)
+  })
+
+  it('trie par position et met les confrontations ajoutees depuis a la fin', () => {
+    const ties = [tieAt(1, null), tieAt(2, 2), tieAt(3, 1), tieAt(4, null)]
+    expect(sortByBracketPosition(ties).map(t => t.id)).toEqual([3, 2, 1, 4])
+  })
+})
+
+describe('moveTie', () => {
+  it('ecrit la position de chaque manche du tour dans le nouvel ordre', () => {
+    const ties = [tieAt(1, null, null), tieAt(2, null)]
+    const updates = moveTie(ties, 1, -1)
+    expect(updates.map(u => [u.leg.id, u.bracketPosition])).toEqual([[20, 1], [10, 2], [11, 2]])
+  })
+
+  it("ne reecrit pas une manche deja a la bonne position", () => {
+    const ties = [tieAt(1, 1), tieAt(2, 2), tieAt(3, 3)]
+    expect(moveTie(ties, 2, -1).map(u => [u.leg.id, u.bracketPosition])).toEqual([[30, 2], [20, 3]])
+  })
+
+  it('ne fait rien hors des bornes', () => {
+    expect(moveTie([tieAt(1, null)], 0, -1)).toEqual([])
+    expect(moveTie([tieAt(1, null)], 0, 1)).toEqual([])
   })
 })

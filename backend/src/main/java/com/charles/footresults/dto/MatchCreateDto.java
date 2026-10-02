@@ -18,4 +18,6 @@ public record MatchCreateDto(
         Integer penaltyScore1,
         Integer penaltyScore2,
         /** Optionnel : force un statut (REPORTE/SUSPENDU/FORFAIT). Si null, deduit des scores (COMPLETED/SCHEDULED). */
-        MatchStatus status) {}
+        MatchStatus status,
+        /** Optionnel : position de la confrontation dans son tour de coupe. Si null, la position actuelle est conservee. */
+        Integer bracketPosition) {}

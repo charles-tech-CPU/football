@@ -83,7 +83,9 @@ public class TeamController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TeamDto create(@Valid @RequestBody TeamCreateDto dto) {
-        Team team = new Team(dto.name(), dto.country());
+        String name = normalizeName(dto.name());
+        rejectDuplicateName(name, null);
+        Team team = new Team(name, dto.country());
         return TeamDto.from(teamRepository.save(team));
     }
 
@@ -92,9 +94,27 @@ public class TeamController {
         Team team = teamRepository
                 .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Equipe introuvable : " + id));
-        team.setName(dto.name());
+        String name = normalizeName(dto.name());
+        rejectDuplicateName(name, id);
+        team.setName(name);
         team.setCountry(dto.country());
         return TeamDto.from(teamRepository.save(team));
+    }
+
+    /** "  fc   noah " -> "fc noah" : evite les doublons qui ne different que par les espaces. */
+    private static String normalizeName(String name) {
+        return name.trim().replaceAll("\\s+", " ");
+    }
+
+    /** Refuse un nom deja porte par un autre club (insensible a la casse). */
+    private void rejectDuplicateName(String name, Long currentId) {
+        teamRepository
+                .findByNameIgnoreCase(name)
+                .filter(existing -> !existing.getId().equals(currentId))
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException("Un club nomme " + existing.getName() + " existe deja ("
+                            + existing.getCountry() + ")");
+                });
     }
 
     @DeleteMapping("/{id}")

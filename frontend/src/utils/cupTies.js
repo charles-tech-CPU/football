@@ -63,3 +63,34 @@ function penaltiesOf(match, teamAId) {
     ? { penA: match.penaltyScore1, penB: match.penaltyScore2 }
     : { penA: match.penaltyScore2, penB: match.penaltyScore1 }
 }
+
+// Position explicite d'une confrontation dans son tour (match.bracket_position, portee par
+// chacune de ses manches), ou null si le tour n'a jamais ete reorganise a la main.
+export function tiePosition(tie) {
+  const positions = tie.legs.map(l => l.bracketPosition).filter(p => p != null)
+  return positions.length ? Math.min(...positions) : null
+}
+
+// Applique l'ordre choisi a la main par-dessus l'ordre par defaut (date / tour precedent) :
+// les confrontations positionnees d'abord, dans l'ordre de leur position ; celles ajoutees
+// depuis (sans position) a la suite, dans leur ordre par defaut.
+export function sortByBracketPosition(ties) {
+  const positioned = ties.filter(t => tiePosition(t) != null)
+  if (!positioned.length) return ties
+  return [
+    ...positioned.toSorted((a, b) => tiePosition(a) - tiePosition(b)),
+    ...ties.filter(t => tiePosition(t) == null)
+  ]
+}
+
+// Deplace la confrontation d'index "from" de "delta" crans (-1 = vers le haut) et renvoie les
+// manches dont la position doit etre (re)ecrite pour figer le nouvel ordre de tout le tour.
+export function moveTie(ties, from, delta) {
+  const to = from + delta
+  if (to < 0 || to >= ties.length) return []
+  const reordered = ties.slice()
+  const [moved] = reordered.splice(from, 1)
+  reordered.splice(to, 0, moved)
+  return reordered.flatMap((tie, index) =>
+    tie.legs.filter(l => l.bracketPosition !== index + 1).map(leg => ({ leg, bracketPosition: index + 1 })))
+}

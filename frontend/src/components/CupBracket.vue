@@ -26,11 +26,16 @@
             :class="{ 'match-pair--connect': ri < rounds.length - 1, 'match-pair--single': pair.length === 1 }"
           >
             <div
-              v-for="tie in pair"
+              v-for="(tie, pti) in pair"
               :key="tieKey(tie)"
               class="tie-box"
               :class="{ 'tie-box--decided': tie.winnerId, 'tie-box--incoming': ri > 0 }"
             >
+              <div class="tie-tools">
+                <button type="button" class="tie-tool" :disabled="pi * 2 + pti === 0" title="Monter" aria-label="Monter la confrontation" @click="move(r, pi * 2 + pti, -1)">▲</button>
+                <button type="button" class="tie-tool" :disabled="pi * 2 + pti === r.ties.length - 1" title="Descendre" aria-label="Descendre la confrontation" @click="move(r, pi * 2 + pti, 1)">▼</button>
+                <button v-if="isPendingTie(tie)" type="button" class="tie-tool" title="Supprimer" aria-label="Supprimer la confrontation" @click="removeTie(tie)">×</button>
+              </div>
               <div v-for="(leg, li) in tie.legs" :key="leg.id" class="tie-leg-wrap">
                 <span v-if="tie.legs.length > 1" class="leg-tag">{{ legLabel(li, tie.legs.length) }}</span>
                 <div class="tie-leg">
@@ -98,6 +103,7 @@
             </div>
           </div>
         </div>
+        <button type="button" class="round-add" @click="addTie(r)">+ Confrontation</button>
       </div>
     </div>
   </div>
@@ -112,7 +118,7 @@ import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
 import FlagIcon from './FlagIcon.vue'
 import MatchCreationBar from './MatchCreationBar.vue'
-import { summarizeTie } from '../utils/cupTies.js'
+import { moveTie, sortByBracketPosition, summarizeTie } from '../utils/cupTies.js'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },
@@ -334,13 +340,33 @@ const rounds = computed(() => {
     result = entries
   }
 
-  for (let i = 1; i < result.length; i++) {
-    result[i].ties = reorderForBracket(result[i - 1].ties, result[i].ties)
+  // L'ordre choisi a la main (bracket_position) passe avant l'ordre par defaut, et se
+  // repercute sur les tours suivants via reorderForBracket.
+  for (let i = 0; i < result.length; i++) {
+    if (i > 0) result[i].ties = reorderForBracket(result[i - 1].ties, result[i].ties)
+    result[i].ties = sortByBracketPosition(result[i].ties)
   }
   return result
 })
 
 const sortedTeams = computed(() => teams.value.slice().sort((a, b) => a.name.localeCompare(b.name)))
+
+// Payload PUT complet d'une manche, avec les champs modifies en surcharge.
+function legPayload(leg, overrides) {
+  return {
+    competitionId: leg.competitionId,
+    roundLabel: leg.roundLabel,
+    date: leg.date,
+    time: leg.time,
+    team1Id: leg.team1Id,
+    team2Id: leg.team2Id,
+    score1: leg.score1,
+    score2: leg.score2,
+    penaltyScore1: leg.penaltyScore1,
+    penaltyScore2: leg.penaltyScore2,
+    ...overrides
+  }
+}
 
 function teamKey(leg, side) {
   return `${leg.id}-${side}`
@@ -354,18 +380,8 @@ function startTeamEdit(leg, side) {
 async function confirmTeamEdit(leg, side) {
   error.value = ''
   try {
-    await api.updateMatch(leg.id, {
-      competitionId: leg.competitionId,
-      roundLabel: leg.roundLabel,
-      date: leg.date,
-      time: leg.time,
-      team1Id: side === 1 ? editTeamValue.value : leg.team1Id,
-      team2Id: side === 2 ? editTeamValue.value : leg.team2Id,
-      score1: leg.score1,
-      score2: leg.score2,
-      penaltyScore1: leg.penaltyScore1,
-      penaltyScore2: leg.penaltyScore2
-    })
+    const team = side === 1 ? { team1Id: editTeamValue.value } : { team2Id: editTeamValue.value }
+    await api.updateMatch(leg.id, legPayload(leg, team))
     teamEditingKey.value = null
     await load()
   } catch (e) {
@@ -382,18 +398,7 @@ async function startEdit(leg) {
 async function confirmEdit(leg) {
   error.value = ''
   try {
-    await api.updateMatch(leg.id, {
-      competitionId: leg.competitionId,
-      roundLabel: leg.roundLabel,
-      date: leg.date,
-      time: leg.time,
-      team1Id: leg.team1Id,
-      team2Id: leg.team2Id,
-      score1: editScore1.value,
-      score2: editScore2.value,
-      penaltyScore1: leg.penaltyScore1,
-      penaltyScore2: leg.penaltyScore2
-    })
+    await api.updateMatch(leg.id, legPayload(leg, { score1: editScore1.value, score2: editScore2.value }))
     editingId.value = null
     await load()
   } catch (e) {
@@ -416,22 +421,73 @@ async function confirmPenaltyEdit(tie) {
     ? [editPen1.value, editPen2.value]
     : [editPen2.value, editPen1.value]
   try {
-    await api.updateMatch(leg.id, {
-      competitionId: leg.competitionId,
-      roundLabel: leg.roundLabel,
-      date: leg.date,
-      time: leg.time,
-      team1Id: leg.team1Id,
-      team2Id: leg.team2Id,
-      score1: leg.score1,
-      score2: leg.score2,
-      penaltyScore1,
-      penaltyScore2
-    })
+    await api.updateMatch(leg.id, legPayload(leg, { penaltyScore1, penaltyScore2 }))
     editingPenaltyId.value = null
     await load()
   } catch (e) {
     error.value = e.response?.data?.error ?? "Erreur lors de l'enregistrement des tirs au but."
+  }
+}
+
+function isPendingTie(tie) {
+  return tie.legs.every(l => isPendingTeam(l.team1Name) && isPendingTeam(l.team2Name) && l.score1 == null)
+}
+
+// Deplace une confrontation dans son tour : on fige alors la position de toutes les
+// confrontations du tour, pour que l'ordre ne depende plus des dates.
+async function move(round, index, delta) {
+  error.value = ''
+  try {
+    for (const { leg, bracketPosition } of moveTie(round.ties, index, delta)) {
+      await api.updateMatch(leg.id, legPayload(leg, { status: leg.status, bracketPosition }))
+    }
+    await load()
+  } catch (e) {
+    error.value = e.response?.data?.error ?? 'Erreur lors du déplacement de la confrontation.'
+  }
+}
+
+// Places generiques "A DETERMINER" (cf. V16__pending_draw_matches.sql), a remplacer par
+// les vraies equipes une fois le tirage connu en cliquant sur leur nom.
+async function placeholderTeamIds() {
+  const all = await api.getTeams()
+  const ids = ['A DETERMINER (1)', 'A DETERMINER (2)'].map(name => all.find(t => t.name === name)?.id)
+  if (ids.includes(undefined)) throw new Error('Équipes "A DETERMINER" introuvables.')
+  return ids
+}
+
+// Ajoute une confrontation en attente de tirage a un tour, sur le modele de la derniere
+// (meme libelle de tour, memes manches aller/retour, meme date).
+async function addTie(round) {
+  error.value = ''
+  try {
+    const [team1Id, team2Id] = await placeholderTeamIds()
+    for (const leg of round.ties.at(-1).legs) {
+      await api.createMatch({
+        competitionId: Number(props.competitionId),
+        roundLabel: leg.roundLabel,
+        date: leg.date,
+        time: null,
+        team1Id,
+        team2Id,
+        score1: null,
+        score2: null
+      })
+    }
+    await load()
+  } catch (e) {
+    error.value = e.response?.data?.error ?? e.message ?? "Erreur lors de l'ajout de la confrontation."
+  }
+}
+
+async function removeTie(tie) {
+  if (!window.confirm('Supprimer cette confrontation en attente de tirage ?')) return
+  error.value = ''
+  try {
+    for (const leg of tie.legs) await api.deleteMatch(leg.id)
+    await load()
+  } catch (e) {
+    error.value = e.response?.data?.error ?? 'Erreur lors de la suppression de la confrontation.'
   }
 }
 
@@ -595,6 +651,61 @@ onMounted(load)
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
   transition: box-shadow 0.15s ease, transform 0.15s ease;
   overflow: hidden;
+}
+
+/* Monter / descendre / supprimer : discrets, visibles au survol ou au clavier. */
+.tie-tools {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 2;
+}
+
+.tie-box:hover .tie-tools,
+.tie-tools:focus-within {
+  opacity: 1;
+}
+
+.tie-tool {
+  border: 0;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 0.62em;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tie-tool:hover:not(:disabled) {
+  background: var(--primary-soft);
+  color: var(--text);
+}
+
+.tie-tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.round-add {
+  align-self: center;
+  margin-top: 14px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.72em;
+  cursor: pointer;
+}
+
+.round-add:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.7);
 }
 
 .tie-box:hover {

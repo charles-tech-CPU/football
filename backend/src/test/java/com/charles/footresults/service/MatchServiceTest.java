@@ -211,6 +211,28 @@ class MatchServiceTest {
         assertThat(matchService.findInternational()).hasSize(1);
     }
 
+    @Test
+    void unClubNePeutPasSAffronterLuiMeme() {
+        MatchCreateDto dto = new MatchCreateDto(
+                ligue1.getId(), "J1", null, null, psg.getId(), psg.getId(), null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> matchService.create(dto))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("lui-meme");
+        verify(matchRepository, never()).save(any());
+    }
+
+    @Test
+    void positionDansLeBracketConserveeSiNonFournie() {
+        givenReferencesExist();
+        Match existing = match();
+        existing.setBracketPosition(3);
+        when(matchRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(matchRepository.save(existing)).thenReturn(existing);
+
+        assertThat(matchService.update(1L, dto(null, null, null)).bracketPosition()).isEqualTo(3);
+    }
+
     private void givenReferencesExist() {
         when(competitionRepository.findById(ligue1.getId())).thenReturn(Optional.of(ligue1));
         when(teamRepository.findById(psg.getId())).thenReturn(Optional.of(psg));
@@ -229,7 +251,8 @@ class MatchServiceTest {
                 score2,
                 null,
                 null,
-                status);
+                status,
+                null);
     }
 
     private Match match() {

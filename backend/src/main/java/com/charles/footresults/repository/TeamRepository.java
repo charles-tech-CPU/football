@@ -10,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 public interface TeamRepository extends JpaRepository<Team, Long> {
     Optional<Team> findByName(String name);
 
+    Optional<Team> findByNameIgnoreCase(String name);
+
     /** Equipes ayant au moins un match dans cette competition (championnat, coupe ou LDC/EL/EC). */
     @Query("""
             SELECT DISTINCT t FROM Team t
