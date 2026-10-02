@@ -4,7 +4,7 @@ import axios from 'axios'
 const BACKEND_BASE_URL = 'http://localhost:8081'
 
 const api = axios.create({
-  baseURL: `${BACKEND_BASE_URL}/api`
+  baseURL: `http://${window.location.hostname}:8081/api`
 })
 
 // Blasons des clubs : servis en statique par le backend sous /logos/<fichier>.
