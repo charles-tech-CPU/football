@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 // Backend Spring Boot en dev (port 8081, different du projet LoL sur 8080).
-const BACKEND_BASE_URL = 'http://localhost:8081'
+const BACKEND_BASE_URL = `http://${window.location.hostname}:8081`
 
 const api = axios.create({
   baseURL: `http://${window.location.hostname}:8081/api`
