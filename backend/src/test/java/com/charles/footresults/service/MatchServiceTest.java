@@ -230,7 +230,8 @@ class MatchServiceTest {
         when(matchRepository.findById(1L)).thenReturn(Optional.of(existing));
         when(matchRepository.save(existing)).thenReturn(existing);
 
-        assertThat(matchService.update(1L, dto(null, null, null)).bracketPosition()).isEqualTo(3);
+        assertThat(matchService.update(1L, dto(null, null, null)).bracketPosition())
+                .isEqualTo(3);
     }
 
     private void givenReferencesExist() {

@@ -112,8 +112,8 @@ public class TeamController {
                 .findByNameIgnoreCase(name)
                 .filter(existing -> !existing.getId().equals(currentId))
                 .ifPresent(existing -> {
-                    throw new IllegalArgumentException("Un club nomme " + existing.getName() + " existe deja ("
-                            + existing.getCountry() + ")");
+                    throw new IllegalArgumentException(
+                            "Un club nomme " + existing.getName() + " existe deja (" + existing.getCountry() + ")");
                 });
     }
 

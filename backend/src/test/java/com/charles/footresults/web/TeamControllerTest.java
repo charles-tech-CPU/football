@@ -165,7 +165,9 @@ class TeamControllerTest {
     void creationNormaliseLesEspaces() {
         when(teamRepository.save(any(Team.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThat(teamController.create(new TeamCreateDto("  FC   NOAH ", "Armenie")).name())
+        assertThat(teamController
+                        .create(new TeamCreateDto("  FC   NOAH ", "Armenie"))
+                        .name())
                 .isEqualTo("FC NOAH");
     }
 
@@ -185,7 +187,8 @@ class TeamControllerTest {
         when(teamRepository.findByNameIgnoreCase("psg")).thenReturn(Optional.of(psg));
         when(teamRepository.save(psg)).thenReturn(psg);
 
-        assertThat(teamController.update(1L, new TeamCreateDto("psg", "France")).name()).isEqualTo("psg");
+        assertThat(teamController.update(1L, new TeamCreateDto("psg", "France")).name())
+                .isEqualTo("psg");
     }
 
     @Test
