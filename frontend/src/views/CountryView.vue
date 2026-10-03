@@ -115,13 +115,13 @@
             <button class="tab-btn" :class="{ active: !showProjected }" @click="showProjected = false">Classement actuel</button>
             <button class="tab-btn" :class="{ active: showProjected }" @click="showProjected = true">Voir le classement projeté</button>
           </div>
-          <p v-if="showProjected && !rankConfig?.resultsGroupSplit" class="section-intro">
+          <p v-if="projectionActive" class="section-intro">
             Projection : chaque équipe garde sa moyenne actuelle de points par match sur ses matchs restants.
             « Places possibles » = fourchette encore mathématiquement atteignable (🔒 = position définitive).
           </p>
           <StandingsTable
-            :rows="rankConfig?.resultsGroupSplit ? frozenStandings : showProjected ? projectedStandings : standings"
-            :projected="showProjected && !rankConfig?.resultsGroupSplit"
+            :rows="mainStandingsRows"
+            :projected="projectionActive"
             :team-statuses="teamStatusMap"
             :ldc-slots="rankConfig?.resultsGroupSplit ? 0 : league.ldcSlots"
             :el-slots="rankConfig?.resultsGroupSplit ? 0 : league.elSlots"
@@ -961,6 +961,15 @@ async function load() {
   await loadProjected()
   loaded.value = true
 }
+
+// Le classement projete n'existe que pour un classement calcule cote backend (pas pour les
+// championnats dont la 2e phase est reconstruite cote client, cf. resultsGroupSplit).
+const projectionActive = computed(() => showProjected.value && !rankConfig.value?.resultsGroupSplit)
+
+const mainStandingsRows = computed(() => {
+  if (rankConfig.value?.resultsGroupSplit) return frozenStandings.value
+  return showProjected.value ? projectedStandings.value : standings.value
+})
 
 async function loadProjected() {
   projectedStandings.value = showProjected.value && league.value ? await api.getProjectedStandings(league.value.id) : []

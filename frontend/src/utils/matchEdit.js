@@ -2,7 +2,7 @@
 // d'une competition) : fonctions pures partagees par les ecrans, sans etat Vue.
 import { formatTime } from './format.js'
 
-const MANUAL_STATUSES = ['POSTPONED', 'SUSPENDED', 'FORFEIT']
+const MANUAL_STATUSES = new Set(['POSTPONED', 'SUSPENDED', 'FORFEIT'])
 
 const STATUS_ROW_CLASSES = {
   POSTPONED: 'row-postponed',
@@ -38,7 +38,7 @@ export function editFromMatch(m) {
     time: formatTime(m.time),
     score1: m.score1,
     score2: m.score2,
-    status: MANUAL_STATUSES.includes(m.status) ? m.status : ''
+    status: MANUAL_STATUSES.has(m.status) ? m.status : ''
   }
 }
 

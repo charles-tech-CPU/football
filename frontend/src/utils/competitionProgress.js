@@ -2,13 +2,13 @@
 // matchs en retard et journees dont le calendrier (date + horaire) est complet.
 import { isPlayed } from './matchEdit.js'
 
-const DELAYED_STATUSES = ['POSTPONED', 'SUSPENDED']
+const DELAYED_STATUSES = new Set(['POSTPONED', 'SUSPENDED'])
 
 // Match en retard = pas encore joue, et reporte/suspendu ou date passee.
 // Dates au format ISO "AAAA-MM-JJ", comparables comme des chaines.
 export function isLate(m, today) {
   if (isPlayed(m) || m.status === 'FORFEIT') return false
-  if (DELAYED_STATUSES.includes(m.status)) return true
+  if (DELAYED_STATUSES.has(m.status)) return true
   return m.date != null && m.date < today
 }
 
@@ -25,7 +25,7 @@ export function leagueRound(m) {
 // Match programme = date et horaire renseignes. Un match joue n'en a plus besoin, un match
 // reporte/suspendu attend sa reprogrammation (deja compte dans les matchs en retard).
 export function isScheduled(m) {
-  if (isPlayed(m) || m.status === 'FORFEIT' || DELAYED_STATUSES.includes(m.status)) return true
+  if (isPlayed(m) || m.status === 'FORFEIT' || DELAYED_STATUSES.has(m.status)) return true
   return m.date != null && m.time != null
 }
 

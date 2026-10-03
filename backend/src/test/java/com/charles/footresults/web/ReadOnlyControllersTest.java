@@ -11,9 +11,11 @@ import com.charles.footresults.dto.ProjectedStandingRowDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.dto.TeamStatusDto;
 import com.charles.footresults.dto.TeamStatusUpdateDto;
+import com.charles.footresults.dto.UefaHistoryPointDto;
 import com.charles.footresults.service.StandingsService;
 import com.charles.footresults.service.TeamStatusService;
 import com.charles.footresults.service.UefaRankingService;
+import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -71,5 +73,17 @@ class ReadOnlyControllersTest {
 
         assertThat(controller.clubs()).isSameAs(clubs);
         assertThat(controller.countries()).isSameAs(countries);
+    }
+
+    @Test
+    void historiquesUefa() {
+        List<UefaHistoryPointDto> clubHistory = List.of(new UefaHistoryPointDto(null, BigDecimal.ONE, BigDecimal.TEN));
+        List<UefaHistoryPointDto> countryHistory = List.of();
+        when(uefaRankingService.findClubHistory(1L)).thenReturn(clubHistory);
+        when(uefaRankingService.findCountryHistory(2L)).thenReturn(countryHistory);
+        UefaRankingController controller = new UefaRankingController(uefaRankingService);
+
+        assertThat(controller.clubHistory(1L)).isSameAs(clubHistory);
+        assertThat(controller.countryHistory(2L)).isSameAs(countryHistory);
     }
 }

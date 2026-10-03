@@ -555,7 +555,6 @@ button:active {
 /* ---- Tables ---- */
 table {
   width: 100%;
-  border-collapse: collapse;
   margin-bottom: 24px;
   background: var(--surface);
   border: 1px solid var(--border);

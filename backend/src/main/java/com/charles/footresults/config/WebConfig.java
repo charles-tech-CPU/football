@@ -5,9 +5,9 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Autorise le serveur de dev Vite (http://localhost:5174) a appeler l'API
- * pendant le developpement. Port different de celui du projet LoL (5173)
- * pour pouvoir faire tourner les deux projets en parallele si besoin.
+ * Autorise le frontend Vite (port 5174, different du projet LoL sur 5173) a appeler l'API
+ * quel que soit l'hote utilise pour l'ouvrir (localhost, IP du reseau local...) : le frontend
+ * appelle le backend sur le meme hote que celui de la page (cf. frontend/src/services/api.js).
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {

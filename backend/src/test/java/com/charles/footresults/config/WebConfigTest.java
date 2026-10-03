@@ -17,13 +17,15 @@ class WebConfigTest {
     }
 
     @Test
-    void autoriseLeServeurDeDevViteSurLApi() {
+    void autoriseLeFrontendQuelQueSoitLHoteSurLApi() {
         InspectableCorsRegistry registry = new InspectableCorsRegistry();
 
         new WebConfig().addCorsMappings(registry);
 
         CorsConfiguration api = registry.configurations().get("/api/**");
-        assertThat(api.getAllowedOrigins()).containsExactly("http://localhost:5174");
+        assertThat(api.getAllowedOriginPatterns()).containsExactly("*");
+        assertThat(api.checkOrigin("http://localhost:5174")).isEqualTo("http://localhost:5174");
+        assertThat(api.checkOrigin("http://192.168.1.20:5174")).isEqualTo("http://192.168.1.20:5174");
         assertThat(api.getAllowedMethods()).contains("GET", "POST", "PUT", "PATCH", "DELETE");
     }
 }
