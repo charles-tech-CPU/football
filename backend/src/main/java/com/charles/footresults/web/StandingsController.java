@@ -1,6 +1,7 @@
 package com.charles.footresults.web;
 
 import com.charles.footresults.dto.HeadToHeadCellDto;
+import com.charles.footresults.dto.ProjectedStandingRowDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.service.StandingsService;
 import java.util.List;
@@ -29,6 +30,12 @@ public class StandingsController {
             return standingsService.computeStandingsForRound(competitionId, round);
         }
         return standingsService.computeStandings(competitionId);
+    }
+
+    /** GET /api/standings/projected?competitionId=1 (matchs restants simules, cf. StandingsService) */
+    @GetMapping("/api/standings/projected")
+    public List<ProjectedStandingRowDto> projectedStandings(@RequestParam Long competitionId) {
+        return standingsService.computeProjectedStandings(competitionId);
     }
 
     /** GET /api/head-to-head?competitionId=1 */

@@ -7,10 +7,14 @@ import com.charles.footresults.domain.MatchStatus;
 import com.charles.footresults.dto.ClubUefaRankingDto;
 import com.charles.footresults.dto.CountryUefaRankingDto;
 import com.charles.footresults.dto.StandingRowDto;
+import com.charles.footresults.dto.UefaHistoryPointDto;
 import com.charles.footresults.repository.ClubUefaRankingRepository;
 import com.charles.footresults.repository.CountryUefaRankingRepository;
 import com.charles.footresults.repository.MatchRepository;
+import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,6 +24,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
@@ -63,6 +69,7 @@ public class UefaRankingService {
     private static final BigDecimal DRAW_QUALIFYING = new BigDecimal("0.5");
     private static final BigDecimal WIN_MAIN = BigDecimal.valueOf(2);
     private static final BigDecimal DRAW_MAIN = BigDecimal.ONE;
+    private static final BigDecimal SEASONS_IN_COEFFICIENT = BigDecimal.valueOf(5);
 
     private static final Pattern LEG_SUFFIX = Pattern.compile("-\\s*(ALLER|RETOUR)\\s*$", Pattern.CASE_INSENSITIVE);
 
@@ -131,6 +138,116 @@ public class UefaRankingService {
                         pointsByCountry.getOrDefault(r.getCountry(), BigDecimal.ZERO),
                         aliveCountByCountry.getOrDefault(r.getCountry(), new int[3])))
                 .toList();
+    }
+
+    /**
+     * Evolution du coefficient d'un club (id de sa ligne de classement) au fil de la saison.
+     * Rien n'est stocke : les points de la saison en cours etant deja recalcules a partir des
+     * matchs dates, on rejoue simplement ces matchs dans l'ordre chronologique (meme bareme que
+     * findClubRankings), ce qui donne tout l'historique, y compris avant la mise en place de
+     * cette courbe. Coefficient club = somme des 5 saisons (meme formule que la colonne "Total"
+     * du fichier Excel source).
+     */
+    public List<UefaHistoryPointDto> findClubHistory(Long clubRankingId) {
+        ClubUefaRanking club = clubRepository
+                .findById(clubRankingId)
+                .orElseThrow(() -> new EntityNotFoundException("Club introuvable : " + clubRankingId));
+        BigDecimal pastSeasons = nonNull(club.getPoints2026())
+                .add(nonNull(club.getPoints2025()))
+                .add(nonNull(club.getPoints2024()))
+                .add(nonNull(club.getPoints2023()));
+        Set<Long> teamIds = club.getTeam() != null ? Set.of(club.getTeam().getId()) : Set.of();
+        return history(teamIds, pastSeasons::add);
+    }
+
+    /**
+     * Evolution du coefficient d'un pays (id de sa ligne de classement). Points de saison = somme
+     * des points de ses clubs (comme findCountryRankings) ; coefficient = moyenne sur 5 saisons
+     * des points de saison divises par le nombre de clubs engages cette saison-la (meme formule
+     * que la colonne "Total" de l'onglet PAYS du fichier Excel source).
+     */
+    public List<UefaHistoryPointDto> findCountryHistory(Long countryRankingId) {
+        CountryUefaRanking country = countryRepository
+                .findById(countryRankingId)
+                .orElseThrow(() -> new EntityNotFoundException("Pays introuvable : " + countryRankingId));
+        Set<Long> teamIds = new HashSet<>();
+        for (ClubUefaRanking club : clubRepository.findAll()) {
+            if (club.getTeam() != null && country.getCountry().equals(club.getCountry())) {
+                teamIds.add(club.getTeam().getId());
+            }
+        }
+        BigDecimal pastSeasons = perClub(country.getPoints2026(), country.getNb2026())
+                .add(perClub(country.getPoints2025(), country.getNb2025()))
+                .add(perClub(country.getPoints2024(), country.getNb2024()))
+                .add(perClub(country.getPoints2023(), country.getNb2023()));
+        return history(
+                teamIds,
+                season -> pastSeasons
+                        .add(perClub(season, country.getNb2027()))
+                        .divide(SEASONS_IN_COEFFICIENT, MathContext.DECIMAL64));
+    }
+
+    /**
+     * Points de saison cumules des equipes donnees, un point par date ou l'une d'elles a joue
+     * (meme une defaite : la courbe montre chaque journee europeenne). Le premier point (date
+     * null) regroupe les matchs sans date (tours de qualif. sans date exploitable), 0 sinon.
+     */
+    private List<UefaHistoryPointDto> history(Set<Long> teamIds, UnaryOperator<BigDecimal> coefficientOf) {
+        List<Match> matches = matchRepository.findByCompetition_CodeIn(CONTINENTAL_CODES);
+        Map<Long, LocalDate> leaguePhaseStart = leaguePhaseStartByCompetition(matches);
+        BigDecimal undated = BigDecimal.ZERO;
+        TreeMap<LocalDate, BigDecimal> byDate = new TreeMap<>();
+        for (Match m : matches) {
+            if (!hasFinalScore(m)) {
+                continue;
+            }
+            RoundCategory category = categorize(m, leaguePhaseStart);
+            BigDecimal earned = BigDecimal.ZERO;
+            boolean involved = false;
+            if (teamIds.contains(m.getTeam1().getId())) {
+                involved = true;
+                earned = earned.add(nonNull(pointsEarned(category, m.getScore1(), m.getScore2())));
+            }
+            if (teamIds.contains(m.getTeam2().getId())) {
+                involved = true;
+                earned = earned.add(nonNull(pointsEarned(category, m.getScore2(), m.getScore1())));
+            }
+            if (!involved) {
+                continue;
+            }
+            if (m.getDate() == null) {
+                undated = undated.add(earned);
+            } else {
+                byDate.merge(m.getDate(), earned, BigDecimal::add);
+            }
+        }
+
+        List<UefaHistoryPointDto> points = new ArrayList<>();
+        BigDecimal cumulative = undated;
+        points.add(historyPoint(null, cumulative, coefficientOf));
+        for (Map.Entry<LocalDate, BigDecimal> entry : byDate.entrySet()) {
+            cumulative = cumulative.add(entry.getValue());
+            points.add(historyPoint(entry.getKey(), cumulative, coefficientOf));
+        }
+        return points;
+    }
+
+    private UefaHistoryPointDto historyPoint(
+            LocalDate date, BigDecimal seasonPoints, UnaryOperator<BigDecimal> coefficientOf) {
+        return new UefaHistoryPointDto(
+                date, seasonPoints, coefficientOf.apply(seasonPoints).setScale(3, RoundingMode.HALF_UP));
+    }
+
+    private static BigDecimal nonNull(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
+    }
+
+    /** Points d'une saison ramenes au nombre de clubs engages ; 0 si inconnu. */
+    private static BigDecimal perClub(BigDecimal points, Integer clubs) {
+        if (points == null || clubs == null || clubs == 0) {
+            return BigDecimal.ZERO;
+        }
+        return points.divide(BigDecimal.valueOf(clubs), MathContext.DECIMAL64);
     }
 
     /** Etat de la saison en cours pour les 3 coupes d'Europe, calcule une seule fois par requete. */
@@ -247,6 +364,14 @@ public class UefaRankingService {
 
     private void addResult(
             Map<Long, BigDecimal> points, Long teamId, RoundCategory category, int goalsFor, int goalsAgainst) {
+        BigDecimal earned = pointsEarned(category, goalsFor, goalsAgainst);
+        if (earned != null) {
+            points.merge(teamId, earned, BigDecimal::add);
+        }
+    }
+
+    /** Points rapportes par un match selon le bareme de son tour ; null si le tour n'en rapporte pas. */
+    private BigDecimal pointsEarned(RoundCategory category, int goalsFor, int goalsAgainst) {
         BigDecimal win =
                 switch (category) {
                     case QUALIFYING_TIE, PRE_LEAGUE_BARRAGE -> WIN_QUALIFYING;
@@ -254,20 +379,15 @@ public class UefaRankingService {
                     default -> null;
                 };
         if (win == null) {
-            return;
+            return null;
         }
         BigDecimal draw = (category == RoundCategory.QUALIFYING_TIE || category == RoundCategory.PRE_LEAGUE_BARRAGE)
                 ? DRAW_QUALIFYING
                 : DRAW_MAIN;
-        BigDecimal earned;
         if (goalsFor > goalsAgainst) {
-            earned = win;
-        } else if (goalsFor == goalsAgainst) {
-            earned = draw;
-        } else {
-            earned = BigDecimal.ZERO;
+            return win;
         }
-        points.merge(teamId, earned, BigDecimal::add);
+        return goalsFor == goalsAgainst ? draw : BigDecimal.ZERO;
     }
 
     private TieKey tieKeyFor(Match m, RoundCategory category) {

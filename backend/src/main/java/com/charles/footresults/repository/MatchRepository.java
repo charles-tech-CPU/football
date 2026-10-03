@@ -16,6 +16,9 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     List<Match> findByCompetitionIdAndStatusOrderByDateAscTimeAsc(Long competitionId, MatchStatus status);
 
+    /** Matchs restant a jouer d'une competition (classement projete, cf. StandingsService). */
+    List<Match> findByCompetitionIdAndStatusNot(Long competitionId, MatchStatus status);
+
     /** Reserve aux classements de phase (ex: phase de ligue LDC/EL/EC) : ne tient compte que des matchs dont le round_label contient ce fragment. */
     List<Match> findByCompetitionIdAndStatusAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
             Long competitionId, MatchStatus status, String roundLabelPart);

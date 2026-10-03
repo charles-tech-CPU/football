@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.charles.footresults.dto.ClubUefaRankingDto;
 import com.charles.footresults.dto.CountryUefaRankingDto;
 import com.charles.footresults.dto.HeadToHeadCellDto;
+import com.charles.footresults.dto.ProjectedStandingRowDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.dto.TeamStatusDto;
 import com.charles.footresults.dto.TeamStatusUpdateDto;
@@ -34,6 +35,10 @@ class ReadOnlyControllersTest {
         assertThat(controller.standings(1L, null)).isSameAs(general);
         assertThat(controller.standings(1L, "  ")).isSameAs(general);
         assertThat(controller.standings(1L, "PHASE DE LIGUE")).isSameAs(phase);
+
+        List<ProjectedStandingRowDto> projected = List.of();
+        when(standingsService.computeProjectedStandings(1L)).thenReturn(projected);
+        assertThat(controller.projectedStandings(1L)).isSameAs(projected);
     }
 
     @Test

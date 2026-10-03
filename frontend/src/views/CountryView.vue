@@ -111,8 +111,17 @@
         </template>
 
         <template v-else>
+          <div v-if="!rankConfig?.resultsGroupSplit" class="tab-bar sub-tab-bar">
+            <button class="tab-btn" :class="{ active: !showProjected }" @click="showProjected = false">Classement actuel</button>
+            <button class="tab-btn" :class="{ active: showProjected }" @click="showProjected = true">Voir le classement projeté</button>
+          </div>
+          <p v-if="showProjected && !rankConfig?.resultsGroupSplit" class="section-intro">
+            Projection : chaque équipe garde sa moyenne actuelle de points par match sur ses matchs restants.
+            « Places possibles » = fourchette encore mathématiquement atteignable (🔒 = position définitive).
+          </p>
           <StandingsTable
-            :rows="rankConfig?.resultsGroupSplit ? frozenStandings : standings"
+            :rows="rankConfig?.resultsGroupSplit ? frozenStandings : showProjected ? projectedStandings : standings"
+            :projected="showProjected && !rankConfig?.resultsGroupSplit"
             :team-statuses="teamStatusMap"
             :ldc-slots="rankConfig?.resultsGroupSplit ? 0 : league.ldcSlots"
             :el-slots="rankConfig?.resultsGroupSplit ? 0 : league.elSlots"
@@ -233,6 +242,8 @@ const teamStatusMap = ref({})
 const loaded = ref(false)
 const activeTab = ref('classement')
 const avenirSubTab = ref('championnat')
+const showProjected = ref(false)
+const projectedStandings = ref([])
 const slots = reactive({ ldcSlots: 0, elSlots: 0, eclSlots: 0, relegationSlots: 0, barrageSlots: 0, totalRounds: null })
 const statusEdits = reactive({})
 
@@ -947,7 +958,12 @@ async function load() {
     teamStatusMap.value = {}
     rawMatches.value = []
   }
+  await loadProjected()
   loaded.value = true
+}
+
+async function loadProjected() {
+  projectedStandings.value = showProjected.value && league.value ? await api.getProjectedStandings(league.value.id) : []
 }
 
 async function saveSlots() {
@@ -962,6 +978,7 @@ async function saveStatus(teamId, value) {
   teamStatusMap.value = { ...teamStatusMap.value, [teamId]: updated }
 }
 
+watch(showProjected, loadProjected)
 watch(() => props.country, load)
 onMounted(load)
 </script>

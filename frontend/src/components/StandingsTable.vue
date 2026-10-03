@@ -16,6 +16,11 @@
             <th>BC</th>
             <th>DIFF</th>
             <th v-if="!pointsFirst">PTS</th>
+            <template v-if="projected">
+              <th title="Matchs restant à jouer">RES</th>
+              <th title="Points actuels + moyenne de points par match × matchs restants">PROJ.</th>
+              <th title="Places encore mathématiquement atteignables">PLACES POSSIBLES</th>
+            </template>
           </tr>
         </thead>
         <tbody>
@@ -45,6 +50,22 @@
             <td>{{ row.goalsAgainst }}</td>
             <td :class="row.goalDifference > 0 ? 'diff-pos' : row.goalDifference < 0 ? 'diff-neg' : ''">{{ row.goalDifference > 0 ? '+' : '' }}{{ row.goalDifference }}</td>
             <td v-if="!pointsFirst"><span class="pts-pill">{{ row.points }}</span></td>
+            <template v-if="projected">
+              <td>{{ row.remaining }}</td>
+              <td>
+                <strong>{{ formatProjected(row.projectedPoints) }}</strong>
+                <span
+                  v-if="row.currentRank !== grp.baseIndex + index + 1"
+                  class="rank-move"
+                  :class="row.currentRank > grp.baseIndex + index + 1 ? 'rank-move--up' : 'rank-move--down'"
+                  :title="`Actuellement ${row.currentRank}e`"
+                >{{ row.currentRank > grp.baseIndex + index + 1 ? '▲' : '▼' }}{{ Math.abs(row.currentRank - (grp.baseIndex + index + 1)) }}</span>
+              </td>
+              <td>
+                <span v-if="row.bestRank === row.worstRank" class="range-badge range-badge--locked" title="Position définitive quels que soient les matchs restants">🔒 {{ row.bestRank }}e</span>
+                <span v-else class="range-badge range-badge--open" title="Position encore susceptible de changer selon les matchs restants">{{ row.bestRank }}e – {{ row.worstRank }}e</span>
+              </td>
+            </template>
           </tr>
         </tbody>
       </table>
@@ -102,8 +123,15 @@ const props = defineProps({
   // Couleur par ligne calculee groupe par groupe (selections nationales : places
   // qualificatives propres a chaque ligue/groupe) : (groupName, rows) => [classe par ligne].
   // Prioritaire sur rankBands et sur les statuts de club.
-  groupRowClasses: { type: Function, default: null }
+  groupRowClasses: { type: Function, default: null },
+  // Lignes du classement projete (ProjectedStandingRowDto) : ajoute les colonnes matchs
+  // restants / points projetes / fourchette de places possibles.
+  projected: { type: Boolean, default: false }
 })
+
+function formatProjected(points) {
+  return points.toLocaleString('fr-FR', { maximumFractionDigits: 1 })
+}
 
 // Icones automatiques de qualification/barrage/relegation, calculees a partir des places
 // configurees pour la competition (memes champs que "Configurer les places qualificatives").
@@ -218,6 +246,39 @@ function rowClass(row, index, grp) {
 .diff-neg {
   color: var(--danger);
   font-weight: 600;
+}
+
+.rank-move {
+  margin-left: 6px;
+  font-size: 0.8em;
+  font-weight: 700;
+}
+
+.rank-move--up {
+  color: var(--primary-dark);
+}
+
+.rank-move--down {
+  color: var(--danger);
+}
+
+.range-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.range-badge--locked {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.range-badge--open {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
 }
 
 .pts-pill {

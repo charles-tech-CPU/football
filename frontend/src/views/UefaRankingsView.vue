@@ -12,9 +12,48 @@
   <div class="tab-bar">
     <button class="tab-btn" :class="{ active: activeTab === 'clubs' }" @click="activeTab = 'clubs'">Clubs</button>
     <button class="tab-btn" :class="{ active: activeTab === 'pays' }" @click="activeTab = 'pays'">Pays</button>
+    <button class="tab-btn" :class="{ active: activeTab === 'evolution' }" @click="activeTab = 'evolution'">Évolution</button>
   </div>
 
-  <template v-if="activeTab === 'clubs'">
+  <template v-if="activeTab === 'evolution'">
+    <div class="tab-bar sub-tab-bar">
+      <button class="tab-btn" :class="{ active: historyKind === 'club' }" @click="setHistoryKind('club')">Club</button>
+      <button class="tab-btn" :class="{ active: historyKind === 'pays' }" @click="setHistoryKind('pays')">Pays</button>
+    </div>
+
+    <div class="history-search">
+      <input
+        v-model="historyQuery"
+        type="search"
+        :placeholder="historyKind === 'club' ? 'Rechercher un club…' : 'Rechercher un pays…'"
+        :aria-label="historyKind === 'club' ? 'Rechercher un club' : 'Rechercher un pays'"
+      />
+      <ul v-if="historySuggestions.length" class="history-suggestions">
+        <li v-for="s in historySuggestions" :key="s.id">
+          <button type="button" class="history-suggestion" @click="selectHistory(s)">
+            <FlagIcon :country="s.country" />
+            {{ s.name }}
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <template v-if="historySelection">
+      <h2 class="history-title">
+        <FlagIcon :country="historySelection.country" />
+        {{ historySelection.name }}
+        <span v-if="history.length" class="history-current">{{ formatNumber(history.at(-1).coefficient) }}</span>
+      </h2>
+      <p class="section-intro">
+        Coefficient {{ historyKind === 'club' ? 'du club (somme des 5 saisons)' : 'du pays (moyenne sur 5 saisons des points par club engagé)' }},
+        recalculé à chaque date de match européen joué cette saison.
+      </p>
+      <UefaHistoryChart v-if="history.length" :points="history" :title="historySelection.name" />
+    </template>
+    <p v-else class="empty-state">Choisis un {{ historyKind === 'club' ? 'club' : 'pays' }} pour afficher l'évolution de son coefficient.</p>
+  </template>
+
+  <template v-else-if="activeTab === 'clubs'">
     <div v-if="clubs.length" class="table-scroll">
       <table>
         <thead>
@@ -104,15 +143,51 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import api from '../services/api'
 import TeamLogo from '../components/TeamLogo.vue'
 import FlagIcon from '../components/FlagIcon.vue'
+import UefaHistoryChart from '../components/UefaHistoryChart.vue'
 
 const activeTab = ref('clubs')
 const clubs = ref([])
 const countries = ref([])
 const loaded = ref(false)
+
+const MAX_SUGGESTIONS = 8
+const historyKind = ref('club')
+const historyQuery = ref('')
+const historySelection = ref(null)
+const history = ref([])
+
+const historyCandidates = computed(() =>
+  historyKind.value === 'club'
+    ? clubs.value.map(c => ({ id: c.id, name: c.clubName, country: c.country }))
+    : countries.value.map(c => ({ id: c.id, name: c.country, country: c.country })))
+
+const historySuggestions = computed(() => {
+  const q = historyQuery.value.trim().toLowerCase()
+  if (!q || q === historySelection.value?.name.toLowerCase()) return []
+  return historyCandidates.value.filter(c => c.name.toLowerCase().includes(q)).slice(0, MAX_SUGGESTIONS)
+})
+
+function setHistoryKind(kind) {
+  historyKind.value = kind
+  historyQuery.value = ''
+  historySelection.value = null
+  history.value = []
+}
+
+async function selectHistory(candidate) {
+  historySelection.value = candidate
+  historyQuery.value = candidate.name
+  history.value = []
+  const points = historyKind.value === 'club'
+    ? await api.getClubUefaHistory(candidate.id)
+    : await api.getCountryUefaHistory(candidate.id)
+  // Ignore une reponse arrivee apres un autre choix.
+  if (historySelection.value === candidate) history.value = points
+}
 
 function formatNumber(v) {
   if (v == null) return '—'
@@ -145,3 +220,59 @@ async function load() {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.history-search {
+  position: relative;
+  max-width: 360px;
+  margin-bottom: 16px;
+}
+
+.history-search input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.history-suggestions {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+}
+
+.history-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--text);
+  padding: 6px 8px;
+}
+
+.history-suggestion:hover {
+  background: var(--surface-muted);
+}
+
+.history-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-current {
+  margin-left: auto;
+  font-size: 0.8em;
+  color: var(--primary-dark);
+}
+</style>

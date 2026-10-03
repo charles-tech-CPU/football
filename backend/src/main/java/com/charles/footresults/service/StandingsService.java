@@ -6,11 +6,13 @@ import com.charles.footresults.domain.MatchStatus;
 import com.charles.footresults.domain.Team;
 import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.HeadToHeadCellDto;
+import com.charles.footresults.dto.ProjectedStandingRowDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,12 @@ public class StandingsService {
 
     private static final int POINTS_WIN = 3;
     private static final int POINTS_DRAW = 1;
+
+    private static final Comparator<StandingRowDto> RANKING_ORDER = Comparator.comparingInt(StandingRowDto::points)
+            .reversed()
+            .thenComparing(
+                    Comparator.comparingInt(StandingRowDto::goalDifference).reversed())
+            .thenComparing(Comparator.comparingInt(StandingRowDto::goalsFor).reversed());
 
     private final MatchRepository matchRepository;
     private final TeamCompetitionStatusRepository statusRepository;
@@ -125,14 +133,83 @@ public class StandingsService {
     }
 
     private List<StandingRowDto> sortRows(List<StandingRowDto> rows) {
-        return rows.stream()
-                .sorted(Comparator.comparingInt(StandingRowDto::points)
-                        .reversed()
-                        .thenComparing(Comparator.comparingInt(StandingRowDto::goalDifference)
-                                .reversed())
-                        .thenComparing(Comparator.comparingInt(StandingRowDto::goalsFor)
-                                .reversed()))
-                .toList();
+        return rows.stream().sorted(RANKING_ORDER).toList();
+    }
+
+    /**
+     * Classement final projete : chaque match pas encore joue (statut different de COMPLETED)
+     * est simule en attribuant a chaque equipe sa moyenne actuelle de points par match (moyenne
+     * du championnat pour une equipe qui n'a encore rien joue). Pas de simulation de buts : a
+     * egalite de points projetes, on departage avec le classement actuel.
+     *
+     * Repart du classement reel (computeStandings, donc meme repartition par groupe) et calcule,
+     * groupe par groupe, la fourchette de rangs encore atteignables : pire cas = 0 point sur les
+     * matchs restants, meilleur cas = toutes victoires, en traitant chaque equipe
+     * independamment (deux equipes qui doivent encore s'affronter ne peuvent pas reellement
+     * gagner toutes les deux : fourchette volontairement prudente, jamais trop etroite). Seuls
+     * les matchs deja au calendrier sont comptes : une 2e phase pas encore programmee n'est pas
+     * anticipee.
+     */
+    public List<ProjectedStandingRowDto> computeProjectedStandings(Long competitionId) {
+        Map<Long, StandingRowDto> rowsByTeam = new LinkedHashMap<>();
+        for (StandingRowDto row : computeStandings(competitionId)) {
+            rowsByTeam.put(row.teamId(), row);
+        }
+        Map<Long, Integer> remaining = new HashMap<>();
+        for (Match m : matchRepository.findByCompetitionIdAndStatusNot(competitionId, MatchStatus.COMPLETED)) {
+            for (Team team : List.of(m.getTeam1(), m.getTeam2())) {
+                if (isPlaceholder(team)) {
+                    continue;
+                }
+                rowsByTeam.computeIfAbsent(team.getId(), id -> new TeamTally(team).toDto(null));
+                remaining.merge(team.getId(), 1, Integer::sum);
+            }
+        }
+
+        int totalPoints =
+                rowsByTeam.values().stream().mapToInt(StandingRowDto::points).sum();
+        int totalPlayed =
+                rowsByTeam.values().stream().mapToInt(StandingRowDto::played).sum();
+        double leagueAverage = totalPlayed == 0 ? 0 : (double) totalPoints / totalPlayed;
+
+        // Groupes dans l'ordre du classement actuel (une equipe sans groupe va avec les autres).
+        Map<String, List<StandingRowDto>> byGroup = new LinkedHashMap<>();
+        for (StandingRowDto row : rowsByTeam.values()) {
+            byGroup.computeIfAbsent(row.group(), g -> new ArrayList<>()).add(row);
+        }
+
+        List<ProjectedStandingRowDto> result = new ArrayList<>();
+        for (List<StandingRowDto> groupRows : byGroup.values()) {
+            List<StandingRowDto> current = sortRows(groupRows);
+            List<Outlook> outlooks = new ArrayList<>();
+            for (int i = 0; i < current.size(); i++) {
+                StandingRowDto row = current.get(i);
+                int left = remaining.getOrDefault(row.teamId(), 0);
+                double average = row.played() == 0 ? leagueAverage : (double) row.points() / row.played();
+                outlooks.add(new Outlook(row, i + 1, left, row.points() + average * left));
+            }
+            for (Outlook o : outlooks) {
+                o.bestRank = 1
+                        + (int) outlooks.stream()
+                                .filter(other -> other.alwaysAbove(o))
+                                .count();
+                o.worstRank = outlooks.size()
+                        - (int) outlooks.stream().filter(o::alwaysAbove).count();
+            }
+            outlooks.stream()
+                    .sorted(Comparator.comparingDouble((Outlook o) -> o.projectedPoints)
+                            .reversed()
+                            .thenComparingInt(o -> o.currentRank))
+                    .map(o -> ProjectedStandingRowDto.of(
+                            o.row, o.remaining, o.projectedPoints, o.currentRank, o.bestRank, o.worstRank))
+                    .forEach(result::add);
+        }
+        return result;
+    }
+
+    /** Places generiques "A DETERMINER ..." (tirage a venir) : pas de vraies equipes a classer. */
+    private boolean isPlaceholder(Team team) {
+        return team.getName() != null && team.getName().toUpperCase().startsWith("A DETERMINER");
     }
 
     public List<HeadToHeadCellDto> computeHeadToHead(Long competitionId) {
@@ -169,6 +246,44 @@ public class StandingsService {
             wdl[1]++;
         } else {
             wdl[2]++;
+        }
+    }
+
+    /** Situation d'une equipe dans la projection : points acquis, matchs restants, rangs possibles. */
+    private static final class Outlook {
+        private final StandingRowDto row;
+        private final int currentRank;
+        private final int remaining;
+        private final double projectedPoints;
+        private int bestRank;
+        private int worstRank;
+
+        private Outlook(StandingRowDto row, int currentRank, int remaining, double projectedPoints) {
+            this.row = row;
+            this.currentRank = currentRank;
+            this.remaining = remaining;
+            this.projectedPoints = projectedPoints;
+        }
+
+        private int maxPoints() {
+            return row.points() + POINTS_WIN * remaining;
+        }
+
+        /**
+         * Vrai si cette equipe finit devant "other" quels que soient les matchs restants : meme
+         * en perdant tout, elle depasse le total maximal de l'autre. A egalite parfaite, seul un
+         * classement definitif (plus aucun match pour l'une ni l'autre) tranche via les criteres
+         * actuels (difference de buts...), sinon les buts restent a jouer.
+         */
+        private boolean alwaysAbove(Outlook other) {
+            if (other == this) {
+                return false;
+            }
+            int min = row.points();
+            if (min != other.maxPoints()) {
+                return min > other.maxPoints();
+            }
+            return remaining == 0 && other.remaining == 0 && currentRank < other.currentRank;
         }
     }
 

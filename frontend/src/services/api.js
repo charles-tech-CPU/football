@@ -31,6 +31,8 @@ export default {
 
   getStandings: (competitionId, round) =>
     api.get('/standings', { params: { competitionId, round } }).then(r => r.data),
+  getProjectedStandings: (competitionId) =>
+    api.get('/standings/projected', { params: { competitionId } }).then(r => r.data),
   getHeadToHead: (competitionId) =>
     api.get('/head-to-head', { params: { competitionId } }).then(r => r.data),
 
@@ -42,5 +44,7 @@ export default {
     api.patch(`/competitions/${competitionId}/qualification-slots`, payload).then(r => r.data),
 
   getClubUefaRankings: () => api.get('/uefa-rankings/clubs').then(r => r.data),
-  getCountryUefaRankings: () => api.get('/uefa-rankings/countries').then(r => r.data)
+  getCountryUefaRankings: () => api.get('/uefa-rankings/countries').then(r => r.data),
+  getClubUefaHistory: (id) => api.get(`/uefa-rankings/clubs/${id}/history`).then(r => r.data),
+  getCountryUefaHistory: (id) => api.get(`/uefa-rankings/countries/${id}/history`).then(r => r.data)
 }

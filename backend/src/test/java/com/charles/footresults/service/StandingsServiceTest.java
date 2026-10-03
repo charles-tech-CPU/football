@@ -12,6 +12,7 @@ import com.charles.footresults.domain.MatchStatus;
 import com.charles.footresults.domain.Team;
 import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.HeadToHeadCellDto;
+import com.charles.footresults.dto.ProjectedStandingRowDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
@@ -188,6 +189,71 @@ class StandingsServiceTest {
                 .containsExactlyInAnyOrder(
                         new HeadToHeadCellDto(psg.getId(), om.getId(), 1, 1, 1),
                         new HeadToHeadCellDto(om.getId(), psg.getId(), 1, 1, 1));
+    }
+
+    // --- Classement projete ---
+
+    @Test
+    void classementProjeteAttribueAChaqueEquipeSaMoyenneDePointsSurSesMatchsRestants() {
+        givenPlayedMatches(match(psg, lyon, 1, 0), match(psg, lens, 1, 1), match(om, lens, 2, 0));
+        givenRemainingMatches(unplayed(om, lyon), unplayed(om, psg), unplayed(lyon, lens));
+
+        List<ProjectedStandingRowDto> projected = standingsService.computeProjectedStandings(COMPETITION_ID);
+
+        // PSG 4 pts + 2 pts/match x 1 = 6 ; OM 3 + 3 x 2 = 9 ; Lens 1 + 0.5 x 1 = 1.5 ; Lyon 0.
+        assertThat(projected)
+                .extracting(ProjectedStandingRowDto::teamName)
+                .containsExactly("OM", "PSG", "Lens", "Lyon");
+        assertThat(projected)
+                .extracting(ProjectedStandingRowDto::projectedPoints)
+                .containsExactly(9.0, 6.0, 1.5, 0.0);
+        assertThat(projected).extracting(ProjectedStandingRowDto::currentRank).containsExactly(2, 1, 3, 4);
+        assertThat(projected).extracting(ProjectedStandingRowDto::remaining).containsExactly(2, 1, 1, 2);
+        // Points reels inchanges : la projection ne touche qu'aux colonnes dediees.
+        assertThat(projected.get(0).points()).isEqualTo(3);
+    }
+
+    @Test
+    void fourchetteDeRangsFigeeQuandPlusPersonneNePeutDepasser() {
+        givenPlayedMatches(match(psg, om, 3, 0), match(psg, lyon, 2, 0), match(psg, om, 1, 0), match(lyon, om, 1, 0));
+        givenRemainingMatches(unplayed(om, lyon));
+
+        List<ProjectedStandingRowDto> projected = standingsService.computeProjectedStandings(COMPETITION_ID);
+
+        // PSG 9 pts, plus de match : hors d'atteinte (Lyon 6 pts max). Lyon (3) et OM (0, 3 max)
+        // peuvent encore finir a egalite de points, departages par un match encore a jouer.
+        assertThat(projected).extracting(ProjectedStandingRowDto::teamName).containsExactly("PSG", "Lyon", "OM");
+        assertThat(projected).extracting(ProjectedStandingRowDto::bestRank).containsExactly(1, 2, 2);
+        assertThat(projected).extracting(ProjectedStandingRowDto::worstRank).containsExactly(1, 3, 3);
+    }
+
+    @Test
+    void equipeSansMatchJoueProjeteeALaMoyenneDuChampionnatEtPlacesATirerIgnorees() {
+        givenPlayedMatches(match(psg, om, 3, 0));
+        givenRemainingMatches(unplayed(lens, psg), unplayed(lens, team(99L, "A DETERMINER : HF-HF")));
+
+        List<ProjectedStandingRowDto> projected = standingsService.computeProjectedStandings(COMPETITION_ID);
+
+        // Moyenne du championnat : 3 pts pour 2 matchs joues = 1.5 pt/match.
+        ProjectedStandingRowDto lensRow = projected.stream()
+                .filter(r -> r.teamName().equals("Lens"))
+                .findFirst()
+                .orElseThrow();
+        assertThat(lensRow.played()).isZero();
+        assertThat(lensRow.remaining()).isEqualTo(2);
+        assertThat(lensRow.projectedPoints()).isEqualTo(3.0);
+        assertThat(projected).extracting(ProjectedStandingRowDto::teamName).doesNotContain("A DETERMINER : HF-HF");
+    }
+
+    private void givenRemainingMatches(Match... matches) {
+        when(matchRepository.findByCompetitionIdAndStatusNot(COMPETITION_ID, MatchStatus.COMPLETED))
+                .thenReturn(List.of(matches));
+    }
+
+    private static Match unplayed(Team team1, Team team2) {
+        Match match = match(team1, team2, null, null);
+        match.setStatus(MatchStatus.SCHEDULED);
+        return match;
     }
 
     private void givenPlayedMatches(Match... matches) {

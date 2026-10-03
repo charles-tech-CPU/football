@@ -1,6 +1,7 @@
 package com.charles.footresults.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
@@ -17,9 +18,11 @@ import com.charles.footresults.domain.Team;
 import com.charles.footresults.dto.ClubUefaRankingDto;
 import com.charles.footresults.dto.CountryUefaRankingDto;
 import com.charles.footresults.dto.StandingRowDto;
+import com.charles.footresults.dto.UefaHistoryPointDto;
 import com.charles.footresults.repository.ClubUefaRankingRepository;
 import com.charles.footresults.repository.CountryUefaRankingRepository;
 import com.charles.footresults.repository.MatchRepository;
+import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Month;
@@ -27,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -382,6 +386,69 @@ class UefaRankingServiceTest {
         assertThat(countries.get(0).ldcNow()).isZero();
         assertThat(countries.get(0).colorCode()).isEqualTo("RED");
         assertThat(countries.get(1).ldcNow()).isEqualTo(1);
+    }
+
+    // --- Historique ---
+
+    @Test
+    void historiqueDUnClubCumuleSesPointsDateParDateSurLaBaseDesSaisonsPassees() {
+        ClubUefaRanking club = club(psg, "PSG", "France", "LDC");
+        club.setPoints2026(new BigDecimal("10"));
+        club.setPoints2025(new BigDecimal("5"));
+        when(clubRepository.findById(7L)).thenReturn(Optional.of(club));
+        givenMatches(
+                played("2E TOUR QUALIF - Aller", null, psg, inter, 2, 0),
+                played("PHASE DE LIGUE", LEAGUE_PHASE_START, psg, celtic, 3, 1),
+                played("PHASE DE LIGUE", LEAGUE_PHASE_START, inter, benfica, 1, 0),
+                played("PHASE DE LIGUE", date(10, 1), benfica, psg, 2, 0),
+                match("PHASE DE LIGUE", date(10, 21), psg, inter, null, null, MatchStatus.SCHEDULED));
+
+        List<UefaHistoryPointDto> history = uefaRankingService.findClubHistory(7L);
+
+        // Point de depart : qualif sans date (victoire = 1 pt) ; puis une victoire (+2), une defaite.
+        assertThat(history)
+                .extracting(UefaHistoryPointDto::date)
+                .containsExactly(null, LEAGUE_PHASE_START, date(10, 1));
+        assertThat(history)
+                .extracting(p -> p.seasonPoints().stripTrailingZeros().toPlainString())
+                .containsExactly("1", "3", "3");
+        assertThat(history)
+                .extracting(p -> p.coefficient().stripTrailingZeros().toPlainString())
+                .containsExactly("16", "18", "18");
+    }
+
+    @Test
+    void historiqueDUnPaysMoyenneSur5SaisonsLesPointsParClubEngage() {
+        CountryUefaRanking angleterre = country("Angleterre");
+        angleterre.setPoints2026(new BigDecimal("249.025"));
+        angleterre.setPoints2025(new BigDecimal("185"));
+        angleterre.setPoints2024(new BigDecimal("135"));
+        angleterre.setPoints2023(new BigDecimal("155"));
+        angleterre.setNb2027(9);
+        angleterre.setNb2026(9);
+        angleterre.setNb2025(7);
+        angleterre.setNb2024(8);
+        angleterre.setNb2023(7);
+        when(countryRepository.findById(3L)).thenReturn(Optional.of(angleterre));
+        when(clubRepository.findAll())
+                .thenReturn(List.of(club(inter, "Inter", "Angleterre", "LDC"), club(psg, "PSG", "France", "LDC")));
+        givenMatches(
+                played("PHASE DE LIGUE", LEAGUE_PHASE_START, inter, celtic, 1, 0),
+                played("PHASE DE LIGUE", date(10, 1), psg, benfica, 1, 0));
+
+        List<UefaHistoryPointDto> history = uefaRankingService.findCountryHistory(3L);
+
+        // (0/9 + 249.025/9 + 185/7 + 135/8 + 155/7) / 5 = 18.623 ; +2 pts pour 9 clubs => 18.668.
+        // Le match du PSG (autre pays) n'ajoute aucun point a la courbe anglaise.
+        assertThat(history).extracting(UefaHistoryPointDto::date).containsExactly(null, LEAGUE_PHASE_START);
+        assertThat(history).extracting(p -> p.coefficient().toPlainString()).containsExactly("18.623", "18.668");
+    }
+
+    @Test
+    void historiqueDUnClubInconnuRenvoieUneErreur() {
+        when(clubRepository.findById(42L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> uefaRankingService.findClubHistory(42L)).isInstanceOf(EntityNotFoundException.class);
     }
 
     // --- Outils ---
