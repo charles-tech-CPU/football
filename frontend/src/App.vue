@@ -1,6 +1,7 @@
 <template>
   <header class="topbar">
     <div class="topbar-inner">
+      <a :href="PORTAL_URL" class="portal-link" title="Retour au portail du foyer">← Portail</a>
       <router-link to="/" class="brand">
         <span class="brand-mark">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -39,3 +40,7 @@
     <span>Championnats européens, coupes nationales, coupes d'Europe et sélections</span>
   </footer>
 </template>
+
+<script setup>
+import { PORTAL_URL } from './portal'
+</script>

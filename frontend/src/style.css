@@ -1424,3 +1424,32 @@ table.results-grid td.grid-loss { background: #fbe0de; color: #a8322a; }
     height: 28px;
   }
 }
+
+/* Lien de retour au portail-foyer, tout a gauche de l'en-tete : discret mais visible */
+.portal-link {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.78);
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.portal-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+}
+/* La barre repartit marque et onglets aux deux bouts : le lien reste colle a la marque */
+.topbar-inner > .portal-link {
+  margin-right: -6px;
+}
+.topbar-inner > .brand {
+  margin-right: auto;
+}
