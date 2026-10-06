@@ -1,10 +1,18 @@
 import axios from 'axios'
 
-// Backend Spring Boot en dev (port 8081, different du projet LoL sur 8080).
-const BACKEND_BASE_URL = `http://${window.location.hostname}:8081`
+// Ports du backend : HTTP en LAN (http://<ip>), HTTPS via Tailscale
+// (https://serveur-foyer.tail0af124.ts.net).
+const PORT_BACKEND_HTTP = 8081
+const PORT_BACKEND_HTTPS = 8381
+
+// Le backend suit le protocole de la page : une page HTTPS qui appelle une API HTTP
+// est bloquee par le navigateur ("contenu mixte").
+const BACKEND_BASE_URL = window.location.protocol === 'https:'
+  ? `https://${window.location.hostname}:${PORT_BACKEND_HTTPS}`
+  : `http://${window.location.hostname}:${PORT_BACKEND_HTTP}`
 
 const api = axios.create({
-  baseURL: `http://${window.location.hostname}:8081/api`
+  baseURL: `${BACKEND_BASE_URL}/api`
 })
 
 // Blasons des clubs : servis en statique par le backend sous /logos/<fichier>.
