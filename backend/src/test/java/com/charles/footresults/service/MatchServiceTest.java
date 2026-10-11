@@ -15,6 +15,7 @@ import com.charles.footresults.domain.Team;
 import com.charles.footresults.dto.MatchCreateDto;
 import com.charles.footresults.dto.MatchDto;
 import com.charles.footresults.dto.MatchPageDto;
+import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamRepository;
@@ -49,6 +50,9 @@ class MatchServiceTest {
 
     @Mock
     private TeamRepository teamRepository;
+
+    @Mock
+    private StandingsService standingsService;
 
     @InjectMocks
     private MatchService matchService;
@@ -192,6 +196,29 @@ class MatchServiceTest {
     }
 
     @Test
+    void calendrierDonneLeRangDeChaqueEquipeDansLeChampionnatLePlusRecentDeSonPays() {
+        Competition ancienneSaison =
+                new Competition("FRANCE", "France - Championnat 2026", CompetitionType.LEAGUE, "France", 2026);
+        ancienneSaison.setId(9L);
+        Competition autrePays =
+                new Competition("ESPAGNE", "Espagne - Championnat 2027", CompetitionType.LEAGUE, "Espagne", 2027);
+        autrePays.setId(11L);
+        when(matchRepository.findUpcomingFiltered(NOT_UPCOMING, null, null, PageRequest.of(0, 20)))
+                .thenReturn(new PageImpl<>(List.of(match()), PageRequest.of(0, 20), 1));
+        when(competitionRepository.findByType(CompetitionType.LEAGUE))
+                .thenReturn(List.of(ancienneSaison, ligue1, autrePays));
+        // OM 1er, PSG 2e ; une equipe sans match joue n'a pas de rang.
+        when(standingsService.computeStandings(10L)).thenReturn(List.of(row(2L), row(1L)));
+
+        MatchDto dto = matchService.findUpcoming(0, 20, "all").items().get(0);
+
+        assertThat(dto.team1LeagueRank()).isEqualTo(2);
+        assertThat(dto.team2LeagueRank()).isEqualTo(1);
+        verify(standingsService, never()).computeStandings(9L);
+        verify(standingsService, never()).computeStandings(11L);
+    }
+
+    @Test
     void lesListesDeMatchsSontConvertiesEnDto() {
         when(matchRepository.findByCompetitionIdOrderByDateAscTimeAsc(10L)).thenReturn(List.of(match()));
         when(matchRepository.findByTeam1_IdOrTeam2_IdOrderByDateDesc(1L, 1L)).thenReturn(List.of(match()));
@@ -263,6 +290,10 @@ class MatchServiceTest {
         match.setTeam1(psg);
         match.setTeam2(om);
         return match;
+    }
+
+    private static StandingRowDto row(Long teamId) {
+        return new StandingRowDto(teamId, "Equipe " + teamId, null, null, 1, 0, 0, 0, 0, 0, 0, 0, null);
     }
 
     private static Team team(Long id, String name) {

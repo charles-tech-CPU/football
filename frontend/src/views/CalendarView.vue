@@ -46,10 +46,9 @@
         <td>{{ m.roundLabel }}</td>
         <td>
           <span class="team-cell">
-            <template v-if="isContinental(m)">
-              <TeamLogo :name="m.team1Name" :logo-path="m.team1LogoPath" />
-              <FlagIcon :country="m.team1Country" />
-            </template>
+            <TeamLogo :name="m.team1Name" :country="m.team1Country" :logo-path="m.team1LogoPath" />
+            <FlagIcon v-if="isContinental(m)" :country="m.team1Country" />
+            <span v-if="m.team1LeagueRank" class="league-rank" :title="leagueRankTitle(m.team1LeagueRank)">{{ formatRank(m.team1LeagueRank) }}</span>
             <select v-model.number="edits[m.id].team1Id" aria-label="Équipe domicile">
               <option v-for="t in teamOptionsFor(m, edits[m.id].team1Id)" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
@@ -58,10 +57,9 @@
         <MatchScoreCells v-model:score1="edits[m.id].score1" v-model:score2="edits[m.id].score2" />
         <td>
           <span class="team-cell">
-            <template v-if="isContinental(m)">
-              <TeamLogo :name="m.team2Name" :logo-path="m.team2LogoPath" />
-              <FlagIcon :country="m.team2Country" />
-            </template>
+            <TeamLogo :name="m.team2Name" :country="m.team2Country" :logo-path="m.team2LogoPath" />
+            <FlagIcon v-if="isContinental(m)" :country="m.team2Country" />
+            <span v-if="m.team2LeagueRank" class="league-rank" :title="leagueRankTitle(m.team2LeagueRank)">{{ formatRank(m.team2LeagueRank) }}</span>
             <select v-model.number="edits[m.id].team2Id" aria-label="Équipe extérieur">
               <option v-for="t in teamOptionsFor(m, edits[m.id].team2Id)" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
@@ -102,6 +100,15 @@ import { useMatchEdits } from '../composables/useMatchEdits'
 
 function isContinental(m) {
   return m.competitionCode === 'LDC' || m.competitionCode === 'EL' || m.competitionCode === 'EC'
+}
+
+// Rang au championnat national de l'equipe (fourni par l'API, meme pour une coupe).
+function formatRank(rank) {
+  return rank === 1 ? '1er' : `${rank}e`
+}
+
+function leagueRankTitle(rank) {
+  return `${formatRank(rank)} au classement du championnat`
 }
 
 const PAGE_SIZE = 20
@@ -162,6 +169,18 @@ onMounted(load)
 </script>
 
 <style scoped>
+.league-rank {
+  min-width: 2.4em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 0.75em;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .page-info {
   color: var(--text-muted);
   font-size: 0.9em;

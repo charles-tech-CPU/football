@@ -8,11 +8,16 @@ import com.charles.footresults.domain.Team;
 import com.charles.footresults.dto.MatchCreateDto;
 import com.charles.footresults.dto.MatchDto;
 import com.charles.footresults.dto.MatchPageDto;
+import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -25,14 +30,17 @@ public class MatchService {
     private final MatchRepository matchRepository;
     private final CompetitionRepository competitionRepository;
     private final TeamRepository teamRepository;
+    private final StandingsService standingsService;
 
     public MatchService(
             MatchRepository matchRepository,
             CompetitionRepository competitionRepository,
-            TeamRepository teamRepository) {
+            TeamRepository teamRepository,
+            StandingsService standingsService) {
         this.matchRepository = matchRepository;
         this.competitionRepository = competitionRepository;
         this.teamRepository = teamRepository;
+        this.standingsService = standingsService;
     }
 
     @Transactional(readOnly = true)
@@ -82,7 +90,41 @@ public class MatchService {
                 type,
                 code,
                 PageRequest.of(page, size));
-        return new MatchPageDto(result.getContent().stream().map(MatchDto::from).toList(), result.getTotalElements());
+        Map<Long, Integer> ranks = leagueRanks(result.getContent());
+        List<MatchDto> items = result.getContent().stream()
+                .map(m -> MatchDto.from(m)
+                        .withLeagueRanks(
+                                ranks.get(m.getTeam1().getId()),
+                                ranks.get(m.getTeam2().getId())))
+                .toList();
+        return new MatchPageDto(items, result.getTotalElements());
+    }
+
+    /**
+     * Rang actuel de chaque equipe des matchs donnes dans le championnat de son pays (saison la
+     * plus recente), y compris pour un match de coupe ou de coupe d'Europe. Un championnat scinde
+     * en mini-groupes garde le rang global (groupe du haut d'abord, cf. StandingsService). Une
+     * equipe absente du classement (aucun match joue) n'a pas de rang.
+     */
+    private Map<Long, Integer> leagueRanks(List<Match> matches) {
+        Set<String> countries = new HashSet<>();
+        for (Match m : matches) {
+            countries.add(m.getTeam1().getCountry());
+            countries.add(m.getTeam2().getCountry());
+        }
+        Map<String, Competition> leagueByCountry = new HashMap<>();
+        for (Competition c : competitionRepository.findByType(CompetitionType.LEAGUE)) {
+            if (c.getCountry() == null || !countries.contains(c.getCountry())) continue;
+            leagueByCountry.merge(c.getCountry(), c, (a, b) -> a.getSeason() >= b.getSeason() ? a : b);
+        }
+        Map<Long, Integer> ranks = new HashMap<>();
+        for (Competition league : leagueByCountry.values()) {
+            List<StandingRowDto> rows = standingsService.computeStandings(league.getId());
+            for (int i = 0; i < rows.size(); i++) {
+                ranks.putIfAbsent(rows.get(i).teamId(), i + 1);
+            }
+        }
+        return ranks;
     }
 
     /** Tous les matchs reportes/suspendus, toutes competitions confondues, sans limite. */

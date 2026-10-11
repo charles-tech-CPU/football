@@ -29,7 +29,10 @@ public record MatchDto(
         Integer penaltyScore1,
         Integer penaltyScore2,
         MatchStatus status,
-        Integer bracketPosition) {
+        Integer bracketPosition,
+        /** Rang actuel de chaque equipe dans son championnat national ; null si non renseigne. */
+        Integer team1LeagueRank,
+        Integer team2LeagueRank) {
     public static MatchDto from(Match m) {
         return new MatchDto(
                 m.getId(),
@@ -54,6 +57,37 @@ public record MatchDto(
                 m.getPenaltyScore1(),
                 m.getPenaltyScore2(),
                 m.getStatus(),
-                m.getBracketPosition());
+                m.getBracketPosition(),
+                null,
+                null);
+    }
+
+    public MatchDto withLeagueRanks(Integer rank1, Integer rank2) {
+        return new MatchDto(
+                id,
+                competitionId,
+                competitionCode,
+                competitionName,
+                competitionCountry,
+                competitionType,
+                roundLabel,
+                date,
+                time,
+                team1Id,
+                team1Name,
+                team1LogoPath,
+                team1Country,
+                team2Id,
+                team2Name,
+                team2LogoPath,
+                team2Country,
+                score1,
+                score2,
+                penaltyScore1,
+                penaltyScore2,
+                status,
+                bracketPosition,
+                rank1,
+                rank2);
     }
 }
