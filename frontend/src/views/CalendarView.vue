@@ -2,7 +2,7 @@
   <section class="hero">
     <span class="hero-eyebrow">Clubs</span>
     <h1>Calendrier</h1>
-    <p class="section-intro">Matchs pas encore joués (hors reportés/suspendus), du plus proche au plus lointain. Filtrable par type de compétition, 20 par page.</p>
+    <p class="section-intro">Matchs pas encore joués (hors reportés/suspendus), du plus proche au plus lointain. Filtrable par type de compétition, 20 par page. 🔥 = affiche à voir de la journée, selon le classement.</p>
   </section>
 
   <div class="filters">
@@ -43,7 +43,10 @@
             {{ m.competitionName }}
           </span>
         </td>
-        <td>{{ m.roundLabel }}</td>
+        <td>
+          {{ m.roundLabel }}
+          <span v-if="m.featured" class="featured-match" title="Affiche de la journée : à voir" aria-label="Affiche de la journée">🔥</span>
+        </td>
         <td>
           <span class="team-cell">
             <TeamLogo :name="m.team1Name" :country="m.team1Country" :logo-path="m.team1LogoPath" />
@@ -169,6 +172,11 @@ onMounted(load)
 </script>
 
 <style scoped>
+.featured-match {
+  margin-left: 4px;
+  cursor: help;
+}
+
 .league-rank {
   min-width: 2.4em;
   padding: 1px 6px;

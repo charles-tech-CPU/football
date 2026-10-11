@@ -23,6 +23,9 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     List<Match> findByCompetitionIdAndStatusAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
             Long competitionId, MatchStatus status, String roundLabelPart);
 
+    /** Tous les matchs d'une journee (affiches du calendrier, cf. FeaturedMatchService). */
+    List<Match> findByCompetitionIdAndRoundLabel(Long competitionId, String roundLabel);
+
     List<Match> findByTeam1_IdOrTeam2_IdOrderByDateDesc(Long team1Id, Long team2Id);
 
     /** Tous les matchs LDC/EL/EC (tous tours, tous statuts) pour le recalcul des points et du statut "encore en course" UEFA (cf. UefaRankingService). */

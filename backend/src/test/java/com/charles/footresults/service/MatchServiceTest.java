@@ -54,6 +54,9 @@ class MatchServiceTest {
     @Mock
     private StandingsService standingsService;
 
+    @Mock
+    private FeaturedMatchService featuredMatchService;
+
     @InjectMocks
     private MatchService matchService;
 

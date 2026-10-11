@@ -31,16 +31,19 @@ public class MatchService {
     private final CompetitionRepository competitionRepository;
     private final TeamRepository teamRepository;
     private final StandingsService standingsService;
+    private final FeaturedMatchService featuredMatchService;
 
     public MatchService(
             MatchRepository matchRepository,
             CompetitionRepository competitionRepository,
             TeamRepository teamRepository,
-            StandingsService standingsService) {
+            StandingsService standingsService,
+            FeaturedMatchService featuredMatchService) {
         this.matchRepository = matchRepository;
         this.competitionRepository = competitionRepository;
         this.teamRepository = teamRepository;
         this.standingsService = standingsService;
+        this.featuredMatchService = featuredMatchService;
     }
 
     @Transactional(readOnly = true)
@@ -91,11 +94,13 @@ public class MatchService {
                 code,
                 PageRequest.of(page, size));
         Map<Long, Integer> ranks = leagueRanks(result.getContent());
+        Set<Long> featured = featuredMatchService.featuredMatchIds(result.getContent(), ranks);
         List<MatchDto> items = result.getContent().stream()
                 .map(m -> MatchDto.from(m)
-                        .withLeagueRanks(
+                        .withCalendarInfo(
                                 ranks.get(m.getTeam1().getId()),
-                                ranks.get(m.getTeam2().getId())))
+                                ranks.get(m.getTeam2().getId()),
+                                featured.contains(m.getId())))
                 .toList();
         return new MatchPageDto(items, result.getTotalElements());
     }

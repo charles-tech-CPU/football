@@ -32,7 +32,9 @@ public record MatchDto(
         Integer bracketPosition,
         /** Rang actuel de chaque equipe dans son championnat national ; null si non renseigne. */
         Integer team1LeagueRank,
-        Integer team2LeagueRank) {
+        Integer team2LeagueRank,
+        /** Affiche "a voir" de sa journee (calendrier, cf. FeaturedMatchService). */
+        boolean featured) {
     public static MatchDto from(Match m) {
         return new MatchDto(
                 m.getId(),
@@ -59,10 +61,11 @@ public record MatchDto(
                 m.getStatus(),
                 m.getBracketPosition(),
                 null,
-                null);
+                null,
+                false);
     }
 
-    public MatchDto withLeagueRanks(Integer rank1, Integer rank2) {
+    public MatchDto withCalendarInfo(Integer rank1, Integer rank2, boolean isFeatured) {
         return new MatchDto(
                 id,
                 competitionId,
@@ -88,6 +91,7 @@ public record MatchDto(
                 status,
                 bracketPosition,
                 rank1,
-                rank2);
+                rank2,
+                isFeatured);
     }
 }
