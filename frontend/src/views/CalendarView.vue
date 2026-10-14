@@ -51,7 +51,7 @@
           <span class="team-cell">
             <TeamLogo :name="m.team1Name" :country="m.team1Country" :logo-path="m.team1LogoPath" />
             <FlagIcon v-if="isContinental(m)" :country="m.team1Country" />
-            <span v-if="m.team1LeagueRank" class="league-rank" :title="leagueRankTitle(m.team1LeagueRank)">{{ formatRank(m.team1LeagueRank) }}</span>
+            <span v-if="m.team1LeagueRank" class="league-rank" :title="leagueRankTitle(m, m.team1LeagueRank)">{{ formatRank(m.team1LeagueRank) }}</span>
             <select v-model.number="edits[m.id].team1Id" aria-label="Équipe domicile">
               <option v-for="t in teamOptionsFor(m, edits[m.id].team1Id)" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
@@ -62,7 +62,7 @@
           <span class="team-cell">
             <TeamLogo :name="m.team2Name" :country="m.team2Country" :logo-path="m.team2LogoPath" />
             <FlagIcon v-if="isContinental(m)" :country="m.team2Country" />
-            <span v-if="m.team2LeagueRank" class="league-rank" :title="leagueRankTitle(m.team2LeagueRank)">{{ formatRank(m.team2LeagueRank) }}</span>
+            <span v-if="m.team2LeagueRank" class="league-rank" :title="leagueRankTitle(m, m.team2LeagueRank)">{{ formatRank(m.team2LeagueRank) }}</span>
             <select v-model.number="edits[m.id].team2Id" aria-label="Équipe extérieur">
               <option v-for="t in teamOptionsFor(m, edits[m.id].team2Id)" :key="t.id" :value="t.id">{{ t.name }}</option>
             </select>
@@ -110,8 +110,9 @@ function formatRank(rank) {
   return rank === 1 ? '1er' : `${rank}e`
 }
 
-function leagueRankTitle(rank) {
-  return `${formatRank(rank)} au classement du championnat`
+function leagueRankTitle(match, rank) {
+  const where = match.competitionType === 'CONTINENTAL_CUP' ? 'de la phase de ligue' : 'du championnat'
+  return `${formatRank(rank)} au classement ${where}`
 }
 
 const PAGE_SIZE = 20

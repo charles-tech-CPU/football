@@ -30,7 +30,7 @@ public record MatchDto(
         Integer penaltyScore2,
         MatchStatus status,
         Integer bracketPosition,
-        /** Rang actuel de chaque equipe dans son championnat national ; null si non renseigne. */
+        /** Rang actuel de chaque equipe : dans la phase de ligue pour un match de coupe d'Europe, dans son championnat national sinon ; null si non classee. */
         Integer team1LeagueRank,
         Integer team2LeagueRank,
         /** Affiche "a voir" de sa journee (calendrier, cf. FeaturedMatchService). */

@@ -222,6 +222,48 @@ class MatchServiceTest {
     }
 
     @Test
+    void calendrierDonneLeRangDansLaPhaseDeLiguePourUnMatchDeCoupeDEurope() {
+        Competition ldc =
+                new Competition("LDC", "Ligue des Champions 2027", CompetitionType.CONTINENTAL_CUP, null, 2027);
+        ldc.setId(20L);
+        Match match = match();
+        match.setCompetition(ldc);
+        match.setRoundLabel("PHASE DE LIGUE - J3");
+        when(matchRepository.findUpcomingFiltered(NOT_UPCOMING, null, null, PageRequest.of(0, 20)))
+                .thenReturn(new PageImpl<>(List.of(match), PageRequest.of(0, 20), 1));
+        when(competitionRepository.findByType(CompetitionType.LEAGUE)).thenReturn(List.of(ligue1));
+        // Championnat : PSG 1er, OM 2e ; phase de ligue : OM 5e (4 equipes devant), PSG 7e.
+        when(standingsService.computeStandings(10L)).thenReturn(List.of(row(1L), row(2L)));
+        when(standingsService.computeStandingsForRound(20L, "PHASE DE LIGUE"))
+                .thenReturn(List.of(row(11L), row(12L), row(13L), row(14L), row(2L), row(15L), row(1L)));
+
+        MatchDto dto = matchService.findUpcoming(0, 20, "all").items().get(0);
+
+        assertThat(dto.team1LeagueRank()).isEqualTo(7);
+        assertThat(dto.team2LeagueRank()).isEqualTo(5);
+    }
+
+    @Test
+    void avantLaPhaseDeLigueUnMatchDeCoupeDEuropeNAPasDeRang() {
+        Competition ldc =
+                new Competition("LDC", "Ligue des Champions 2027", CompetitionType.CONTINENTAL_CUP, null, 2027);
+        ldc.setId(20L);
+        Match match = match();
+        match.setCompetition(ldc);
+        match.setRoundLabel("3E TOUR PRELIMINAIRE");
+        when(matchRepository.findUpcomingFiltered(NOT_UPCOMING, null, null, PageRequest.of(0, 20)))
+                .thenReturn(new PageImpl<>(List.of(match), PageRequest.of(0, 20), 1));
+        when(competitionRepository.findByType(CompetitionType.LEAGUE)).thenReturn(List.of(ligue1));
+        when(standingsService.computeStandings(10L)).thenReturn(List.of(row(1L), row(2L)));
+        when(standingsService.computeStandingsForRound(20L, "PHASE DE LIGUE")).thenReturn(List.of());
+
+        MatchDto dto = matchService.findUpcoming(0, 20, "all").items().get(0);
+
+        assertThat(dto.team1LeagueRank()).isNull();
+        assertThat(dto.team2LeagueRank()).isNull();
+    }
+
+    @Test
     void lesListesDeMatchsSontConvertiesEnDto() {
         when(matchRepository.findByCompetitionIdOrderByDateAscTimeAsc(10L)).thenReturn(List.of(match()));
         when(matchRepository.findByTeam1_IdOrTeam2_IdOrderByDateDesc(1L, 1L)).thenReturn(List.of(match()));

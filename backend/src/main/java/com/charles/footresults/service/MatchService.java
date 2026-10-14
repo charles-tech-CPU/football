@@ -27,6 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class MatchService {
 
+    /** Fragment du round_label des matchs de phase de ligue des coupes d'Europe (cf. UefaRankingService). */
+    private static final String LEAGUE_PHASE_ROUND = "PHASE DE LIGUE";
+
     private final MatchRepository matchRepository;
     private final CompetitionRepository competitionRepository;
     private final TeamRepository teamRepository;
@@ -94,20 +97,47 @@ public class MatchService {
                 code,
                 PageRequest.of(page, size));
         Map<Long, Integer> ranks = leagueRanks(result.getContent());
+        Map<Long, Map<Long, Integer>> cupRanks = continentalRanks(result.getContent());
         Set<Long> featured = featuredMatchService.featuredMatchIds(result.getContent(), ranks);
         List<MatchDto> items = result.getContent().stream()
-                .map(m -> MatchDto.from(m)
-                        .withCalendarInfo(
-                                ranks.get(m.getTeam1().getId()),
-                                ranks.get(m.getTeam2().getId()),
-                                featured.contains(m.getId())))
+                .map(m -> {
+                    Map<Long, Integer> r =
+                            cupRanks.getOrDefault(m.getCompetition().getId(), ranks);
+                    return MatchDto.from(m)
+                            .withCalendarInfo(
+                                    r.get(m.getTeam1().getId()),
+                                    r.get(m.getTeam2().getId()),
+                                    featured.contains(m.getId()));
+                })
                 .toList();
         return new MatchPageDto(items, result.getTotalElements());
     }
 
     /**
+     * Pour chaque coupe d'Europe (LDC/EL/EC) des matchs donnes : rang de chaque equipe dans la
+     * phase de ligue de cette coupe. Un match de coupe d'Europe affiche ce rang plutot que celui
+     * du championnat national ; une coupe dont la phase de ligue n'a pas encore commence
+     * (tours preliminaires) donne une table vide, donc aucun rang.
+     */
+    private Map<Long, Map<Long, Integer>> continentalRanks(List<Match> matches) {
+        Map<Long, Map<Long, Integer>> byCompetition = new HashMap<>();
+        for (Match m : matches) {
+            Competition c = m.getCompetition();
+            if (c.getType() != CompetitionType.CONTINENTAL_CUP || byCompetition.containsKey(c.getId())) continue;
+            List<StandingRowDto> rows = standingsService.computeStandingsForRound(c.getId(), LEAGUE_PHASE_ROUND);
+            Map<Long, Integer> ranks = new HashMap<>();
+            for (int i = 0; i < rows.size(); i++) {
+                ranks.putIfAbsent(rows.get(i).teamId(), i + 1);
+            }
+            byCompetition.put(c.getId(), ranks);
+        }
+        return byCompetition;
+    }
+
+    /**
      * Rang actuel de chaque equipe des matchs donnes dans le championnat de son pays (saison la
-     * plus recente), y compris pour un match de coupe ou de coupe d'Europe. Un championnat scinde
+     * plus recente), utilise pour les matchs de championnat et de coupe nationale (et pour les
+     * affiches, cf. FeaturedMatchService). Un championnat scinde
      * en mini-groupes garde le rang global (groupe du haut d'abord, cf. StandingsService). Une
      * equipe absente du classement (aucun match joue) n'a pas de rang.
      */
