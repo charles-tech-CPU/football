@@ -6,14 +6,8 @@
 
   <AppModal v-model="showMatchModal" title="Ajouter un match">
     <form class="inline" @submit.prevent="submitMatch">
-      <select v-model.number="newMatch.team1Id" aria-label="Équipe domicile" required>
-        <option disabled value="">Équipe 1</option>
-        <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
-      </select>
-      <select v-model.number="newMatch.team2Id" aria-label="Équipe extérieur" required>
-        <option disabled value="">Équipe 2</option>
-        <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
-      </select>
+      <TeamSelect v-model="newMatch.team1Id" :teams="teams" aria-label="Équipe domicile" placeholder="Équipe 1" required />
+      <TeamSelect v-model="newMatch.team2Id" :teams="teams" aria-label="Équipe extérieur" placeholder="Équipe 2" required />
       <input v-model="newMatch.roundLabel" aria-label="Tour" :placeholder="roundPlaceholder" required />
       <input v-model="newMatch.date" aria-label="Date" type="date" />
       <input v-model="newMatch.time" aria-label="Heure" type="time" />
@@ -37,6 +31,7 @@
 import { reactive, ref } from 'vue'
 import api from '../services/api'
 import AppModal from './AppModal.vue'
+import TeamSelect from './TeamSelect.vue'
 
 // Boutons "+ Ajouter un match" / "+ Ajouter un club" d'une competition, avec leurs modales.
 // Le parent recharge ses donnees sur les evenements match-created / team-created.

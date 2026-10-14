@@ -41,9 +41,7 @@
                 <div class="tie-leg">
                   <template v-if="teamEditingKey === teamKey(leg, 1)">
                     <span class="grid-edit" @click.stop @keydown.stop>
-                      <select v-model.number="editTeamValue" aria-label="Équipe">
-                        <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
-                      </select>
+                      <TeamSelect v-model="editTeamValue" :teams="sortedTeams" aria-label="Équipe" />
                       <button type="button" @click.stop="confirmTeamEdit(leg, 1)">✓</button>
                     </span>
                   </template>
@@ -64,9 +62,7 @@
                   </button>
                   <template v-if="teamEditingKey === teamKey(leg, 2)">
                     <span class="grid-edit" @click.stop @keydown.stop>
-                      <select v-model.number="editTeamValue" aria-label="Équipe">
-                        <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
-                      </select>
+                      <TeamSelect v-model="editTeamValue" :teams="sortedTeams" aria-label="Équipe" />
                       <button type="button" @click.stop="confirmTeamEdit(leg, 2)">✓</button>
                     </span>
                   </template>
@@ -119,6 +115,7 @@ import TeamLogo from './TeamLogo.vue'
 import FlagIcon from './FlagIcon.vue'
 import MatchCreationBar from './MatchCreationBar.vue'
 import { moveTie, sortByBracketPosition, summarizeTie } from '../utils/cupTies.js'
+import TeamSelect from './TeamSelect.vue'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },

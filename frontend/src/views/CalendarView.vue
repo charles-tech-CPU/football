@@ -53,9 +53,7 @@
             <TeamLogo :name="m.team1Name" :country="m.team1Country" :logo-path="m.team1LogoPath" />
             <FlagIcon v-if="isContinental(m)" :country="m.team1Country" />
             <span v-if="m.team1LeagueRank" class="league-rank" :title="leagueRankTitle(m, m.team1LeagueRank)">{{ formatRank(m.team1LeagueRank) }}</span>
-            <select v-model.number="edits[m.id].team1Id" aria-label="Équipe domicile">
-              <option v-for="t in teamOptionsFor(m, edits[m.id].team1Id)" :key="t.id" :value="t.id">{{ t.name }}</option>
-            </select>
+            <TeamSelect v-model="edits[m.id].team1Id" :teams="teamOptionsFor(m, edits[m.id].team1Id)" aria-label="Équipe domicile" />
           </span>
         </td>
         <MatchScoreCells v-model:score1="edits[m.id].score1" v-model:score2="edits[m.id].score2" />
@@ -64,9 +62,7 @@
             <TeamLogo :name="m.team2Name" :country="m.team2Country" :logo-path="m.team2LogoPath" />
             <FlagIcon v-if="isContinental(m)" :country="m.team2Country" />
             <span v-if="m.team2LeagueRank" class="league-rank" :title="leagueRankTitle(m, m.team2LeagueRank)">{{ formatRank(m.team2LeagueRank) }}</span>
-            <select v-model.number="edits[m.id].team2Id" aria-label="Équipe extérieur">
-              <option v-for="t in teamOptionsFor(m, edits[m.id].team2Id)" :key="t.id" :value="t.id">{{ t.name }}</option>
-            </select>
+            <TeamSelect v-model="edits[m.id].team2Id" :teams="teamOptionsFor(m, edits[m.id].team2Id)" aria-label="Équipe extérieur" />
           </span>
         </td>
         <td>
@@ -113,6 +109,7 @@ import MatchStatusSelect from '../components/MatchStatusSelect.vue'
 import { competitionBadgeClass } from '../utils/competitionBadge'
 import { penaltiesNeeded, teamOptionsFor as teamOptionsAmong } from '../utils/matchEdit'
 import { useMatchEdits } from '../composables/useMatchEdits'
+import TeamSelect from '../components/TeamSelect.vue'
 
 function isContinental(m) {
   return m.competitionCode === 'LDC' || m.competitionCode === 'EL' || m.competitionCode === 'EC'

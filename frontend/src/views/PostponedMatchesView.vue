@@ -32,15 +32,11 @@
         </td>
         <td>{{ m.roundLabel }}</td>
         <td>
-          <select v-model.number="edits[m.id].team1Id" aria-label="Équipe domicile">
-            <option v-for="t in teamOptionsFor(m, edits[m.id].team1Id)" :key="t.id" :value="t.id">{{ t.name }}</option>
-          </select>
+          <TeamSelect v-model="edits[m.id].team1Id" :teams="teamOptionsFor(m, edits[m.id].team1Id)" aria-label="Équipe domicile" />
         </td>
         <MatchScoreCells v-model:score1="edits[m.id].score1" v-model:score2="edits[m.id].score2" />
         <td>
-          <select v-model.number="edits[m.id].team2Id" aria-label="Équipe extérieur">
-            <option v-for="t in teamOptionsFor(m, edits[m.id].team2Id)" :key="t.id" :value="t.id">{{ t.name }}</option>
-          </select>
+          <TeamSelect v-model="edits[m.id].team2Id" :teams="teamOptionsFor(m, edits[m.id].team2Id)" aria-label="Équipe extérieur" />
         </td>
         <td>
           <MatchStatusSelect v-model="edits[m.id].status" />
@@ -66,6 +62,7 @@ import MatchStatusSelect from '../components/MatchStatusSelect.vue'
 import { competitionBadgeClass } from '../utils/competitionBadge'
 import { teamOptionsFor as teamOptionsAmong } from '../utils/matchEdit'
 import { useMatchEdits } from '../composables/useMatchEdits'
+import TeamSelect from '../components/TeamSelect.vue'
 
 const matches = ref([])
 const teams = ref([])

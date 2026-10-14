@@ -52,14 +52,8 @@
       tous ses matchs sont réaffectés avant suppression.
     </p>
     <form class="inline" @submit.prevent="submitMerge">
-      <select v-model.number="mergeForm.sourceId" aria-label="Club à fusionner" required>
-        <option disabled value="">Équipe à supprimer (doublon)</option>
-        <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }} ({{ canonicalCountry(t.country) ?? '—' }})</option>
-      </select>
-      <select v-model.number="mergeForm.targetId" aria-label="Club cible" required>
-        <option disabled value="">Équipe à conserver</option>
-        <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }} ({{ canonicalCountry(t.country) ?? '—' }})</option>
-      </select>
+      <TeamSelect v-model="mergeForm.sourceId" :teams="mergeChoices" aria-label="Club à fusionner" placeholder="Équipe à supprimer (doublon)" required />
+      <TeamSelect v-model="mergeForm.targetId" :teams="mergeChoices" aria-label="Club cible" placeholder="Équipe à conserver" required />
       <button type="submit">Fusionner</button>
     </form>
     <p v-if="mergeError" class="error-text">{{ mergeError }}</p>
@@ -72,6 +66,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import api from '../services/api'
 import FlagIcon from '../components/FlagIcon.vue'
 import TeamLogo from '../components/TeamLogo.vue'
+import TeamSelect from '../components/TeamSelect.vue'
 import { canonicalCountry } from '../utils/countryFlags'
 import { teamCountryStyle } from '../utils/teamColors'
 
@@ -82,6 +77,8 @@ const search = ref('')
 const form = reactive({ name: '', country: '' })
 
 const mergeForm = reactive({ sourceId: '', targetId: '' })
+// Le pays est ajoute au nom pour distinguer les homonymes lors d'une fusion.
+const mergeChoices = computed(() => teams.value.map(t => ({ id: t.id, name: `${t.name} (${canonicalCountry(t.country) ?? '—'})` })))
 const mergeError = ref('')
 const mergeSuccess = ref('')
 

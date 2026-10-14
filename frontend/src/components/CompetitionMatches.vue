@@ -46,9 +46,7 @@
         <td>
           <span class="team-cell">
             <TeamLogo :name="m.team1Name" :logo-path="m.team1LogoPath" />
-            <select v-model.number="edits[m.id].team1Id" aria-label="Équipe domicile">
-              <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
-            </select>
+            <TeamSelect v-model="edits[m.id].team1Id" :teams="sortedTeams" aria-label="Équipe domicile" />
           </span>
         </td>
         <td>
@@ -60,9 +58,7 @@
         <td>
           <span class="team-cell">
             <TeamLogo :name="m.team2Name" :logo-path="m.team2LogoPath" />
-            <select v-model.number="edits[m.id].team2Id" aria-label="Équipe extérieur">
-              <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
-            </select>
+            <TeamSelect v-model="edits[m.id].team2Id" :teams="sortedTeams" aria-label="Équipe extérieur" />
           </span>
         </td>
         <td>{{ statusLabel(m.status) }}</td>
@@ -85,6 +81,7 @@ import MatchCreationBar from './MatchCreationBar.vue'
 import { teamChangeLines } from '../utils/matchEdit'
 import { formatTime } from '../utils/format'
 import { roundsByRecency } from '../utils/rounds'
+import TeamSelect from './TeamSelect.vue'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },

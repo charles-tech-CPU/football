@@ -8,14 +8,8 @@
   <h2 v-else>Grille des résultats</h2>
 
   <form v-if="allowAdd && showAddForm" class="inline add-match-form" @submit.prevent="submitMatch">
-    <select v-model.number="newMatch.team1Id" aria-label="Équipe domicile" required>
-      <option disabled value="">Équipe 1</option>
-      <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
-    </select>
-    <select v-model.number="newMatch.team2Id" aria-label="Équipe extérieur" required>
-      <option disabled value="">Équipe 2</option>
-      <option v-for="t in sortedTeams" :key="t.id" :value="t.id">{{ t.name }}</option>
-    </select>
+    <TeamSelect v-model="newMatch.team1Id" :teams="sortedTeams" aria-label="Équipe domicile" placeholder="Équipe 1" required />
+    <TeamSelect v-model="newMatch.team2Id" :teams="sortedTeams" aria-label="Équipe extérieur" placeholder="Équipe 2" required />
     <input v-model="newMatch.date" aria-label="Date" type="date" />
     <input v-model="newMatch.time" aria-label="Heure" type="time" />
     <input v-model.number="newMatch.score1" aria-label="Buts équipe domicile" class="score-input" type="number" min="0" placeholder="B1" />
@@ -206,6 +200,7 @@ import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
 import FlagIcon from './FlagIcon.vue'
 import { compareByRoundThenDate, roundNumber } from '../utils/rounds.js'
+import TeamSelect from './TeamSelect.vue'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },
