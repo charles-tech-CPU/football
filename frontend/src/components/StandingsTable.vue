@@ -38,7 +38,7 @@
               <span class="team-cell">
                 <TeamLogo v-if="showLogos" :name="row.teamName" :logo-path="row.teamLogoPath" />
                 <FlagIcon v-if="showFlags" :country="row.teamCountry" />
-                <span class="team-name">{{ row.teamName }}</span>
+                <router-link :to="`/equipes/${row.teamId}`" class="team-name team-link">{{ row.teamName }}</router-link>
               </span>
             </td>
             <td v-if="pointsFirst"><span class="pts-pill">{{ row.points }}</span></td>

@@ -640,6 +640,16 @@ input[type="number"]::-webkit-inner-spin-button {
   background: #f29a9a;
 }
 
+/* Nom de club cliquable vers sa fiche (/equipes/:id) : discret, souligne au survol. */
+.team-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.team-link:hover {
+  text-decoration: underline;
+}
+
 /* Ligne modifiee pas encore enregistree (saisie rapide, cf. useMatchEdits) : liseré a gauche,
    qui reste visible quelle que soit la couleur de fond de la ligne. */
 .row-dirty td:first-child {

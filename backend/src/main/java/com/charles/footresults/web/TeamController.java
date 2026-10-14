@@ -5,9 +5,11 @@ import com.charles.footresults.domain.Team;
 import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.TeamCreateDto;
 import com.charles.footresults.dto.TeamDto;
+import com.charles.footresults.dto.TeamProfileDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import com.charles.footresults.repository.TeamRepository;
+import com.charles.footresults.service.TeamProfileService;
 import com.charles.footresults.service.TeamService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -24,16 +26,19 @@ public class TeamController {
     private final CompetitionRepository competitionRepository;
     private final TeamCompetitionStatusRepository teamCompetitionStatusRepository;
     private final TeamService teamService;
+    private final TeamProfileService teamProfileService;
 
     public TeamController(
             TeamRepository teamRepository,
             CompetitionRepository competitionRepository,
             TeamCompetitionStatusRepository teamCompetitionStatusRepository,
-            TeamService teamService) {
+            TeamService teamService,
+            TeamProfileService teamProfileService) {
         this.teamRepository = teamRepository;
         this.competitionRepository = competitionRepository;
         this.teamCompetitionStatusRepository = teamCompetitionStatusRepository;
         this.teamService = teamService;
+        this.teamProfileService = teamProfileService;
     }
 
     /**
@@ -78,6 +83,12 @@ public class TeamController {
                 .findById(id)
                 .map(TeamDto::from)
                 .orElseThrow(() -> new EntityNotFoundException("Equipe introuvable : " + id));
+    }
+
+    /** GET /api/teams/{id}/profile : fiche club (classements, forme, derniers et prochains matchs). */
+    @GetMapping("/{id}/profile")
+    public TeamProfileDto profile(@PathVariable Long id) {
+        return teamProfileService.profile(id);
     }
 
     @PostMapping

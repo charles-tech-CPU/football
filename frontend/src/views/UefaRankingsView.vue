@@ -3,9 +3,11 @@
     <span class="hero-eyebrow">Coefficients</span>
     <h1>Classement UEFA</h1>
     <p class="section-intro">
-      Coefficient UEFA des clubs et des pays. Colonnes reprises telles quelles du fichier source,
-      sauf "Pts 2027" (saison en cours) : recalculee en direct a partir des matchs de phase de
-      ligue LDC/EL/EC deja saisis (victoire = 2 pts, nul = 1 pt, defaite = 0 pt).
+      Coefficient UEFA des clubs et des pays. Les saisons 2023 à 2026 viennent du fichier source ;
+      "Pts 2027" (saison en cours) est recalculé en direct à partir des matchs LDC/EL/EC déjà
+      saisis, et le total puis le classement en découlent. "Évol." : places gagnées ou perdues
+      depuis le début de saison (même classement sans les points 2027) ; "Écart" : points de
+      retard sur le pays juste devant.
     </p>
   </section>
 
@@ -59,6 +61,7 @@
         <thead>
           <tr>
             <th>#</th>
+            <th>Évol.</th>
             <th>Club</th>
             <th>Coupe</th>
             <th>Total</th>
@@ -72,11 +75,13 @@
         <tbody>
           <tr v-for="c in clubs" :key="c.id">
             <td>{{ c.rank }}</td>
+            <td><RankMove :rank="c.rank" :start-rank="c.startRank" /></td>
             <td>
               <span class="team-cell">
                 <TeamLogo :name="c.clubName" :logo-path="c.teamLogoPath" :country="c.country" />
                 <FlagIcon :country="c.country" />
-                {{ c.clubName }}
+                <router-link v-if="c.teamId" :to="`/equipes/${c.teamId}`" class="team-link">{{ c.clubName }}</router-link>
+                <template v-else>{{ c.clubName }}</template>
               </span>
             </td>
             <td><span v-if="c.currentCup" class="comp-badge" :class="cupClass(c.currentCup)">{{ c.currentCup }}</span></td>
@@ -99,8 +104,10 @@
         <thead>
           <tr>
             <th>#</th>
+            <th>Évol.</th>
             <th>Pays</th>
             <th>Total</th>
+            <th>Écart</th>
             <th>Pts 2027</th>
             <th>2026</th>
             <th>2025</th>
@@ -111,8 +118,9 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="c in countries" :key="c.id" :class="rowClass(c)">
+          <tr v-for="(c, i) in countries" :key="c.id" :class="rowClass(c)">
             <td>{{ c.rank }}</td>
+            <td><RankMove :rank="c.rank" :start-rank="c.startRank" /></td>
             <td>
               <span class="team-cell">
                 <FlagIcon :country="c.country" />
@@ -120,6 +128,7 @@
               </span>
             </td>
             <td>{{ formatNumber(c.total) }}</td>
+            <td class="gap-cell">{{ formatGap(gapToPrevious(countries, i)) }}</td>
             <td><strong>{{ formatNumber(c.points2027) }}</strong></td>
             <td>{{ formatNumber(c.points2026) }}</td>
             <td>{{ formatNumber(c.points2025) }}</td>
@@ -148,6 +157,8 @@ import api from '../services/api'
 import TeamLogo from '../components/TeamLogo.vue'
 import FlagIcon from '../components/FlagIcon.vue'
 import UefaHistoryChart from '../components/UefaHistoryChart.vue'
+import RankMove from '../components/RankMove.vue'
+import { gapToPrevious } from '../utils/ranking'
 
 const activeTab = ref('clubs')
 const clubs = ref([])
@@ -194,6 +205,10 @@ function formatNumber(v) {
   return Number.isInteger(v) ? String(v) : String(Number(v.toFixed(3)))
 }
 
+function formatGap(gap) {
+  return gap == null ? '—' : `−${formatNumber(gap)}`
+}
+
 function cupClass(cup) {
   if (cup === 'LDC') return 'comp-ldc'
   if (cup === 'EL') return 'comp-el'
@@ -222,6 +237,11 @@ onMounted(load)
 </script>
 
 <style scoped>
+.gap-cell {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .history-search {
   position: relative;
   max-width: 360px;

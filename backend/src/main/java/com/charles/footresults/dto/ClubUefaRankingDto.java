@@ -18,9 +18,11 @@ public record ClubUefaRankingDto(
         BigDecimal points2026,
         BigDecimal points2025,
         BigDecimal points2024,
-        BigDecimal points2023) {
+        BigDecimal points2023,
+        /** Rang en debut de saison : meme classement, points 2027 a 0 (cf. UefaRankingService). */
+        Integer startRank) {
 
-    public ClubUefaRankingDto withRank(int newRank) {
+    public ClubUefaRankingDto withRanks(int newRank, int newStartRank) {
         return new ClubUefaRankingDto(
                 id,
                 newRank,
@@ -34,6 +36,7 @@ public record ClubUefaRankingDto(
                 points2026,
                 points2025,
                 points2024,
-                points2023);
+                points2023,
+                newStartRank);
     }
 }

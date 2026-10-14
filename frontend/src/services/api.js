@@ -26,6 +26,7 @@ export default {
 
   getTeams: (params) => api.get('/teams', { params }).then(r => r.data),
   createTeam: (payload) => api.post('/teams', payload).then(r => r.data),
+  getTeamProfile: (id) => api.get(`/teams/${id}/profile`).then(r => r.data),
   mergeTeam: (id, intoId) => api.post(`/teams/${id}/merge`, null, { params: { intoId } }).then(r => r.data),
 
   getMatchesByCompetition: (competitionId) =>
@@ -50,6 +51,8 @@ export default {
     api.put('/team-status', payload, { params: { competitionId, teamId } }).then(r => r.data),
   updateQualificationSlots: (competitionId, payload) =>
     api.patch(`/competitions/${competitionId}/qualification-slots`, payload).then(r => r.data),
+
+  getCompetitionStats: (competitionId) => api.get('/stats', { params: { competitionId } }).then(r => r.data),
 
   getClubUefaRankings: () => api.get('/uefa-rankings/clubs').then(r => r.data),
   getCountryUefaRankings: () => api.get('/uefa-rankings/countries').then(r => r.data),

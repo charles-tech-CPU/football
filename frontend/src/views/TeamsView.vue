@@ -20,7 +20,7 @@
         <td>
           <span class="team-cell">
             <TeamLogo :name="t.name" :country="t.country" :logo-path="t.logoPath" />
-            <span class="team-chip" :style="chipStyle(t.country)">{{ t.name }}</span>
+            <router-link :to="`/equipes/${t.id}`" class="team-chip team-link" :style="chipStyle(t.country)">{{ t.name }}</router-link>
           </span>
         </td>
         <td>

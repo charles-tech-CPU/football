@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -104,19 +105,34 @@ public class UefaRankingService {
      * Classement des clubs : total = somme des 5 saisons, dont la saison en cours recalculee a
      * partir des matchs (la colonne "total" importee, figee au moment de l'export Excel, n'est
      * plus utilisee). Les rangs sont recalcules sur ce total (a egalite, l'ordre importe est
-     * conserve).
+     * conserve). startRank : rang sur le total sans les points 2027 (debut de saison).
      */
     public List<ClubUefaRankingDto> findClubRankings() {
         SeasonState state = computeSeasonState();
-        List<ClubUefaRankingDto> sorted = clubRepository.findAllByOrderByUefaRankAsc().stream()
+        List<ClubUefaRanking> rows = clubRepository.findAllByOrderByUefaRankAsc();
+        Map<Long, Integer> startRanks = ranksByTotal(rows, ClubUefaRanking::getId, r -> clubCoefficient(r, null));
+        List<ClubUefaRankingDto> sorted = rows.stream()
                 .map(r -> toDto(r, state))
                 .sorted(Comparator.comparing(ClubUefaRankingDto::total).reversed())
                 .toList();
         List<ClubUefaRankingDto> ranked = new ArrayList<>();
         for (int i = 0; i < sorted.size(); i++) {
-            ranked.add(sorted.get(i).withRank(i + 1));
+            ClubUefaRankingDto dto = sorted.get(i);
+            ranked.add(dto.withRanks(i + 1, startRanks.get(dto.id())));
         }
         return ranked;
+    }
+
+    /** Rang (1 = meilleur) de chaque ligne selon le total donne ; a egalite, l'ordre recu est garde. */
+    private static <T> Map<Long, Integer> ranksByTotal(
+            List<T> rows, Function<T, Long> idOf, Function<T, BigDecimal> totalOf) {
+        List<T> sorted =
+                rows.stream().sorted(Comparator.comparing(totalOf).reversed()).toList();
+        Map<Long, Integer> ranks = new HashMap<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            ranks.put(idOf.apply(sorted.get(i)), i + 1);
+        }
+        return ranks;
     }
 
     /**
@@ -150,7 +166,10 @@ public class UefaRankingService {
                 }
             }
         }
-        List<CountryUefaRankingDto> sorted = countryRepository.findAllByOrderByUefaRankAsc().stream()
+        List<CountryUefaRanking> rows = countryRepository.findAllByOrderByUefaRankAsc();
+        Map<Long, Integer> startRanks =
+                ranksByTotal(rows, CountryUefaRanking::getId, r -> countryCoefficient(r, BigDecimal.ZERO));
+        List<CountryUefaRankingDto> sorted = rows.stream()
                 .map(r -> toDto(
                         r,
                         pointsByCountry.getOrDefault(r.getCountry(), BigDecimal.ZERO),
@@ -159,7 +178,8 @@ public class UefaRankingService {
                 .toList();
         List<CountryUefaRankingDto> ranked = new ArrayList<>();
         for (int i = 0; i < sorted.size(); i++) {
-            ranked.add(sorted.get(i).withRank(i + 1));
+            CountryUefaRankingDto dto = sorted.get(i);
+            ranked.add(dto.withRanks(i + 1, startRanks.get(dto.id())));
         }
         return ranked;
     }
@@ -500,7 +520,8 @@ public class UefaRankingService {
                 r.getPoints2026(),
                 r.getPoints2025(),
                 r.getPoints2024(),
-                r.getPoints2023());
+                r.getPoints2023(),
+                null);
     }
 
     private CountryUefaRankingDto toDto(CountryUefaRanking r, BigDecimal points2027, int[] aliveCounts) {
@@ -525,7 +546,8 @@ public class UefaRankingService {
                 r.getNb2025(),
                 r.getNb2024(),
                 r.getNb2023(),
-                colorCode(aliveCounts));
+                colorCode(aliveCounts),
+                null);
     }
 
     private String colorCode(int[] aliveCounts) {

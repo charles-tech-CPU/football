@@ -360,10 +360,12 @@ class UefaRankingServiceTest {
     void totalClubEstLaSommeDesCinqSaisonsEtLeRangEstRecalcule() {
         givenMatches();
         ClubUefaRanking first = club(null, "Premier importe", "France", null);
+        first.setId(1L);
         first.setUefaRank(1);
         first.setTotal(new BigDecimal("99"));
         first.setPoints2026(new BigDecimal("10"));
         ClubUefaRanking second = club(null, "Second importe", "Italie", null);
+        second.setId(2L);
         second.setUefaRank(2);
         second.setTotal(new BigDecimal("1"));
         second.setPoints2025(new BigDecimal("8"));
@@ -374,6 +376,8 @@ class UefaRankingServiceTest {
 
         assertThat(clubs).extracting(ClubUefaRankingDto::clubName).containsExactly("Second importe", "Premier importe");
         assertThat(clubs).extracting(ClubUefaRankingDto::rank).containsExactly(1, 2);
+        // Sans point en 2027, le rang de debut de saison est le meme.
+        assertThat(clubs).extracting(ClubUefaRankingDto::startRank).containsExactly(1, 2);
         assertThat(clubs.get(0).total()).isEqualByComparingTo("12.5");
         assertThat(clubs.get(1).total()).isEqualByComparingTo("10");
     }

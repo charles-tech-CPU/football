@@ -27,9 +27,11 @@ public record CountryUefaRankingDto(
         Integer nb2024,
         Integer nb2023,
         /** "BLUE" (LDC), "ORANGE" (EL), "YELLOW" (EC) ou "RED" (aucun) : cf. UefaRankingService.colorCode. */
-        String colorCode) {
+        String colorCode,
+        /** Rang en debut de saison : meme classement, points 2027 a 0 (cf. UefaRankingService). */
+        Integer startRank) {
 
-    public CountryUefaRankingDto withRank(int newRank) {
+    public CountryUefaRankingDto withRanks(int newRank, int newStartRank) {
         return new CountryUefaRankingDto(
                 id,
                 newRank,
@@ -51,6 +53,7 @@ public record CountryUefaRankingDto(
                 nb2025,
                 nb2024,
                 nb2023,
-                colorCode);
+                colorCode,
+                newStartRank);
     }
 }
