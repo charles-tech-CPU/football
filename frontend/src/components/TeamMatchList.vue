@@ -1,6 +1,16 @@
 <template>
   <div class="table-scroll">
     <table class="team-matches">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Compétition</th>
+          <th>Tour</th>
+          <th>Domicile</th>
+          <th>Score</th>
+          <th>Extérieur</th>
+        </tr>
+      </thead>
       <tbody>
         <tr v-for="m in matches" :key="m.id">
           <td class="match-date">{{ m.date ? formatShortDate(m.date) : 'Date à fixer' }}</td>

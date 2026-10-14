@@ -1,6 +1,15 @@
 <template>
   <div class="table-scroll">
     <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Tour</th>
+          <th>Domicile</th>
+          <th>Score</th>
+          <th>Extérieur</th>
+        </tr>
+      </thead>
       <tbody>
         <tr v-for="m in matches" :key="m.id">
           <td class="muted">{{ m.date ? formatShortDate(m.date) : '—' }}</td>
