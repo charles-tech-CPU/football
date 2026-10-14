@@ -1,9 +1,11 @@
 package com.charles.footresults.service;
 
+import com.charles.footresults.domain.ClubUefaRanking;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.Team;
 import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.TeamDto;
+import com.charles.footresults.repository.ClubUefaRankingRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import com.charles.footresults.repository.TeamRepository;
@@ -17,7 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
  * pour le meme club (ex: "VLLAZNIA" / "VLLAZINA"), ce qui cree des equipes
  * doublons apres import (limitation documentee dans le README). Cet endpoint
  * permet de fusionner deux fiches equipe en une seule : tous les matchs et
- * statuts de "source" sont reaffectes a "target", puis "source" est supprimee.
+ * statuts de "source" sont reaffectes a "target" (ainsi que sa ligne du classement UEFA
+ * des clubs et son logo si "target" n'en a pas), puis "source" est supprimee.
  */
 @Service
 @Transactional
@@ -26,14 +29,17 @@ public class TeamService {
     private final TeamRepository teamRepository;
     private final MatchRepository matchRepository;
     private final TeamCompetitionStatusRepository statusRepository;
+    private final ClubUefaRankingRepository clubRankingRepository;
 
     public TeamService(
             TeamRepository teamRepository,
             MatchRepository matchRepository,
-            TeamCompetitionStatusRepository statusRepository) {
+            TeamCompetitionStatusRepository statusRepository,
+            ClubUefaRankingRepository clubRankingRepository) {
         this.teamRepository = teamRepository;
         this.matchRepository = matchRepository;
         this.statusRepository = statusRepository;
+        this.clubRankingRepository = clubRankingRepository;
     }
 
     public TeamDto merge(Long sourceId, Long targetId) {
@@ -74,6 +80,17 @@ public class TeamService {
                 status.setTeam(target);
                 statusRepository.save(status);
             }
+        }
+
+        List<ClubUefaRanking> rankings = clubRankingRepository.findByTeamId(sourceId);
+        for (ClubUefaRanking ranking : rankings) {
+            ranking.setTeam(target);
+        }
+        clubRankingRepository.saveAll(rankings);
+
+        if (target.getLogoPath() == null && source.getLogoPath() != null) {
+            target.setLogoPath(source.getLogoPath());
+            teamRepository.save(target);
         }
 
         teamRepository.delete(source);

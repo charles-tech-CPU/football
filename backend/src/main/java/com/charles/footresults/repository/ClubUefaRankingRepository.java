@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ClubUefaRankingRepository extends JpaRepository<ClubUefaRanking, Long> {
     List<ClubUefaRanking> findAllByOrderByUefaRankAsc();
+
+    List<ClubUefaRanking> findByTeamId(Long teamId);
 }

@@ -8,12 +8,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.charles.footresults.domain.ClubUefaRanking;
 import com.charles.footresults.domain.Competition;
 import com.charles.footresults.domain.CompetitionType;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.Team;
 import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.TeamDto;
+import com.charles.footresults.repository.ClubUefaRankingRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import com.charles.footresults.repository.TeamRepository;
@@ -38,6 +40,9 @@ class TeamServiceTest {
 
     @Mock
     private TeamCompetitionStatusRepository statusRepository;
+
+    @Mock
+    private ClubUefaRankingRepository clubRankingRepository;
 
     @InjectMocks
     private TeamService teamService;
@@ -82,6 +87,22 @@ class TeamServiceTest {
         assertThat(statutAReprendre.getTeam()).isSameAs(vllaznia);
         verify(statusRepository).save(statutAReprendre);
         verify(teamRepository).delete(doublon);
+    }
+
+    @Test
+    void fusionReporteLeClassementUefaEtLeLogoDuDoublon() {
+        givenTeamsExist();
+        doublon.setLogoPath("1.png");
+        ClubUefaRanking ligneUefa = new ClubUefaRanking();
+        ligneUefa.setTeam(doublon);
+        when(clubRankingRepository.findByTeamId(1L)).thenReturn(List.of(ligneUefa));
+
+        teamService.merge(1L, 2L);
+
+        assertThat(ligneUefa.getTeam()).isSameAs(vllaznia);
+        verify(clubRankingRepository).saveAll(List.of(ligneUefa));
+        assertThat(vllaznia.getLogoPath()).isEqualTo("1.png");
+        verify(teamRepository).save(vllaznia);
     }
 
     @Test
