@@ -23,10 +23,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 
 /**
@@ -199,11 +201,14 @@ public class UefaRankingService {
 
     /** Coefficient club = somme des 5 saisons (colonne "Total" de l'onglet UEFA du fichier Excel source). */
     private static BigDecimal clubCoefficient(ClubUefaRanking club, BigDecimal points2027) {
-        return nonNull(points2027)
-                .add(nonNull(club.getPoints2026()))
-                .add(nonNull(club.getPoints2025()))
-                .add(nonNull(club.getPoints2024()))
-                .add(nonNull(club.getPoints2023()));
+        return Stream.of(
+                        points2027,
+                        club.getPoints2026(),
+                        club.getPoints2025(),
+                        club.getPoints2024(),
+                        club.getPoints2023())
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     /**
