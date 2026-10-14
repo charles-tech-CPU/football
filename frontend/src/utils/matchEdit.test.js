@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { editFromMatch, isPlayed, matchPayload, rowClassFor, statusRowClass, teamChangeLines, teamOptionsFor } from './matchEdit.js'
+import { editFromMatch, isPlayed, matchPayload, penaltiesNeeded, rowClassFor, statusRowClass, teamChangeLines, teamOptionsFor } from './matchEdit.js'
 
 const MATCH = {
   id: 7,
@@ -50,6 +50,8 @@ describe('editFromMatch', () => {
       time: '21:00',
       score1: null,
       score2: null,
+      penaltyScore1: null,
+      penaltyScore2: null,
       status: ''
     })
   })
@@ -78,14 +80,55 @@ describe('matchPayload', () => {
       team2Id: 9,
       score1: 2,
       score2: 0,
+      penaltyScore1: null,
+      penaltyScore2: null,
       status: null
     })
+  })
+
+  it('conserve les tirs au but deja saisis sur un ecran sans info de confrontation', () => {
+    const played = { ...MATCH, score1: 1, score2: 1, penaltyScore1: 4, penaltyScore2: 3 }
+
+    expect(matchPayload(played, editFromMatch(played))).toMatchObject({ penaltyScore1: 4, penaltyScore2: 3 })
+  })
+
+  it("efface les tirs au but d'un match de coupe qui n'est plus a egalite", () => {
+    const cup = { ...MATCH, knockout: { decider: true, otherLegsGoals1: 0, otherLegsGoals2: 0 } }
+    const edit = { ...editFromMatch(cup), score1: 2, score2: 1, penaltyScore1: 4, penaltyScore2: 3 }
+
+    expect(matchPayload(cup, edit)).toMatchObject({ penaltyScore1: null, penaltyScore2: null })
   })
 
   it('les champs vides partent a null', () => {
     const payload = matchPayload(MATCH, { ...editFromMatch(MATCH), date: '', time: '', status: 'FORFEIT' })
 
     expect(payload).toMatchObject({ date: null, time: null, status: 'FORFEIT' })
+  })
+})
+
+describe('penaltiesNeeded', () => {
+  const single = { ...MATCH, knockout: { decider: true, otherLegsGoals1: 0, otherLegsGoals2: 0 } }
+
+  it('match sec a egalite', () => {
+    expect(penaltiesNeeded(single, { score1: 1, score2: 1 })).toBe(true)
+    expect(penaltiesNeeded(single, { score1: 2, score2: 1 })).toBe(false)
+  })
+
+  it('pas tant que le score est incomplet', () => {
+    expect(penaltiesNeeded(single, { score1: 1, score2: '' })).toBe(false)
+  })
+
+  it('match retour : egalite sur l ensemble des 2 manches', () => {
+    // Aller : team1 de ce match a perdu 0-2 ; retour 2-0 -> 2-2 au cumul.
+    const retour = { ...MATCH, knockout: { decider: true, otherLegsGoals1: 0, otherLegsGoals2: 2 } }
+    expect(penaltiesNeeded(retour, { score1: 2, score2: 0 })).toBe(true)
+    expect(penaltiesNeeded(retour, { score1: 1, score2: 1 })).toBe(false)
+  })
+
+  it('jamais sur un match aller ni en championnat', () => {
+    const aller = { ...MATCH, knockout: { decider: false, otherLegsGoals1: 0, otherLegsGoals2: 0 } }
+    expect(penaltiesNeeded(aller, { score1: 1, score2: 1 })).toBe(false)
+    expect(penaltiesNeeded(MATCH, { score1: 1, score2: 1 })).toBe(false)
   })
 })
 

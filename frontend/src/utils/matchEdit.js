@@ -38,12 +38,29 @@ export function editFromMatch(m) {
     time: formatTime(m.time),
     score1: m.score1,
     score2: m.score2,
+    penaltyScore1: m.penaltyScore1 ?? null,
+    penaltyScore2: m.penaltyScore2 ?? null,
     status: MANUAL_STATUSES.has(m.status) ? m.status : ''
   }
 }
 
-// Corps de la requete PUT /api/matches/{id} a partir des valeurs editees.
+function isScore(value) {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+}
+
+// Tirs au but a saisir : match decisif d'une confrontation de coupe (match.knockout, fourni par
+// le calendrier) dont le score saisi laisse les 2 equipes a egalite, manches precedentes comprises.
+export function penaltiesNeeded(match, edit) {
+  const ko = match.knockout
+  if (!ko?.decider || !isScore(edit.score1) || !isScore(edit.score2)) return false
+  return edit.score1 + ko.otherLegsGoals1 === edit.score2 + ko.otherLegsGoals2
+}
+
+// Corps de la requete PUT /api/matches/{id} a partir des valeurs editees. Les tirs au but deja
+// saisis sont conserves ; sur un match de coupe du calendrier, ils sont effaces des que le
+// score ne laisse plus les equipes a egalite.
 export function matchPayload(match, edit) {
+  const keepPenalties = !match.knockout || penaltiesNeeded(match, edit)
   return {
     competitionId: match.competitionId,
     roundLabel: match.roundLabel,
@@ -53,6 +70,8 @@ export function matchPayload(match, edit) {
     team2Id: edit.team2Id,
     score1: edit.score1,
     score2: edit.score2,
+    penaltyScore1: keepPenalties ? edit.penaltyScore1 ?? null : null,
+    penaltyScore2: keepPenalties ? edit.penaltyScore2 ?? null : null,
     status: edit.status || null
   }
 }

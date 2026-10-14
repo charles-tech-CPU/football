@@ -264,6 +264,51 @@ class MatchServiceTest {
     }
 
     @Test
+    void matchRetourDeCoupeDonneLeCumulDeLAllerEtEstDecisif() {
+        Competition coupe = new Competition("CDF", "Coupe de France", CompetitionType.DOMESTIC_CUP, "France", 2027);
+        coupe.setId(30L);
+        Match retour = match();
+        retour.setId(101L);
+        retour.setCompetition(coupe);
+        retour.setRoundLabel("1/2 FINALE - RETOUR");
+        // Aller : OM 2 - 0 PSG (OM recoit), donc PSG (team1 du retour) a 0 but, OM 2.
+        Match aller = new Match();
+        aller.setId(100L);
+        aller.setCompetition(coupe);
+        aller.setRoundLabel("1/2 FINALE - ALLER");
+        aller.setTeam1(om);
+        aller.setTeam2(psg);
+        aller.setScore1(2);
+        aller.setScore2(0);
+        when(matchRepository.findUpcomingFiltered(NOT_UPCOMING, null, null, PageRequest.of(0, 20)))
+                .thenReturn(new PageImpl<>(List.of(retour), PageRequest.of(0, 20), 1));
+        when(matchRepository.findByTeam1_IdOrTeam2_IdOrderByDateDesc(1L, 1L)).thenReturn(List.of(retour, aller));
+
+        MatchDto dto = matchService.findUpcoming(0, 20, "all").items().get(0);
+
+        assertThat(dto.knockout()).isEqualTo(new MatchDto.Knockout(true, 0, 2));
+    }
+
+    @Test
+    void matchAllerNEstPasDecisifEtChampionnatSansConfrontation() {
+        Competition coupe = new Competition("CDF", "Coupe de France", CompetitionType.DOMESTIC_CUP, "France", 2027);
+        coupe.setId(30L);
+        Match aller = match();
+        aller.setId(100L);
+        aller.setCompetition(coupe);
+        aller.setRoundLabel("1/2 FINALE - ALLER");
+        Match championnat = match();
+        championnat.setId(102L);
+        when(matchRepository.findUpcomingFiltered(NOT_UPCOMING, null, null, PageRequest.of(0, 20)))
+                .thenReturn(new PageImpl<>(List.of(aller, championnat), PageRequest.of(0, 20), 2));
+
+        List<MatchDto> items = matchService.findUpcoming(0, 20, "all").items();
+
+        assertThat(items.get(0).knockout()).isEqualTo(new MatchDto.Knockout(false, 0, 0));
+        assertThat(items.get(1).knockout()).isNull();
+    }
+
+    @Test
     void lesListesDeMatchsSontConvertiesEnDto() {
         when(matchRepository.findByCompetitionIdOrderByDateAscTimeAsc(10L)).thenReturn(List.of(match()));
         when(matchRepository.findByTeam1_IdOrTeam2_IdOrderByDateDesc(1L, 1L)).thenReturn(List.of(match()));

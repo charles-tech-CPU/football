@@ -35,7 +35,8 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="m in matches" :key="m.id" :class="rowClass(m)">
+      <template v-for="m in matches" :key="m.id">
+      <tr :class="rowClass(m)">
         <MatchDateTimeCells v-model:date="edits[m.id].date" v-model:time="edits[m.id].time" flag-missing-time />
         <td>
           <span class="team-cell" :class="competitionBadgeClass(m)">
@@ -72,9 +73,17 @@
           <MatchStatusSelect v-model="edits[m.id].status" />
         </td>
         <td>
-          <button @click="saveMatch(m)">Enregistrer</button>
+          <button @click="save(m)">Enregistrer</button>
         </td>
       </tr>
+      <tr v-if="penaltiesNeeded(m, edits[m.id])" :class="['penalty-row', rowClass(m)]">
+        <td colspan="4" class="penalty-label">
+          Tirs au but<span v-if="hasOtherLegs(m)"> (cumul {{ aggregateLabel(m) }})</span>
+        </td>
+        <MatchScoreCells v-model:score1="edits[m.id].penaltyScore1" v-model:score2="edits[m.id].penaltyScore2" />
+        <td colspan="3"></td>
+      </tr>
+      </template>
     </tbody>
   </table>
   </div>
@@ -98,7 +107,7 @@ import MatchDateTimeCells from '../components/MatchDateTimeCells.vue'
 import MatchScoreCells from '../components/MatchScoreCells.vue'
 import MatchStatusSelect from '../components/MatchStatusSelect.vue'
 import { competitionBadgeClass } from '../utils/competitionBadge'
-import { teamOptionsFor as teamOptionsAmong } from '../utils/matchEdit'
+import { penaltiesNeeded, teamOptionsFor as teamOptionsAmong } from '../utils/matchEdit'
 import { useMatchEdits } from '../composables/useMatchEdits'
 
 function isContinental(m) {
@@ -129,6 +138,29 @@ const totalCount = ref(0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
 
 const { edits, error, resetEdits, rowClass, saveMatch } = useMatchEdits({ teams, reload: load })
+
+function hasOtherLegs(m) {
+  return m.knockout && (m.knockout.otherLegsGoals1 > 0 || m.knockout.otherLegsGoals2 > 0)
+}
+
+function aggregateLabel(m) {
+  const e = edits[m.id]
+  return `${e.score1 + m.knockout.otherLegsGoals1} – ${e.score2 + m.knockout.otherLegsGoals2}`
+}
+
+// Une confrontation a egalite doit etre departagee aux tirs au but avant d'etre enregistree.
+function save(m) {
+  const e = edits[m.id]
+  if (penaltiesNeeded(m, e)) {
+    const p1 = e.penaltyScore1
+    const p2 = e.penaltyScore2
+    if (typeof p1 !== 'number' || typeof p2 !== 'number' || p1 === p2) {
+      error.value = `${m.team1Name} – ${m.team2Name} : égalité, saisis les tirs au but (avec un vainqueur).`
+      return
+    }
+  }
+  saveMatch(m)
+}
 
 // Clubs du pays de la competition du match (tous pour une coupe d'Europe), cf. utils/matchEdit.
 function teamOptionsFor(m, currentId) {
@@ -173,6 +205,13 @@ onMounted(load)
 </script>
 
 <style scoped>
+.penalty-label {
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
 .featured-match {
   margin-left: 4px;
   cursor: help;

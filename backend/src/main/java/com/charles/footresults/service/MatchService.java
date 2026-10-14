@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,9 @@ public class MatchService {
 
     /** Fragment du round_label des matchs de phase de ligue des coupes d'Europe (cf. UefaRankingService). */
     private static final String LEAGUE_PHASE_ROUND = "PHASE DE LIGUE";
+
+    /** Suffixe de manche d'une confrontation aller/retour (cf. UefaRankingService). */
+    private static final Pattern LEG_SUFFIX = Pattern.compile("-\s*(ALLER|RETOUR)\s*$", Pattern.CASE_INSENSITIVE);
 
     private final MatchRepository matchRepository;
     private final CompetitionRepository competitionRepository;
@@ -107,10 +111,50 @@ public class MatchService {
                             .withCalendarInfo(
                                     r.get(m.getTeam1().getId()),
                                     r.get(m.getTeam2().getId()),
-                                    featured.contains(m.getId()));
+                                    featured.contains(m.getId()),
+                                    knockoutInfo(m));
                 })
                 .toList();
         return new MatchPageDto(items, result.getTotalElements());
+    }
+
+    /**
+     * Confrontation a elimination directe d'un match de coupe (nationale ou d'Europe, hors phase
+     * de ligue) : manches = matchs de la meme competition entre les 2 memes equipes, dans le meme
+     * tour (round_label sans son suffixe "- ALLER"/"- RETOUR"). Le match decisif est la derniere
+     * manche (un match marque "ALLER" ne l'est jamais) ; null pour un match de championnat.
+     */
+    private MatchDto.Knockout knockoutInfo(Match m) {
+        Competition c = m.getCompetition();
+        boolean cup = c.getType() == CompetitionType.DOMESTIC_CUP || c.getType() == CompetitionType.CONTINENTAL_CUP;
+        String label = m.getRoundLabel() == null ? "" : m.getRoundLabel().trim();
+        if (!cup || label.toUpperCase().contains(LEAGUE_PHASE_ROUND)) {
+            return null;
+        }
+        String tour = LEG_SUFFIX.matcher(label).replaceAll("").trim();
+        Long team1 = m.getTeam1().getId();
+        Long team2 = m.getTeam2().getId();
+        int goals1 = 0;
+        int goals2 = 0;
+        for (Match other : matchRepository.findByTeam1_IdOrTeam2_IdOrderByDateDesc(team1, team1)) {
+            boolean sameTie = !other.getId().equals(m.getId())
+                    && other.getCompetition().getId().equals(c.getId())
+                    && (other.getTeam1().getId().equals(team2)
+                            || other.getTeam2().getId().equals(team2))
+                    && tour.equalsIgnoreCase(LEG_SUFFIX
+                            .matcher(
+                                    other.getRoundLabel() == null
+                                            ? ""
+                                            : other.getRoundLabel().trim())
+                            .replaceAll("")
+                            .trim());
+            if (!sameTie || other.getScore1() == null || other.getScore2() == null) continue;
+            boolean team1AtHome = other.getTeam1().getId().equals(team1);
+            goals1 += team1AtHome ? other.getScore1() : other.getScore2();
+            goals2 += team1AtHome ? other.getScore2() : other.getScore1();
+        }
+        boolean firstLeg = label.toUpperCase().matches(".*-\s*ALLER$");
+        return new MatchDto.Knockout(!firstLeg, goals1, goals2);
     }
 
     /**

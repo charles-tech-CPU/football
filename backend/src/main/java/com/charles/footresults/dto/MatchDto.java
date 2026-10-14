@@ -34,7 +34,17 @@ public record MatchDto(
         Integer team1LeagueRank,
         Integer team2LeagueRank,
         /** Affiche "a voir" de sa journee (calendrier, cf. FeaturedMatchService). */
-        boolean featured) {
+        boolean featured,
+        /** Match de coupe a elimination directe (calendrier) ; null sinon (championnat, phase de ligue). */
+        Knockout knockout) {
+
+    /**
+     * decider : dernier match de la confrontation (match sec ou retour), celui qui porte les
+     * eventuels tirs au but. otherLegsGoals1/2 : buts deja marques par team1/team2 de CE match
+     * dans les autres manches jouees de la confrontation (0 pour un match sec).
+     */
+    public record Knockout(boolean decider, int otherLegsGoals1, int otherLegsGoals2) {}
+
     public static MatchDto from(Match m) {
         return new MatchDto(
                 m.getId(),
@@ -62,10 +72,11 @@ public record MatchDto(
                 m.getBracketPosition(),
                 null,
                 null,
-                false);
+                false,
+                null);
     }
 
-    public MatchDto withCalendarInfo(Integer rank1, Integer rank2, boolean isFeatured) {
+    public MatchDto withCalendarInfo(Integer rank1, Integer rank2, boolean isFeatured, Knockout knockoutInfo) {
         return new MatchDto(
                 id,
                 competitionId,
@@ -92,6 +103,7 @@ public record MatchDto(
                 bracketPosition,
                 rank1,
                 rank2,
-                isFeatured);
+                isFeatured,
+                knockoutInfo);
     }
 }
