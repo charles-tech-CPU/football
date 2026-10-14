@@ -45,6 +45,10 @@
       </tr>
     </tbody>
   </table>
+  <div v-if="dirtyMatches.length" class="bulk-save">
+    <button type="button" :disabled="saving" @click="saveAll">Enregistrer tout ({{ dirtyMatches.length }})</button>
+    <span class="bulk-save-hint">Entrée dans une case de score passe à la suivante.</span>
+  </div>
   <p v-else-if="loaded" class="empty-state">Tous les matchs de cette compétition ont été joués.</p>
   <p v-if="error" class="error-text">{{ error }}</p>
 </template>
@@ -87,7 +91,10 @@ const upcoming = computed(() => {
   return list
 })
 
-const { edits, error, resetEdits, rowClass, saveMatch } = useMatchEdits({ teams, reload: load })
+const { edits, error, saving, resetEdits, dirtyMatches, rowClass, saveMatch, saveAll } = useMatchEdits({
+  teams,
+  reload: load
+})
 
 async function load() {
   loaded.value = false

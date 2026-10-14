@@ -73,7 +73,7 @@
           <MatchStatusSelect v-model="edits[m.id].status" />
         </td>
         <td>
-          <button @click="save(m)">Enregistrer</button>
+          <button @click="saveMatch(m)">Enregistrer</button>
         </td>
       </tr>
       <tr v-if="penaltiesNeeded(m, edits[m.id])" :class="['penalty-row', rowClass(m)]">
@@ -86,6 +86,10 @@
       </template>
     </tbody>
   </table>
+  </div>
+  <div v-if="dirtyMatches.length" class="bulk-save">
+    <button type="button" :disabled="saving" @click="saveAll">Enregistrer tout ({{ dirtyMatches.length }})</button>
+    <span class="bulk-save-hint">Entrée dans une case de score passe à la suivante.</span>
   </div>
   <p v-else-if="loaded" class="empty-state">Aucun match pour ce filtre.</p>
 
@@ -137,7 +141,10 @@ const totalCount = ref(0)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
 
-const { edits, error, resetEdits, rowClass, saveMatch } = useMatchEdits({ teams, reload: load })
+const { edits, error, saving, resetEdits, dirtyMatches, rowClass, saveMatch, saveAll } = useMatchEdits({
+  teams,
+  reload: load
+})
 
 function hasOtherLegs(m) {
   return m.knockout && (m.knockout.otherLegsGoals1 > 0 || m.knockout.otherLegsGoals2 > 0)
@@ -146,20 +153,6 @@ function hasOtherLegs(m) {
 function aggregateLabel(m) {
   const e = edits[m.id]
   return `${e.score1 + m.knockout.otherLegsGoals1} – ${e.score2 + m.knockout.otherLegsGoals2}`
-}
-
-// Une confrontation a egalite doit etre departagee aux tirs au but avant d'etre enregistree.
-function save(m) {
-  const e = edits[m.id]
-  if (penaltiesNeeded(m, e)) {
-    const p1 = e.penaltyScore1
-    const p2 = e.penaltyScore2
-    if (typeof p1 !== 'number' || typeof p2 !== 'number' || p1 === p2) {
-      error.value = `${m.team1Name} – ${m.team2Name} : égalité, saisis les tirs au but (avec un vainqueur).`
-      return
-    }
-  }
-  saveMatch(m)
 }
 
 // Clubs du pays de la competition du match (tous pour une coupe d'Europe), cf. utils/matchEdit.

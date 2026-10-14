@@ -640,6 +640,25 @@ input[type="number"]::-webkit-inner-spin-button {
   background: #f29a9a;
 }
 
+/* Ligne modifiee pas encore enregistree (saisie rapide, cf. useMatchEdits) : liseré a gauche,
+   qui reste visible quelle que soit la couleur de fond de la ligne. */
+.row-dirty td:first-child {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+/* Barre "Enregistrer tout" de la saisie rapide. */
+.bulk-save {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.bulk-save-hint {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
 /* Match programme aujourd'hui : a surveiller, pas encore en retard. */
 .row-today td {
   background: #bfdbfe;

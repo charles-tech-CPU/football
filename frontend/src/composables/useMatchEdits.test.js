@@ -55,7 +55,7 @@ describe('useMatchEdits', () => {
   it('classe de ligne selon les valeurs en cours de saisie', () => {
     state.edits[7].status = 'POSTPONED'
 
-    expect(state.rowClass(MATCH)).toBe('row-postponed')
+    expect(state.rowClass(MATCH)).toBe('row-postponed row-dirty')
     expect(state.rowClass({ id: 404 })).toBe('')
   })
 
@@ -115,5 +115,70 @@ describe('useMatchEdits', () => {
     await state.saveMatch(MATCH)
 
     expect(state.error.value).toBe("Erreur lors de l'enregistrement du match.")
+  })
+
+  describe('saisie rapide', () => {
+    const OTHER = { ...MATCH, id: 8, team1Id: 3, team1Name: 'Lens' }
+
+    beforeEach(() => {
+      state.resetEdits([MATCH, OTHER])
+    })
+
+    it('repere les lignes modifiees', () => {
+      expect(state.dirtyMatches.value).toEqual([])
+
+      state.edits[8].score1 = 2
+
+      expect(state.dirtyMatches.value.map(m => m.id)).toEqual([8])
+      expect(state.isDirty(MATCH)).toBe(false)
+      expect(state.rowClass(OTHER)).toContain('row-dirty')
+    })
+
+    it("enregistre toutes les lignes modifiees puis recharge une seule fois", async () => {
+      Object.assign(state.edits[7], { score1: 1, score2: 0 })
+      Object.assign(state.edits[8], { score1: 2, score2: 2 })
+
+      await state.saveAll()
+
+      expect(api.updateMatch).toHaveBeenCalledTimes(2)
+      expect(api.updateMatch).toHaveBeenCalledWith(8, expect.objectContaining({ score1: 2, score2: 2 }))
+      expect(reload).toHaveBeenCalledTimes(1)
+      expect(confirm).not.toHaveBeenCalled()
+    })
+
+    it("une seule confirmation pour tous les changements d'equipe", async () => {
+      state.edits[7].team2Id = 3
+      state.edits[8].score1 = 0
+
+      await state.saveAll()
+
+      expect(confirm).toHaveBeenCalledTimes(1)
+      expect(confirm.mock.calls[0][0]).toContain('PSG – OM :')
+      expect(api.updateMatch).toHaveBeenCalledTimes(2)
+    })
+
+    it("rien n'est envoye si un match de coupe a egalite n'a pas ses tirs au but", async () => {
+      const cup = { ...OTHER, knockout: { decider: true, otherLegsGoals1: 0, otherLegsGoals2: 0 } }
+      state.resetEdits([MATCH, cup])
+      Object.assign(state.edits[7], { score1: 1, score2: 0 })
+      Object.assign(state.edits[8], { score1: 1, score2: 1 })
+
+      await state.saveAll()
+
+      expect(api.updateMatch).not.toHaveBeenCalled()
+      expect(state.error.value).toContain('Lens – OM')
+    })
+
+    it("echec en cours de route : la saisie est gardee et le message dit ou on en est", async () => {
+      vi.mocked(api.updateMatch).mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('reseau'))
+      Object.assign(state.edits[7], { score1: 1, score2: 0 })
+      Object.assign(state.edits[8], { score1: 2, score2: 2 })
+
+      await state.saveAll()
+
+      expect(state.error.value).toContain('1 match(s) enregistré(s) sur 2')
+      expect(reload).not.toHaveBeenCalled()
+      expect(state.edits[8].score1).toBe(2)
+    })
   })
 })
