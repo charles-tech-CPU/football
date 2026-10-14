@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calendarProgress, isLate, isScheduled, lateCount, leagueRound } from './competitionProgress.js'
+import { calendarProgress, remainingProgress, isLate, isScheduled, lateCount, leagueRound } from './competitionProgress.js'
 
 const TODAY = '2026-09-26'
 
@@ -94,5 +94,34 @@ describe('calendarProgress', () => {
   it('ignore les barrages et autres tours', () => {
     expect(calendarProgress([{ roundLabel: 'Barrage (a determiner : 3E-6E)', date: null }]))
       .toEqual({ total: 0, complete: 0, firstMissing: null, firstUntimedDate: null })
+  })
+})
+
+describe('remainingProgress', () => {
+  const played = (roundLabel, date) => ({ roundLabel, date, score1: 1, score2: 0, status: 'COMPLETED' })
+  const toPlay = (roundLabel, date) => ({ roundLabel, date, score1: null, score2: null, status: 'SCHEDULED' })
+
+  it('journees de 2e phase qui reprennent les numeros J1, J2... et barrages', () => {
+    const matches = [
+      played('J1', '2026-04-10'), played('J2', '2026-04-17'), played('J1', '2026-09-13'),
+      toPlay('J2', '2026-10-17'), toPlay('J2', '2026-10-18'), toPlay('J3', '2026-10-24'),
+      toPlay('Barrage (2E-5E)', null), toPlay('Barrage (W1-W2)', null)
+    ]
+    expect(remainingProgress(matches, 2, TODAY)).toEqual({ rounds: 2, otherRounds: 2, finished: false })
+  })
+
+  it('ne compte pas les matchs en retard, mais le championnat n est pas termine', () => {
+    const matches = [played('J1', '2026-09-01'), toPlay('J2', '2026-09-20')]
+    expect(remainingProgress(matches, 2, TODAY)).toEqual({ rounds: 0, otherRounds: 0, finished: false })
+  })
+
+  it('journees pas encore saisies jusqu au nombre attendu', () => {
+    const matches = [played('J1', '2026-09-01'), toPlay('J2', '2026-10-01')]
+    expect(remainingProgress(matches, 5, TODAY)).toMatchObject({ rounds: 4, finished: false })
+  })
+
+  it('termine quand tout est joue (forfaits compris)', () => {
+    const matches = [played('J1', '2026-09-01'), { ...toPlay('J2', '2026-09-08'), status: 'FORFEIT' }]
+    expect(remainingProgress(matches, 2, TODAY)).toEqual({ rounds: 0, otherRounds: 0, finished: true })
   })
 })

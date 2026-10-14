@@ -64,6 +64,7 @@
         <td>{{ statusLabel(m.status) }}</td>
         <td>
           <button @click="saveScore(m)">Enregistrer</button>
+          <button type="button" class="delete-btn" title="Supprimer ce match" aria-label="Supprimer ce match" @click="deleteMatch(m)">🗑</button>
         </td>
       </tr>
     </tbody>
@@ -78,7 +79,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
 import MatchCreationBar from './MatchCreationBar.vue'
-import { teamChangeLines } from '../utils/matchEdit'
+import { deleteConfirmMessage, teamChangeLines } from '../utils/matchEdit'
 import { formatTime } from '../utils/format'
 import { roundsByRecency } from '../utils/rounds'
 import TeamSelect from './TeamSelect.vue'
@@ -211,6 +212,16 @@ async function saveScore(match) {
   }
 }
 
+async function deleteMatch(match) {
+  error.value = ''
+  if (!window.confirm(deleteConfirmMessage(match))) return
+  try {
+    await api.deleteMatch(match.id)
+    await load()
+  } catch (e) {
+    error.value = e.response?.data?.error ?? 'Erreur lors de la suppression du match.'
+  }
+}
 
 watch(() => props.competitionId, load)
 onMounted(load)

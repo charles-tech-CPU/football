@@ -54,3 +54,27 @@ export function calendarProgress(matches, totalRounds) {
   }
   return { total, complete, firstMissing, firstUntimedDate }
 }
+
+// Ce qu'il reste a jouer : journees de championnat ayant encore un match a jouer (hors matchs en
+// retard, deja signales a part) ou pas encore saisies jusqu'a totalRounds, et autres tours
+// (barrages, poules de 2e phase...) encore a jouer. Les journees de 2e phase reprennent parfois
+// les numeros J1, J2... : c'est bien la presence d'un match a jouer qui compte, pas le numero.
+// finished = plus aucun match a jouer (y compris en retard) ni journee manquante.
+export function remainingProgress(matches, totalRounds, today) {
+  const pending = matches.filter(m => !isPlayed(m) && m.status !== 'FORFEIT')
+  const lastCreated = Math.max(0, ...matches.map(leagueRound).filter(n => n != null))
+  const rounds = new Set()
+  const otherRounds = new Set()
+  for (const m of pending) {
+    if (isLate(m, today)) continue
+    const n = leagueRound(m)
+    if (n == null) otherRounds.add(m.roundLabel)
+    else rounds.add(n)
+  }
+  const missing = Math.max(0, (totalRounds ?? 0) - lastCreated)
+  return {
+    rounds: rounds.size + missing,
+    otherRounds: otherRounds.size,
+    finished: pending.length === 0 && missing === 0
+  }
+}

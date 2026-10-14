@@ -1,6 +1,6 @@
 import { computed, reactive, ref } from 'vue'
 import api from '../services/api'
-import { editFromMatch, matchPayload, penaltiesNeeded, rowClassFor, teamChangeLines } from '../utils/matchEdit.js'
+import { deleteConfirmMessage, editFromMatch, matchPayload, penaltiesNeeded, rowClassFor, teamChangeLines } from '../utils/matchEdit.js'
 
 // Etat d'edition en ligne d'une liste de matchs : valeurs editees par match, message d'erreur,
 // enregistrement (avec confirmation si une equipe change) puis rechargement de la liste.
@@ -79,6 +79,18 @@ export function useMatchEdits({ teams, reload }) {
     }
   }
 
+  // Suppression d'un match (ex: doublon saisi deux fois), apres confirmation.
+  async function deleteMatch(match) {
+    error.value = ''
+    if (!window.confirm(deleteConfirmMessage(match))) return
+    try {
+      await api.deleteMatch(match.id)
+      await reload()
+    } catch (e) {
+      error.value = e.response?.data?.error ?? 'Erreur lors de la suppression du match.'
+    }
+  }
+
   // Enregistre toutes les lignes modifiees. Rien n'est envoye si l'une d'elles est invalide ;
   // les changements d'equipe sont confirmes en une seule fois. En cas d'echec en cours de route,
   // la saisie est conservee (pas de rechargement) : un nouvel essai renvoie aussi les matchs
@@ -116,5 +128,5 @@ export function useMatchEdits({ teams, reload }) {
     await reload()
   }
 
-  return { edits, error, saving, resetEdits, isDirty, dirtyMatches, rowClass, confirmTeamChange, saveMatch, saveAll }
+  return { edits, error, saving, resetEdits, isDirty, dirtyMatches, rowClass, confirmTeamChange, saveMatch, saveAll, deleteMatch }
 }

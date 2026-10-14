@@ -95,3 +95,9 @@ export function teamOptionsFor(teams, country, currentId) {
   }
   return list.toSorted((a, b) => a.name.localeCompare(b.name))
 }
+
+// Message de confirmation avant la suppression d'un match (ex: doublon saisi deux fois).
+export function deleteConfirmMessage(match) {
+  const score = isPlayed(match) ? ` (${match.score1}-${match.score2})` : ''
+  return `Supprimer définitivement le match ${match.team1Name} – ${match.team2Name}${score}, ${match.roundLabel} ?`
+}

@@ -784,6 +784,11 @@ form.inline {
   color: #92600c;
 }
 
+.badge-finished {
+  background: #e3f6ea;
+  color: #166534;
+}
+
 .badge-continental {
   background: #e7edfb;
   color: #1d4ed8;
@@ -1481,4 +1486,18 @@ table.results-grid td.grid-loss { background: #fbe0de; color: #a8322a; }
 }
 .topbar-inner > .brand {
   margin-right: auto;
+}
+
+/* Bouton de suppression d'un match (doublon), a cote de "Enregistrer". */
+.delete-btn {
+  margin-left: 6px;
+  padding: 6px 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--danger);
+}
+
+.delete-btn:hover {
+  border-color: var(--danger);
+  background: rgba(213, 68, 58, 0.08);
 }

@@ -37,6 +37,7 @@
         </td>
         <td>
           <button @click="saveMatch(m)">Enregistrer</button>
+          <button type="button" class="delete-btn" title="Supprimer ce match" aria-label="Supprimer ce match" @click="deleteMatch(m)">🗑</button>
         </td>
       </tr>
     </tbody>
@@ -88,7 +89,7 @@ const upcoming = computed(() => {
   return list
 })
 
-const { edits, error, saving, resetEdits, dirtyMatches, rowClass, saveMatch, saveAll } = useMatchEdits({
+const { edits, error, saving, resetEdits, dirtyMatches, rowClass, saveMatch, saveAll, deleteMatch } = useMatchEdits({
   teams,
   reload: load
 })

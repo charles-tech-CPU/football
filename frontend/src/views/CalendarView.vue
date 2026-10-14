@@ -70,6 +70,7 @@
         </td>
         <td>
           <button @click="saveMatch(m)">Enregistrer</button>
+          <button type="button" class="delete-btn" title="Supprimer ce match" aria-label="Supprimer ce match" @click="deleteMatch(m)">🗑</button>
         </td>
       </tr>
       <tr v-if="penaltiesNeeded(m, edits[m.id])" :class="['penalty-row', rowClass(m)]">
@@ -138,7 +139,7 @@ const totalCount = ref(0)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
 
-const { edits, error, saving, resetEdits, dirtyMatches, rowClass, saveMatch, saveAll } = useMatchEdits({
+const { edits, error, saving, resetEdits, dirtyMatches, rowClass, saveMatch, saveAll, deleteMatch } = useMatchEdits({
   teams,
   reload: load
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { editFromMatch, isPlayed, matchPayload, penaltiesNeeded, rowClassFor, statusRowClass, teamChangeLines, teamOptionsFor } from './matchEdit.js'
+import { deleteConfirmMessage, editFromMatch, isPlayed, matchPayload, penaltiesNeeded, rowClassFor, statusRowClass, teamChangeLines, teamOptionsFor } from './matchEdit.js'
 
 const MATCH = {
   id: 7,
@@ -184,5 +184,17 @@ describe('isPlayed', () => {
     expect(isPlayed({ score1: 0, score2: 0 })).toBe(true)
     expect(isPlayed({ score1: 2, score2: null })).toBe(false)
     expect(isPlayed({ score1: null, score2: null })).toBe(false)
+  })
+})
+
+describe('deleteConfirmMessage', () => {
+  it('rappelle le score d un match joue', () => {
+    const m = { team1Name: 'KASPIJ', team2Name: 'KAIRAT', score1: 1, score2: 2, roundLabel: 'J20' }
+    expect(deleteConfirmMessage(m)).toBe('Supprimer définitivement le match KASPIJ – KAIRAT (1-2), J20 ?')
+  })
+
+  it('sans score pour un match a jouer', () => {
+    const m = { team1Name: 'KASPIJ', team2Name: 'KAIRAT', score1: null, score2: null, roundLabel: 'J20' }
+    expect(deleteConfirmMessage(m)).toBe('Supprimer définitivement le match KASPIJ – KAIRAT, J20 ?')
   })
 })

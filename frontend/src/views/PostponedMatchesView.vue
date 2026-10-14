@@ -43,6 +43,7 @@
         </td>
         <td>
           <button @click="saveMatch(m)">Enregistrer</button>
+          <button type="button" class="delete-btn" title="Supprimer ce match" aria-label="Supprimer ce match" @click="deleteMatch(m)">🗑</button>
         </td>
       </tr>
     </tbody>
@@ -67,7 +68,7 @@ import TeamSelect from '../components/TeamSelect.vue'
 const matches = ref([])
 const teams = ref([])
 const loaded = ref(false)
-const { edits, error, resetEdits, rowClass, saveMatch } = useMatchEdits({ teams, reload: load })
+const { edits, error, resetEdits, rowClass, saveMatch, deleteMatch } = useMatchEdits({ teams, reload: load })
 
 // Clubs du pays de la competition du match (tous pour une coupe d'Europe), cf. utils/matchEdit.
 function teamOptionsFor(m, currentId) {
