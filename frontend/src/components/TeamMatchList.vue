@@ -15,7 +15,7 @@
         <tr v-for="m in matches" :key="m.id">
           <td class="match-date">{{ m.date ? formatShortDate(m.date) : 'Date à fixer' }}</td>
           <td>
-            <span :class="competitionBadgeClass(m)">{{ m.competitionName }}</span>
+            <router-link :to="competitionLink(m)" class="competition-link" :class="competitionBadgeClass(m)" title="Voir le classement">{{ m.competitionName }}</router-link>
           </td>
           <td class="match-round">{{ m.roundLabel }}</td>
           <td :class="{ 'is-self': m.team1Id === teamId }">
@@ -48,7 +48,7 @@
 <script setup>
 // Liste compacte des matchs d'un club (fiche club) : le score est colore selon le resultat du club.
 import TeamLogo from './TeamLogo.vue'
-import { competitionBadgeClass } from '../utils/competitionBadge'
+import { competitionBadgeClass, competitionLink } from '../utils/competitionBadge'
 import { formatShortDate, formatTime } from '../utils/format'
 import { isPlayed } from '../utils/matchEdit'
 

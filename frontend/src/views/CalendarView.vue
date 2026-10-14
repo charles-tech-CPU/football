@@ -39,10 +39,10 @@
       <tr :class="rowClass(m)">
         <MatchDateTimeCells v-model:date="edits[m.id].date" v-model:time="edits[m.id].time" flag-missing-time />
         <td>
-          <span class="team-cell" :class="competitionBadgeClass(m)">
+          <router-link :to="competitionLink(m)" class="team-cell competition-link" :class="competitionBadgeClass(m)" title="Voir le classement">
             <FlagIcon v-if="m.competitionCountry" :country="m.competitionCountry" />
             {{ m.competitionName }}
-          </span>
+          </router-link>
         </td>
         <td>
           {{ m.roundLabel }}
@@ -107,7 +107,7 @@ import TeamLogo from '../components/TeamLogo.vue'
 import MatchDateTimeCells from '../components/MatchDateTimeCells.vue'
 import MatchScoreCells from '../components/MatchScoreCells.vue'
 import MatchStatusSelect from '../components/MatchStatusSelect.vue'
-import { competitionBadgeClass } from '../utils/competitionBadge'
+import { competitionBadgeClass, competitionLink } from '../utils/competitionBadge'
 import { penaltiesNeeded, teamOptionsFor as teamOptionsAmong } from '../utils/matchEdit'
 import { useMatchEdits } from '../composables/useMatchEdits'
 import TeamSelect from '../components/TeamSelect.vue'

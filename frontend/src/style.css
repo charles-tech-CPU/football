@@ -1501,3 +1501,12 @@ table.results-grid td.grid-loss { background: #fbe0de; color: #a8322a; }
   border-color: var(--danger);
   background: rgba(213, 68, 58, 0.08);
 }
+
+/* Nom de competition cliquable (calendrier, fiche club) : garde l'apparence du badge. */
+.competition-link {
+  text-decoration: none;
+}
+
+.competition-link:hover {
+  text-decoration: underline;
+}

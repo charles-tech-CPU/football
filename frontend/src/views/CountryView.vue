@@ -220,6 +220,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import api from '../services/api'
 import FlagIcon from '../components/FlagIcon.vue'
 import StandingsTable from '../components/StandingsTable.vue'
@@ -240,7 +241,12 @@ const cup = ref(null)
 const standings = ref([])
 const teamStatusMap = ref({})
 const loaded = ref(false)
-const activeTab = ref('classement')
+// Onglet ouvert directement depuis un lien (?onglet=coupe, ex: calendrier), Classement sinon.
+const TABS = ['classement', 'championnat', 'avenir', 'resultats', 'coupe']
+const route = useRoute()
+const initialTab = () => (TABS.includes(route.query.onglet) ? route.query.onglet : 'classement')
+const activeTab = ref(initialTab())
+watch(() => route.query.onglet, () => { activeTab.value = initialTab() })
 const avenirSubTab = ref('championnat')
 const showProjected = ref(false)
 const projectedStandings = ref([])

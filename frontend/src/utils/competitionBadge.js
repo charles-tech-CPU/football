@@ -9,3 +9,12 @@ export function competitionBadgeClass(m) {
   if (m.competitionType === 'LEAGUE') return 'comp-badge comp-league'
   return ''
 }
+
+// Page de la competition d'un match (classement) : page du pays pour un championnat (onglet
+// Classement) ou une coupe nationale (onglet Coupe), page de la competition sinon.
+export function competitionLink(m) {
+  const country = m.competitionCountry
+  if (country && m.competitionType === 'LEAGUE') return `/pays/${encodeURIComponent(country)}`
+  if (country && m.competitionType === 'DOMESTIC_CUP') return { path: `/pays/${encodeURIComponent(country)}`, query: { onglet: 'coupe' } }
+  return `/competitions/${m.competitionId}`
+}
