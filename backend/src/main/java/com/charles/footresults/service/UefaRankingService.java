@@ -98,14 +98,30 @@ public class UefaRankingService {
         this.standingsService = standingsService;
     }
 
+    /**
+     * Classement des clubs : total = somme des 5 saisons, dont la saison en cours recalculee a
+     * partir des matchs (la colonne "total" importee, figee au moment de l'export Excel, n'est
+     * plus utilisee). Les rangs sont recalcules sur ce total (a egalite, l'ordre importe est
+     * conserve).
+     */
     public List<ClubUefaRankingDto> findClubRankings() {
         SeasonState state = computeSeasonState();
-        return clubRepository.findAllByOrderByUefaRankAsc().stream()
+        List<ClubUefaRankingDto> sorted = clubRepository.findAllByOrderByUefaRankAsc().stream()
                 .map(r -> toDto(r, state))
+                .sorted(Comparator.comparing(ClubUefaRankingDto::total).reversed())
                 .toList();
+        List<ClubUefaRankingDto> ranked = new ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            ranked.add(sorted.get(i).withRank(i + 1));
+        }
+        return ranked;
     }
 
-    /** Points 2027 d'un pays = somme des points 2027 de ses clubs ; "encore en course" = somme des clubs vivants. */
+    /**
+     * Points 2027 d'un pays = somme des points 2027 de ses clubs ; "encore en course" = somme des
+     * clubs vivants. Total = coefficient sur 5 saisons recalcule avec ces points 2027 (cf.
+     * countryCoefficient), rangs recalcules sur ce total.
+     */
     public List<CountryUefaRankingDto> findCountryRankings() {
         SeasonState state = computeSeasonState();
         Map<String, BigDecimal> pointsByCountry = new HashMap<>();
@@ -132,12 +148,18 @@ public class UefaRankingService {
                 }
             }
         }
-        return countryRepository.findAllByOrderByUefaRankAsc().stream()
+        List<CountryUefaRankingDto> sorted = countryRepository.findAllByOrderByUefaRankAsc().stream()
                 .map(r -> toDto(
                         r,
                         pointsByCountry.getOrDefault(r.getCountry(), BigDecimal.ZERO),
                         aliveCountByCountry.getOrDefault(r.getCountry(), new int[3])))
+                .sorted(Comparator.comparing(CountryUefaRankingDto::total).reversed())
                 .toList();
+        List<CountryUefaRankingDto> ranked = new ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            ranked.add(sorted.get(i).withRank(i + 1));
+        }
+        return ranked;
     }
 
     /**
@@ -152,12 +174,8 @@ public class UefaRankingService {
         ClubUefaRanking club = clubRepository
                 .findById(clubRankingId)
                 .orElseThrow(() -> new EntityNotFoundException("Club introuvable : " + clubRankingId));
-        BigDecimal pastSeasons = nonNull(club.getPoints2026())
-                .add(nonNull(club.getPoints2025()))
-                .add(nonNull(club.getPoints2024()))
-                .add(nonNull(club.getPoints2023()));
         Set<Long> teamIds = club.getTeam() != null ? Set.of(club.getTeam().getId()) : Set.of();
-        return history(teamIds, pastSeasons::add);
+        return history(teamIds, season -> clubCoefficient(club, season));
     }
 
     /**
@@ -176,15 +194,29 @@ public class UefaRankingService {
                 teamIds.add(club.getTeam().getId());
             }
         }
-        BigDecimal pastSeasons = perClub(country.getPoints2026(), country.getNb2026())
+        return history(teamIds, season -> countryCoefficient(country, season));
+    }
+
+    /** Coefficient club = somme des 5 saisons (colonne "Total" de l'onglet UEFA du fichier Excel source). */
+    private static BigDecimal clubCoefficient(ClubUefaRanking club, BigDecimal points2027) {
+        return nonNull(points2027)
+                .add(nonNull(club.getPoints2026()))
+                .add(nonNull(club.getPoints2025()))
+                .add(nonNull(club.getPoints2024()))
+                .add(nonNull(club.getPoints2023()));
+    }
+
+    /**
+     * Coefficient pays = moyenne sur 5 saisons des points de saison divises par le nombre de clubs
+     * engages cette saison-la (colonne "Total" de l'onglet PAYS du fichier Excel source).
+     */
+    private static BigDecimal countryCoefficient(CountryUefaRanking country, BigDecimal points2027) {
+        return perClub(points2027, country.getNb2027())
+                .add(perClub(country.getPoints2026(), country.getNb2026()))
                 .add(perClub(country.getPoints2025(), country.getNb2025()))
                 .add(perClub(country.getPoints2024(), country.getNb2024()))
-                .add(perClub(country.getPoints2023(), country.getNb2023()));
-        return history(
-                teamIds,
-                season -> pastSeasons
-                        .add(perClub(season, country.getNb2027()))
-                        .divide(SEASONS_IN_COEFFICIENT, MathContext.DECIMAL64));
+                .add(perClub(country.getPoints2023(), country.getNb2023()))
+                .divide(SEASONS_IN_COEFFICIENT, MathContext.DECIMAL64);
     }
 
     /**
@@ -458,7 +490,7 @@ public class UefaRankingService {
                 r.getTeam() != null ? r.getTeam().getLogoPath() : null,
                 r.getCountry(),
                 liveCurrentCup(r, state),
-                r.getTotal(),
+                clubCoefficient(r, points2027),
                 points2027,
                 r.getPoints2026(),
                 r.getPoints2025(),
@@ -471,7 +503,7 @@ public class UefaRankingService {
                 r.getId(),
                 r.getUefaRank(),
                 r.getCountry(),
-                r.getTotal(),
+                countryCoefficient(r, points2027),
                 points2027,
                 r.getPoints2026(),
                 r.getPoints2025(),

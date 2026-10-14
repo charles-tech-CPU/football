@@ -300,7 +300,8 @@ class UefaRankingServiceTest {
 
         assertThat(dto.teamId()).isNull();
         assertThat(dto.teamLogoPath()).isNull();
-        assertThat(dto.rank()).isEqualTo(42);
+        assertThat(dto.rank()).isEqualTo(1);
+        assertThat(dto.total()).isEqualByComparingTo("12.5");
         assertThat(dto.clubName()).isEqualTo("Club disparu");
         assertThat(dto.points2027()).isEqualByComparingTo("0");
         assertThat(dto.points2026()).isEqualByComparingTo("12.5");
@@ -356,6 +357,28 @@ class UefaRankingServiceTest {
     }
 
     @Test
+    void totalClubEstLaSommeDesCinqSaisonsEtLeRangEstRecalcule() {
+        givenMatches();
+        ClubUefaRanking first = club(null, "Premier importe", "France", null);
+        first.setUefaRank(1);
+        first.setTotal(new BigDecimal("99"));
+        first.setPoints2026(new BigDecimal("10"));
+        ClubUefaRanking second = club(null, "Second importe", "Italie", null);
+        second.setUefaRank(2);
+        second.setTotal(new BigDecimal("1"));
+        second.setPoints2025(new BigDecimal("8"));
+        second.setPoints2023(new BigDecimal("4.5"));
+        when(clubRepository.findAllByOrderByUefaRankAsc()).thenReturn(List.of(first, second));
+
+        List<ClubUefaRankingDto> clubs = uefaRankingService.findClubRankings();
+
+        assertThat(clubs).extracting(ClubUefaRankingDto::clubName).containsExactly("Second importe", "Premier importe");
+        assertThat(clubs).extracting(ClubUefaRankingDto::rank).containsExactly(1, 2);
+        assertThat(clubs.get(0).total()).isEqualByComparingTo("12.5");
+        assertThat(clubs.get(1).total()).isEqualByComparingTo("10");
+    }
+
+    @Test
     void couleurDuPaysSelonLaMeilleureCoupeEncoreJouee() {
         givenMatches();
         when(clubRepository.findAll())
@@ -369,7 +392,7 @@ class UefaRankingServiceTest {
         List<CountryUefaRankingDto> countries = uefaRankingService.findCountryRankings();
 
         assertThat(countries).extracting(CountryUefaRankingDto::colorCode).containsExactly("ORANGE", "YELLOW");
-        assertThat(countries.get(0).rank()).isEqualTo(2);
+        assertThat(countries.get(0).rank()).isEqualTo(1);
         assertThat(countries.get(0).ldcDebut()).isEqualTo(4);
         assertThat(countries.get(0).nb2027()).isEqualTo(7);
     }
