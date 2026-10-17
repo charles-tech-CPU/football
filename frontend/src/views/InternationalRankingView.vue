@@ -93,6 +93,12 @@
         finale de Coupe du monde, en barrages intercontinentaux et via les invités (Copa América, Gold Cup). Chaque
         sélection part donc de la note de sa confédération, que ces matchs corrigent ensuite.
         <table class="coefficients">
+          <thead>
+            <tr>
+              <th class="num">Note de départ</th>
+              <th>Confédérations</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="t in START_TIERS" :key="t.rating">
               <td class="num"><strong>{{ t.rating }}</strong></td>
