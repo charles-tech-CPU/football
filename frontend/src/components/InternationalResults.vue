@@ -29,20 +29,20 @@
                 v-for="col in grp.teams"
                 :key="`c-${row.teamId}-${col.teamId}`"
                 class="xtable-cell"
-                :class="cellClass(row.teamId, col.teamId)"
-                :title="cellTitle(matchAt(row.teamId, col.teamId))"
-                :tabindex="matchAt(row.teamId, col.teamId) ? 0 : -1"
-                @click="startEdit(matchAt(row.teamId, col.teamId))"
-                @keydown.enter="startEdit(matchAt(row.teamId, col.teamId))"
+                :class="cellClass(grp.name, row.teamId, col.teamId)"
+                :title="cellTitle(matchAt(grp.name, row.teamId, col.teamId))"
+                :tabindex="matchAt(grp.name, row.teamId, col.teamId) ? 0 : -1"
+                @click="startEdit(matchAt(grp.name, row.teamId, col.teamId))"
+                @keydown.enter="startEdit(matchAt(grp.name, row.teamId, col.teamId))"
               >
-                <span v-if="editing && editing.id === matchAt(row.teamId, col.teamId)?.id" class="cell-edit">
+                <span v-if="editing && editing.id === matchAt(grp.name, row.teamId, col.teamId)?.id" class="cell-edit">
                   <input v-model.number="editScore1" aria-label="Buts équipe domicile" type="number" min="0" @click.stop @keydown.enter.stop="confirmEdit" />
                   <input v-model.number="editScore2" aria-label="Buts équipe extérieur" type="number" min="0" @click.stop @keydown.enter.stop="confirmEdit" />
                   <button type="button" @click.stop="confirmEdit">✓</button>
                   <button type="button" class="cell-cancel" @click.stop="editing = null">✕</button>
                 </span>
-                <span v-else-if="isResult(matchAt(row.teamId, col.teamId))" class="score-pill">{{ cellLabel(matchAt(row.teamId, col.teamId)) }}</span>
-                <span v-else-if="matchAt(row.teamId, col.teamId)" class="cell-date">{{ shortDate(matchAt(row.teamId, col.teamId).date) }}</span>
+                <span v-else-if="isResult(matchAt(grp.name, row.teamId, col.teamId))" class="score-pill">{{ cellLabel(matchAt(grp.name, row.teamId, col.teamId)) }}</span>
+                <span v-else-if="matchAt(grp.name, row.teamId, col.teamId)" class="cell-date">{{ shortDate(matchAt(grp.name, row.teamId, col.teamId).date) }}</span>
               </td>
             </tr>
           </tbody>
@@ -65,26 +65,29 @@
     </article>
   </div>
 
-  <article v-if="otherResults.length" class="group-card other-card">
+  <article v-for="r in otherRounds" :key="r.label" class="group-card other-card">
     <header class="group-card-head">
-      <h3>Autres résultats</h3>
-      <span class="group-progress">{{ otherResults.length }} match{{ otherResults.length > 1 ? 's' : '' }}</span>
+      <h3>{{ r.label }}</h3>
+      <span class="group-progress">{{ r.matches.length }} match{{ r.matches.length > 1 ? 's' : '' }}</span>
     </header>
     <ul class="result-list">
-      <li v-for="m in otherResults" :key="m.id" class="result-row">
-        <span class="result-meta">{{ shortDate(m.date) }}<small v-if="m.roundLabel">{{ m.roundLabel }}</small></span>
-        <span class="result-team result-team--home" :class="{ winner: m.score1 > m.score2 }">
+      <li v-for="m in r.matches" :key="m.id" class="result-row">
+        <span class="result-meta">{{ shortDate(m.date) }}<small v-if="r.showYear">{{ m.date?.slice(0, 4) }}</small></span>
+        <span class="result-team result-team--home" :class="{ winner: wins(m, 1) }">
           {{ m.team1Name }}<FlagIcon :country="m.team1Country" />
         </span>
-        <span class="result-score">{{ m.score1 }}<span class="score-sep">-</span>{{ m.score2 }}</span>
-        <span class="result-team" :class="{ winner: m.score2 > m.score1 }">
+        <span class="result-score">
+          {{ m.score1 }}<span class="score-sep">-</span>{{ m.score2 }}
+          <small v-if="hasPenalties(m)" class="result-pen">tab {{ m.penaltyScore1 }}-{{ m.penaltyScore2 }}</small>
+        </span>
+        <span class="result-team" :class="{ winner: wins(m, 2) }">
           <FlagIcon :country="m.team2Country" />{{ m.team2Name }}
         </span>
       </li>
     </ul>
   </article>
 
-  <p v-if="!groupCards.length && !otherResults.length" class="empty-state">Aucun résultat pour l'instant dans cette compétition.</p>
+  <p v-if="!groupCards.length && !otherRounds.length" class="empty-state">Aucun résultat pour l'instant dans cette compétition.</p>
   <p v-if="error" class="error-text">{{ error }}</p>
 </template>
 
@@ -96,7 +99,9 @@ import { isPlayed } from '../utils/matchEdit.js'
 
 // Resultats d'une competition de selections nationales : une carte par groupe avec la grille
 // croisee (domicile en ligne, exterieur en colonne, dans l'ordre du classement) puis la liste
-// des matchs joues. Les matchs joues hors groupe (barrages, phase finale...) sont listes a part.
+// des matchs joues. Les matchs joues hors groupe (barrages, phase finale...) sont listes a part,
+// une carte par tour. Le groupe d'un match est celui qu'il porte (historique, cf. V115) ou, a
+// defaut, le groupe commun de ses deux equipes.
 const props = defineProps({
   matches: { type: Array, default: () => [] },
   // Lignes de classement (avec `group`) : composition et ordre des equipes de chaque groupe.
@@ -112,15 +117,21 @@ const editScore2 = ref(null)
 
 const groupByTeam = computed(() => new Map(props.rows.map(r => [r.teamId, r.group ?? null])))
 
+const groupsOnMatches = computed(() => props.matches.some(m => m.groupName))
+
 function groupOf(m) {
+  if (groupsOnMatches.value) return m.groupName ?? undefined
   const g1 = groupByTeam.value.get(m.team1Id)
   return g1 !== undefined && g1 === groupByTeam.value.get(m.team2Id) ? g1 : undefined
 }
 
+const pairKey = (group, team1Id, team2Id) => `${group ?? ''}|${team1Id}-${team2Id}`
+
 const matchByPair = computed(() => {
   const map = new Map()
   for (const m of props.matches) {
-    if (groupOf(m) !== undefined) map.set(`${m.team1Id}-${m.team2Id}`, m)
+    const g = groupOf(m)
+    if (g !== undefined) map.set(pairKey(g, m.team1Id, m.team2Id), m)
   }
   return map
 })
@@ -148,11 +159,38 @@ const groupCards = computed(() => {
   }))
 })
 
-const otherResults = computed(() =>
-  props.matches.filter(m => isPlayed(m) && groupOf(m) === undefined).toSorted(byDate))
+// Matchs hors groupe, regroupes par tour (libelle sans la manche : "Barrages - Aller" et
+// "Barrages - Retour" vont ensemble), tours dans l'ordre chronologique.
+const otherRounds = computed(() => {
+  const rounds = new Map()
+  for (const m of props.matches.filter(x => isPlayed(x) && groupOf(x) === undefined).toSorted(byDate)) {
+    const label = (m.roundLabel ?? 'Autres résultats').replace(/ - (Aller|Retour)$/, '')
+    if (!rounds.has(label)) rounds.set(label, [])
+    rounds.get(label).push(m)
+  }
+  return [...rounds.entries()].map(([label, matches]) => ({
+    label,
+    matches,
+    showYear: new Set(matches.map(m => m.date?.slice(0, 4))).size > 1
+  }))
+})
 
-function matchAt(rowId, colId) {
-  return rowId === colId ? null : matchByPair.value.get(`${rowId}-${colId}`) ?? null
+function hasPenalties(m) {
+  return m.penaltyScore1 != null && m.penaltyScore2 != null
+}
+
+// Vainqueur d'un match sec (tirs au but compris) ; pour une manche d'une confrontation
+// aller-retour, seul le score du match compte ici.
+function wins(m, side) {
+  const [own, other] = side === 1 ? [m.score1, m.score2] : [m.score2, m.score1]
+  if (own !== other) return own > other
+  if (!hasPenalties(m)) return false
+  const [penOwn, penOther] = side === 1 ? [m.penaltyScore1, m.penaltyScore2] : [m.penaltyScore2, m.penaltyScore1]
+  return penOwn > penOther
+}
+
+function matchAt(group, rowId, colId) {
+  return rowId === colId ? null : matchByPair.value.get(pairKey(group, rowId, colId)) ?? null
 }
 
 function isResult(m) {
@@ -181,9 +219,9 @@ function cellTitle(m) {
   return `${m.team1Name}${score} ${m.team2Name}${date}`
 }
 
-function cellClass(rowId, colId) {
+function cellClass(group, rowId, colId) {
   if (rowId === colId) return 'is-diagonal'
-  const m = matchAt(rowId, colId)
+  const m = matchAt(group, rowId, colId)
   if (!m) return 'is-empty'
   if (!isPlayed(m)) return 'is-scheduled'
   if (m.score1 > m.score2) return 'is-win'
@@ -210,7 +248,9 @@ async function confirmEdit() {
       team1Id: m.team1Id,
       team2Id: m.team2Id,
       score1: editScore1.value,
-      score2: editScore2.value
+      score2: editScore2.value,
+      penaltyScore1: m.penaltyScore1,
+      penaltyScore2: m.penaltyScore2
     })
     editing.value = null
     emit('saved')
@@ -240,6 +280,14 @@ async function confirmEdit() {
 
 .other-card {
   margin-bottom: 18px;
+}
+
+.result-pen {
+  display: block;
+  font-size: 0.7em;
+  font-weight: 600;
+  color: inherit;
+  opacity: 0.85;
 }
 
 .group-card-head {

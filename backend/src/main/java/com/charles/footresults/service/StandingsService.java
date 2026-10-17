@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import org.springframework.stereotype.Service;
 
 /**
@@ -77,6 +78,11 @@ public class StandingsService {
     }
 
     public List<StandingRowDto> computeStandings(Long competitionId) {
+        List<Match> played = playedMatches(competitionId);
+        if (played.stream().anyMatch(m -> m.getGroupName() != null)) {
+            return standingsByMatchGroup(played);
+        }
+
         Map<Long, String> teamGroup = new LinkedHashMap<>();
         // Une equipe inscrite dans un groupe apparait des le depart (0 match, 0 pt),
         // meme avant son premier match : un groupe s'affiche toujours complet.
@@ -90,7 +96,7 @@ public class StandingsService {
             }
         }
 
-        for (Match m : playedMatches(competitionId)) {
+        for (Match m : played) {
             tallyFor(byTeam, m.getTeam1()).addResult(m.getScore1(), m.getScore2());
             tallyFor(byTeam, m.getTeam2()).addResult(m.getScore2(), m.getScore1());
         }
@@ -129,6 +135,28 @@ public class StandingsService {
                 .flatMap(List::stream)
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
         result.addAll(sortRows(ungrouped));
+        return result;
+    }
+
+    /**
+     * Groupes portes par les matchs (historique des selections nationales, cf. V115) : un classement
+     * par groupe, calcule sur les seuls matchs de ce groupe. Une equipe passee par plusieurs phases
+     * de groupes (qualifications en plusieurs tours) figure dans chacun ; les matchs a elimination
+     * directe (sans groupe) ne comptent nulle part. Groupes dans l'ordre alphabetique.
+     */
+    private List<StandingRowDto> standingsByMatchGroup(List<Match> played) {
+        Map<String, Map<Long, TeamTally>> byGroup = new TreeMap<>();
+        for (Match m : played) {
+            if (m.getGroupName() == null) {
+                continue;
+            }
+            Map<Long, TeamTally> byTeam = byGroup.computeIfAbsent(m.getGroupName(), g -> new LinkedHashMap<>());
+            tallyFor(byTeam, m.getTeam1()).addResult(m.getScore1(), m.getScore2());
+            tallyFor(byTeam, m.getTeam2()).addResult(m.getScore2(), m.getScore1());
+        }
+        List<StandingRowDto> result = new ArrayList<>();
+        byGroup.forEach((group, byTeam) -> result.addAll(
+                sortRows(byTeam.values().stream().map(t -> t.toDto(group)).toList())));
         return result;
     }
 

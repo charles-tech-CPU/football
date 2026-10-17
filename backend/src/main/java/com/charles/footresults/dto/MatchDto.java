@@ -36,7 +36,10 @@ public record MatchDto(
         /** Affiche "a voir" de sa journee (calendrier, cf. FeaturedMatchService). */
         boolean featured,
         /** Match de coupe a elimination directe (calendrier) ; null sinon (championnat, phase de ligue). */
-        Knockout knockout) {
+        Knockout knockout,
+        /** Groupe porte par le match (historique des selections nationales) ; null sinon. */
+        String groupName,
+        boolean neutral) {
 
     /**
      * decider : dernier match de la confrontation (match sec ou retour), celui qui porte les
@@ -73,7 +76,9 @@ public record MatchDto(
                 null,
                 null,
                 false,
-                null);
+                null,
+                m.getGroupName(),
+                m.isNeutral());
     }
 
     public MatchDto withCalendarInfo(Integer rank1, Integer rank2, boolean isFeatured, Knockout knockoutInfo) {
@@ -104,6 +109,8 @@ public record MatchDto(
                 rank1,
                 rank2,
                 isFeatured,
-                knockoutInfo);
+                knockoutInfo,
+                groupName,
+                neutral);
     }
 }

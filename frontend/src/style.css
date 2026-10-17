@@ -745,6 +745,11 @@ input[type="number"]::-webkit-inner-spin-button {
   color: #713f12;
 }
 
+.comp-fifa {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
 .team-cell {
   display: inline-flex;
   align-items: center;

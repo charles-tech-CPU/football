@@ -38,4 +38,9 @@ public class Team {
         this.name = name;
         this.country = country;
     }
+
+    /** Selection nationale : nommee comme son pays (voir V105__equipes_nationales.sql), un club jamais. */
+    public boolean isNationalTeam() {
+        return name != null && name.equals(country);
+    }
 }

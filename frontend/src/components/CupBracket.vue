@@ -41,7 +41,7 @@
                 <div class="tie-leg">
                   <template v-if="teamEditingKey === teamKey(leg, 1)">
                     <span class="grid-edit" @click.stop @keydown.stop>
-                      <TeamSelect v-model="editTeamValue" :teams="sortedTeams" aria-label="Équipe" />
+                      <TeamSelect v-model="editTeamValue" :teams="sortedTeams" aria-label="Équipe" creatable @create="createTeam" />
                       <button type="button" @click.stop="confirmTeamEdit(leg, 1)">✓</button>
                     </span>
                   </template>
@@ -62,7 +62,7 @@
                   </button>
                   <template v-if="teamEditingKey === teamKey(leg, 2)">
                     <span class="grid-edit" @click.stop @keydown.stop>
-                      <TeamSelect v-model="editTeamValue" :teams="sortedTeams" aria-label="Équipe" />
+                      <TeamSelect v-model="editTeamValue" :teams="sortedTeams" aria-label="Équipe" creatable @create="createTeam" />
                       <button type="button" @click.stop="confirmTeamEdit(leg, 2)">✓</button>
                     </span>
                   </template>
@@ -485,6 +485,19 @@ async function removeTie(tie) {
     await load()
   } catch (e) {
     error.value = e.response?.data?.error ?? 'Erreur lors de la suppression de la confrontation.'
+  }
+}
+
+// Club absent de la liste, tape dans le choix d'equipe d'une confrontation : on le cree
+// (pays de la coupe) et on le selectionne, il reste a valider avec ✓.
+async function createTeam(name) {
+  error.value = ''
+  try {
+    const team = await api.createTeam({ name: name.toUpperCase(), country: competitionCountry.value })
+    teams.value = [...teams.value, team]
+    editTeamValue.value = team.id
+  } catch (e) {
+    error.value = e.response?.data?.error ?? 'Erreur lors de la création du club.'
   }
 }
 

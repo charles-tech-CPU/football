@@ -316,7 +316,13 @@ class MatchServiceTest {
                 .thenReturn(List.of(match()));
         when(matchRepository.findByStatusInOrderByDateAscTimeAsc(List.of(MatchStatus.POSTPONED, MatchStatus.SUSPENDED)))
                 .thenReturn(List.of(match()));
-        when(matchRepository.findByCompetition_TypeOrderByDateAscTimeAsc(CompetitionType.INTERNATIONAL))
+        Competition historique =
+                new Competition("FIFA_WC_2022", "Coupe du monde 2022", CompetitionType.INTERNATIONAL, null, 2022);
+        Competition enCours =
+                new Competition("UEFA_NL_2627", "Ligue des Nations", CompetitionType.INTERNATIONAL, null, 2027);
+        when(competitionRepository.findByType(CompetitionType.INTERNATIONAL)).thenReturn(List.of(historique, enCours));
+        when(matchRepository.findByCompetition_TypeAndCompetition_SeasonOrderByDateAscTimeAsc(
+                        CompetitionType.INTERNATIONAL, 2027))
                 .thenReturn(List.of(match()));
 
         assertThat(matchService.findByCompetition(10L))

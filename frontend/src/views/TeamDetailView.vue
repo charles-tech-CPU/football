@@ -9,6 +9,7 @@
         <TeamLogo :name="profile.team.name" :country="profile.team.country" :logo-path="profile.team.logoPath" />
         {{ profile.team.name }}
       </h1>
+      <router-link :to="{ name: 'head-to-head', query: { equipe1: profile.team.id } }" class="h2h-link">⚔️ Tête-à-tête avec une autre équipe</router-link>
 
       <div class="hero-stats">
         <div v-if="profile.league" class="hero-stat">
@@ -109,6 +110,12 @@ onMounted(load)
 </script>
 
 <style scoped>
+.h2h-link {
+  display: inline-block;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
 .team-title {
   display: flex;
   align-items: center;

@@ -11,8 +11,10 @@ export function competitionBadgeClass(m) {
 }
 
 // Page de la competition d'un match (classement) : page du pays pour un championnat (onglet
-// Classement) ou une coupe nationale (onglet Coupe), page de la competition sinon.
+// Classement) ou une coupe nationale (onglet Coupe), classements internationaux pour une
+// competition de selections, page de la competition sinon.
 export function competitionLink(m) {
+  if (m.competitionType === 'INTERNATIONAL') return { path: '/classements-internationaux', query: { competition: m.competitionId } }
   const country = m.competitionCountry
   if (country && m.competitionType === 'LEAGUE') return `/pays/${encodeURIComponent(country)}`
   if (country && m.competitionType === 'DOMESTIC_CUP') return { path: `/pays/${encodeURIComponent(country)}`, query: { onglet: 'coupe' } }

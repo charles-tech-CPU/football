@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.data.domain.Page;
@@ -216,12 +217,23 @@ public class MatchService {
                 .toList();
     }
 
-    /** Calendrier international (selections nationales, toutes confederations), saison 2026-2027. */
+    /**
+     * Calendrier international (selections nationales, toutes confederations) de la saison en cours :
+     * la plus recente des competitions internationales, l'historique (V116 et suivantes) n'y figure pas.
+     */
     @Transactional(readOnly = true)
     public List<MatchDto> findInternational() {
-        return matchRepository.findByCompetition_TypeOrderByDateAscTimeAsc(CompetitionType.INTERNATIONAL).stream()
-                .map(MatchDto::from)
-                .toList();
+        return competitionRepository.findByType(CompetitionType.INTERNATIONAL).stream()
+                .map(Competition::getSeason)
+                .filter(Objects::nonNull)
+                .max(Integer::compare)
+                .map(season -> matchRepository
+                        .findByCompetition_TypeAndCompetition_SeasonOrderByDateAscTimeAsc(
+                                CompetitionType.INTERNATIONAL, season)
+                        .stream()
+                        .map(MatchDto::from)
+                        .toList())
+                .orElse(List.of());
     }
 
     public MatchDto create(MatchCreateDto dto) {

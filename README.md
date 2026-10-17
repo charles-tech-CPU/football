@@ -20,7 +20,7 @@ Identiques au projet LoL : Java 21 (JDK), Maven, Node.js 20+/npm, PostgreSQL 14+
 - **`Team.country` et `Competition.country` sont du texte libre**, pas une table Pays normalisée : le fichier Excel utilise des libellés différents selon les feuilles (noms complets vs codes courts type "AZE"), réconcilier proprement aurait demandé un référentiel dédié. Consequence : un même club peut apparaître comme deux `Team` différents s'il joue à la fois en championnat et en coupe d'Europe avec un nom légèrement différent dans le fichier (ex: "PSG" vs "PARIS SAINT GERMAIN"). À fusionner manuellement via l'écran Équipes si besoin, ou à améliorer dans une prochaine version de l'import.
 - **Coupes nationales** : seules les rencontres où le fichier donne déjà de vrais noms d'équipes (lignes `journee = "CUP"` dans le calendrier à plat, pour certains pays comme la Norvège ou le Belarus) sont importées, avec un round générique `"Coupe nationale"` (pas de tour précis disponible). Les tableaux de bracket en bas de chaque onglet pays (huitièmes/quarts...) sont des templates vides dans ton fichier actuel : rien à en importer pour l'instant.
 - **Ligue des Champions / Europa League / Conference League** : seuls les **tours de qualification** (résultats aller/retour déjà connus) sont importés, comme deux matchs distincts par confrontation ("Aller"/"Retour"). La phase de ligue (36 clubs) et les tours à partir des seizièmes sont soit vides, soit dans un format de matrice pas assez fiable à parser automatiquement sans risque d'erreur — non importés en v1.
-- **Sélections nationales** (qualifs Coupe du monde, Ligue des Nations) : hors périmètre v1, comme décidé.
+- **Sélections nationales** : hors périmètre v1 ; ajoutées ensuite (saison 2026-2027 via V105-V110, historique via V116-V123, voir section 7 bis).
 - **Playoffs promotion/relégation et barrages de qualification européenne** ("BARRAGE"/"B EUR" dans le calendrier) : les "équipes" y sont en réalité des positions au classement ("3e", "9e") ou des renvois ("vainqueur du match 1"), pas des noms de clubs — non importés, pas exploitables sans logique de résolution des positions finales.
 
 Tout ce qui n'est pas importé reste **saisissable manuellement via l'appli** (l'écran de saisie ne fait aucune différence entre un match importé et un match ajouté à la main).
@@ -66,6 +66,8 @@ Flyway applique automatiquement `V1__init.sql` (schéma) puis `V2__seed_data.sql
 | PUT | `/api/matches/{id}` | Modifier un match (score) |
 | GET | `/api/standings?competitionId=1` | Classement recalculé (LEAGUE uniquement) |
 | GET | `/api/head-to-head?competitionId=1` | Tête-à-tête recalculé |
+| GET | `/api/teams/{id}/head-to-head?opponentId=2` | Bilan de toutes les confrontations entre deux équipes |
+| GET | `/api/international-ranking` | Classement mondial Elo des sélections, recalculé à chaque appel |
 
 ⚠️ Comme pour le projet LoL, **je n'ai pas pu compiler ce backend** dans mon bac à sable (Maven Central bloqué). J'ai en revanche validé le schéma et l'intégralité des ~13 000 lignes SQL générées directement via `psql` (aucune erreur). Le premier `mvn spring-boot:run` chez toi reste le vrai test pour la partie Java elle-même.
 
@@ -91,12 +93,27 @@ Le `V2__seed_data.sql` fourni a déjà été généré et validé (voir section 
 
 **Si tu relances l'import après avoir modifié l'Excel** : régénère `V2__seed_data.sql` avant le tout premier démarrage. Une fois la base initialisée, Flyway ne rejoue pas une migration déjà appliquée — ajoute une `V3__...sql` pour des changements ultérieurs plutôt que de modifier `V2` après coup.
 
+## 7 bis. Historique des compétitions de sélections
+
+Les migrations `V116` à `V123` (une par famille : Coupe du monde, Euro, Copa América, CAN, Coupe d'Asie, Gold Cup, Ligues des Nations UEFA et Concacaf) contiennent environ 6 000 matchs des éditions 2016 à 2026, phases finales **et** qualifications. Elles sont générées par `import/international_history.py` :
+
+```bash
+cd import
+curl -LO https://raw.githubusercontent.com/martj42/international_results/master/results.csv
+curl -LO https://raw.githubusercontent.com/martj42/international_results/master/shootouts.csv
+python3 international_history.py results.csv shootouts.csv ../backend/src/main/resources/db/migration
+```
+
+- Source des résultats : jeu de données [international_results](https://github.com/martj42/international_results) (compilé depuis Wikipédia/RSSSF). Lettres des groupes, scores des tirs au but et scores officiels des matchs donnés sur tapis vert : Wikipédia (`import/international_history_data.py`).
+- Le découpage de chaque édition en phases est décrit dans `international_history_data.py` ; le script vérifie que chaque groupe reconstitué est un mini-championnat complet et refuse d'écrire quoi que ce soit en cas d'anomalie.
+- Limite : les matchs gagnés par forfait sans être joués ne figurent pas dans la source (ex. Japon–Corée du Nord, qualifs CdM 2026), ils manquent donc aux classements concernés.
+- Le groupe d'un match est porté par `match.group_name` (V115) : une équipe peut jouer plusieurs phases de groupes d'une même compétition, et les tours à élimination directe ne comptent dans aucun classement.
+
 ## 8. Pistes d'évolution (hors v1)
 
 - Référentiel Pays normalisé (au lieu du texte libre), pour fiabiliser le rapprochement des équipes entre championnat et coupes d'Europe.
 - Import de la phase de ligue LDC/EL/EC et des tours à partir des seizièmes, une fois qu'ils seront renseignés dans ton fichier.
 - Import des coupes nationales à partir des tableaux de bracket par pays, une fois ceux-ci remplis.
-- Sélections nationales (Ligue des Nations, qualifs Coupe du monde).
 - Playoffs promotion/relégation et barrages de qualification européenne (nécessite de résoudre les positions finales de classement avant de connaître les équipes).
 - Import des onglets **"UEFA"** et **"PAYS"** du fichier Excel, pour reconstituer le classement des clubs et le classement des pays (coefficient UEFA) : reprendre tel quel le contenu de ces feuilles (mêmes lignes, mêmes colonnes que dans le fichier).
   - La colonne **PTS 2027** (saison en cours) ne doit pas être figée à la valeur importée : elle doit se recalculer dynamiquement en ajoutant les points gagnés au fil des matchs saisis en **phase de ligue** LDC / Europa League / Conference League — victoire = **2 pts**, nul = **1 pt**, défaite = 0 pt — au total de départ repris du fichier Excel.

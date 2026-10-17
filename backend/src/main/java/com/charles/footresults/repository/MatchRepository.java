@@ -28,6 +28,10 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     List<Match> findByTeam1_IdOrTeam2_IdOrderByDateDesc(Long team1Id, Long team2Id);
 
+    /** Toutes les confrontations entre deux equipes, a domicile comme a l'exterieur (tete-a-tete). */
+    @Query("SELECT m FROM Match m WHERE (m.team1.id = :a AND m.team2.id = :b) OR (m.team1.id = :b AND m.team2.id = :a)")
+    List<Match> findBetween(@Param("a") Long teamA, @Param("b") Long teamB);
+
     /** Tous les matchs LDC/EL/EC (tous tours, tous statuts) pour le recalcul des points et du statut "encore en course" UEFA (cf. UefaRankingService). */
     List<Match> findByCompetition_CodeIn(List<String> competitionCodes);
 
@@ -37,7 +41,10 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     /** Calendrier international (selections nationales, toutes confederations) : volume raisonnable
      * pour une seule saison (quelques centaines de matchs), pas besoin de pagination cote serveur. */
-    List<Match> findByCompetition_TypeOrderByDateAscTimeAsc(CompetitionType type);
+    List<Match> findByCompetition_TypeAndCompetition_SeasonOrderByDateAscTimeAsc(CompetitionType type, Integer season);
+
+    /** Tous les matchs joues de selections nationales, toutes saisons (classement mondial Elo, cf. InternationalRankingService). */
+    List<Match> findByCompetition_TypeAndStatus(CompetitionType type, MatchStatus status);
 
     /** Matchs sans date (tours de qualif. coupes d'Europe sans date exploitable) rejetes en fin de liste. */
     @Query("SELECT m FROM Match m WHERE m.status = :status ORDER BY m.date DESC NULLS LAST, m.time DESC NULLS LAST")

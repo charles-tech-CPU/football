@@ -10,6 +10,8 @@
     </p>
   </section>
 
+  <InternationalNav />
+
   <div class="filters">
     <select v-model="confederationFilter" aria-label="Filtrer par confédération">
       <option value="all">Toutes les confédérations</option>
@@ -79,6 +81,7 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '../services/api'
 import FlagIcon from '../components/FlagIcon.vue'
+import InternationalNav from '../components/InternationalNav.vue'
 import MatchDateTimeCells from '../components/MatchDateTimeCells.vue'
 import MatchScoreCells from '../components/MatchScoreCells.vue'
 import MatchStatusSelect from '../components/MatchStatusSelect.vue'

@@ -1,6 +1,7 @@
 package com.charles.footresults.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -75,6 +76,31 @@ class StandingsServiceTest {
         assertThat(psgRow.goalDifference()).isEqualTo(3);
         assertThat(psgRow.points()).isEqualTo(4);
         assertThat(psgRow.group()).isNull();
+    }
+
+    @Test
+    void groupesPortesParLesMatchsUnClassementParGroupeSansLesMatchsAEliminationDirecte() {
+        Match tour2a = match(psg, om, 2, 0);
+        tour2a.setGroupName("2e tour - Groupe A");
+        Match tour2b = match(lyon, lens, 1, 1);
+        tour2b.setGroupName("2e tour - Groupe B");
+        Match tour3 = match(psg, lyon, 0, 1);
+        tour3.setGroupName("3e tour - Groupe A");
+        Match finale = match(psg, lyon, 5, 0);
+        givenPlayedMatches(tour3, finale, tour2b, tour2a);
+
+        List<StandingRowDto> standings = standingsService.computeStandings(COMPETITION_ID);
+
+        // PSG figure dans ses deux groupes ; la finale (sans groupe) ne compte nulle part.
+        assertThat(standings)
+                .extracting(StandingRowDto::group, StandingRowDto::teamName, StandingRowDto::points)
+                .containsExactly(
+                        tuple("2e tour - Groupe A", "PSG", 3),
+                        tuple("2e tour - Groupe A", "OM", 0),
+                        tuple("2e tour - Groupe B", "Lyon", 1),
+                        tuple("2e tour - Groupe B", "Lens", 1),
+                        tuple("3e tour - Groupe A", "Lyon", 3),
+                        tuple("3e tour - Groupe A", "PSG", 0));
     }
 
     @Test

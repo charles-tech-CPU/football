@@ -9,10 +9,11 @@ import { rankMove } from '../utils/ranking'
 
 const props = defineProps({
   rank: { type: Number, default: null },
-  startRank: { type: Number, default: null }
+  startRank: { type: Number, default: null },
+  since: { type: String, default: 'le début de saison' }
 })
 
-const move = computed(() => rankMove(props.rank, props.startRank))
+const move = computed(() => rankMove(props.rank, props.startRank, props.since))
 </script>
 
 <style scoped>

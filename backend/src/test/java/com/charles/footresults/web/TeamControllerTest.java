@@ -83,6 +83,15 @@ class TeamControllerTest {
     }
 
     @Test
+    void competitionNationaleSansLaSelectionDuPays() {
+        Team equipeDeFrance = team(4L, "France", "France");
+        when(teamRepository.findAll()).thenReturn(List.of(psg, equipeDeFrance, om));
+        when(competitionRepository.findById(10L)).thenReturn(Optional.of(competition(10L, "France")));
+
+        assertThat(teamController.findAll(null, 10L)).extracting(TeamDto::name).containsExactly("OM", "PSG");
+    }
+
+    @Test
     void competitionContinentaleLeRosterOfficielQuandIlEstConnu() {
         Competition ldc = competition(20L, null);
         when(teamRepository.findAll()).thenReturn(List.of(psg, inter, om));

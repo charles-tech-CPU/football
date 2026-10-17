@@ -32,7 +32,17 @@
         >
           {{ t.name }}
         </li>
-        <li v-if="!filtered.length" class="team-select-empty">Aucun club</li>
+        <li
+          v-if="createOption"
+          role="option"
+          class="team-select-create"
+          :class="{ active: activeIndex === filtered.length }"
+          @mousedown.prevent="create"
+          @mouseenter="activeIndex = filtered.length"
+        >
+          + Ajouter le club « {{ createOption }} »
+        </li>
+        <li v-else-if="!filtered.length" class="team-select-empty">Aucun club</li>
       </ul>
     </Teleport>
   </span>
@@ -41,17 +51,20 @@
 <script setup>
 // Choix d'un club avec recherche : on tape une partie du nom ("dri" -> KF DRITA), fleches
 // haut/bas pour se deplacer, Entree pour valider. Remplace un <select> (v-model = id du club).
+// Avec creatable, un nom tape qui ne correspond a aucun club propose de le creer (evenement
+// create avec le nom saisi : le parent cree le club puis le selectionne).
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { filterTeams } from '../utils/teamSearch'
+import { filterTeams, normalizeName } from '../utils/teamSearch'
 
 const props = defineProps({
   modelValue: { type: [Number, String], default: null },
   teams: { type: Array, required: true },
   ariaLabel: { type: String, default: 'Équipe' },
   placeholder: { type: String, default: 'Rechercher un club' },
-  required: { type: Boolean, default: false }
+  required: { type: Boolean, default: false },
+  creatable: { type: Boolean, default: false }
 })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'create'])
 
 const input = ref(null)
 const query = ref('')
@@ -62,6 +75,15 @@ const listStyle = ref({})
 
 const selectedName = computed(() => props.teams.find(t => t.id === props.modelValue)?.name ?? '')
 const filtered = computed(() => (searching.value ? filterTeams(props.teams, query.value) : props.teams))
+
+// Nom a proposer a la creation : texte tape, sauf s'il designe deja exactement un club.
+const createOption = computed(() => {
+  const name = query.value.trim().replaceAll(/\s+/g, ' ')
+  if (!props.creatable || !searching.value || !name) return ''
+  const wanted = normalizeName(name)
+  return props.teams.some(t => normalizeName(t.name) === wanted) ? '' : name
+})
+const optionCount = computed(() => filtered.value.length + (createOption.value ? 1 : 0))
 
 watch(selectedName, name => {
   if (!open.value) query.value = name
@@ -117,7 +139,7 @@ function onInput() {
 
 function move(step) {
   if (!open.value) openList()
-  const count = filtered.value.length
+  const count = optionCount.value
   if (!count) return
   activeIndex.value = (activeIndex.value + step + count) % count
   scrollActiveIntoView()
@@ -128,7 +150,13 @@ function onEnter(e) {
   e.preventDefault()
   const team = filtered.value[activeIndex.value]
   if (team) choose(team)
+  else if (createOption.value) create()
   else close()
+}
+
+function create() {
+  emit('create', createOption.value)
+  close()
 }
 
 function choose(team) {
@@ -183,6 +211,12 @@ onBeforeUnmount(close)
 
 .team-select-list li.selected {
   font-weight: 700;
+}
+
+.team-select-list .team-select-create {
+  border-top: 1px solid var(--border);
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .team-select-list .team-select-empty {

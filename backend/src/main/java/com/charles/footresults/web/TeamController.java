@@ -5,10 +5,12 @@ import com.charles.footresults.domain.Team;
 import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.TeamCreateDto;
 import com.charles.footresults.dto.TeamDto;
+import com.charles.footresults.dto.TeamHeadToHeadDto;
 import com.charles.footresults.dto.TeamProfileDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import com.charles.footresults.repository.TeamRepository;
+import com.charles.footresults.service.TeamHeadToHeadService;
 import com.charles.footresults.service.TeamProfileService;
 import com.charles.footresults.service.TeamService;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,18 +29,21 @@ public class TeamController {
     private final TeamCompetitionStatusRepository teamCompetitionStatusRepository;
     private final TeamService teamService;
     private final TeamProfileService teamProfileService;
+    private final TeamHeadToHeadService teamHeadToHeadService;
 
     public TeamController(
             TeamRepository teamRepository,
             CompetitionRepository competitionRepository,
             TeamCompetitionStatusRepository teamCompetitionStatusRepository,
             TeamService teamService,
-            TeamProfileService teamProfileService) {
+            TeamProfileService teamProfileService,
+            TeamHeadToHeadService teamHeadToHeadService) {
         this.teamRepository = teamRepository;
         this.competitionRepository = competitionRepository;
         this.teamCompetitionStatusRepository = teamCompetitionStatusRepository;
         this.teamService = teamService;
         this.teamProfileService = teamProfileService;
+        this.teamHeadToHeadService = teamHeadToHeadService;
     }
 
     /**
@@ -47,7 +52,8 @@ public class TeamController {
      * competition continentale (LDC/EL/EC, country nul), le roster officiel de la phase de
      * ligue (team_competition_status, extrait de la feuille Excel - voir
      * import/extract_group_roster.py) quand il est connu, sinon les equipes ayant deja un match
-     * dans cette competition (tours de qualification) en repli.
+     * dans cette competition (tours de qualification) en repli. La selection nationale du pays
+     * n'est pas proposee dans les listes de clubs d'une competition nationale.
      */
     @GetMapping
     public List<TeamDto> findAll(
@@ -70,8 +76,10 @@ public class TeamController {
         }
 
         final String effectiveCountry = countryFilter;
+        final boolean clubsOnly = competitionId != null && countryFilter != null;
         return source.stream()
                 .filter(t -> effectiveCountry == null || effectiveCountry.equalsIgnoreCase(t.getCountry()))
+                .filter(t -> !clubsOnly || !t.isNationalTeam())
                 .sorted(Comparator.comparing(Team::getName))
                 .map(TeamDto::from)
                 .toList();
@@ -89,6 +97,12 @@ public class TeamController {
     @GetMapping("/{id}/profile")
     public TeamProfileDto profile(@PathVariable Long id) {
         return teamProfileService.profile(id);
+    }
+
+    /** GET /api/teams/{id}/head-to-head?opponentId=42 : bilan de toutes les confrontations entre les deux equipes. */
+    @GetMapping("/{id}/head-to-head")
+    public TeamHeadToHeadDto headToHead(@PathVariable Long id, @RequestParam Long opponentId) {
+        return teamHeadToHeadService.headToHead(id, opponentId);
     }
 
     @PostMapping

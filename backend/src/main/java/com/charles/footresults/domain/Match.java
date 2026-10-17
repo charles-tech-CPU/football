@@ -76,6 +76,18 @@ public class Match {
     @Column(name = "bracket_position")
     private Integer bracketPosition;
 
+    /**
+     * Groupe du match (historique des selections nationales, cf. V115) : une equipe peut jouer
+     * plusieurs phases de groupes d'une meme competition. Null = tour a elimination directe, ou
+     * groupe porte par l'equipe (TeamCompetitionStatus.groupName).
+     */
+    @Column(name = "group_name", length = 60)
+    private String groupName;
+
+    /** Terrain neutre : pas d'avantage du terrain (classement Elo des selections). */
+    @Column(nullable = false)
+    private boolean neutral = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MatchStatus status = MatchStatus.SCHEDULED;
