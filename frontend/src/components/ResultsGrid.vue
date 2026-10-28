@@ -207,6 +207,9 @@ const props = defineProps({
   // Fragments (insensibles a la casse) : un match n'est garde que si son round_label
   // contient au moins un de ces fragments. Pas de filtre => tous les matchs.
   roundIncludes: { type: Array, default: null },
+  // Fragments (insensibles a la casse) : un match est ecarte si son round_label contient l'un
+  // de ces fragments (ex: les barrages d'un championnat, hors grille).
+  roundExcludes: { type: Array, default: null },
   // Transmis tel quel a /api/standings pour ne classer/ordonner que les equipes de cette phase.
   round: { type: String, default: null },
   showFlags: { type: Boolean, default: false },
@@ -601,9 +604,9 @@ async function load() {
     api.getStandings(competitionId, props.round),
     props.allowAdd ? api.getTeams({ competitionId }) : Promise.resolve([])
   ])
-  const scoped = props.roundIncludes
-    ? matchList.filter(m => props.roundIncludes.some(f => (m.roundLabel ?? '').toUpperCase().includes(f.toUpperCase())))
-    : matchList
+  const hasFragment = (m, fragments) => fragments.some(f => (m.roundLabel ?? '').toUpperCase().includes(f.toUpperCase()))
+  const included = props.roundIncludes ? matchList.filter(m => hasFragment(m, props.roundIncludes)) : matchList
+  const scoped = props.roundExcludes ? included.filter(m => !hasFragment(m, props.roundExcludes)) : included
   // La grille matricielle n'a de sens qu'entre equipes reelles connues : les confrontations
   // "en attente de tirage" (barrage, mini-championnat de fin de saison...) partagent toutes
   // les 2 memes equipes generiques "A DETERMINER" et n'ont donc pas leur place ici tant

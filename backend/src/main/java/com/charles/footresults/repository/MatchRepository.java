@@ -28,6 +28,9 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     List<Match> findByTeam1_IdOrTeam2_IdOrderByDateDesc(Long team1Id, Long team2Id);
 
+    /** Matchs d'une equipe, toutes competitions (suppression d'une equipe, cf. TeamService.delete). */
+    long countByTeam1_IdOrTeam2_Id(Long team1Id, Long team2Id);
+
     /** Toutes les confrontations entre deux equipes, a domicile comme a l'exterieur (tete-a-tete). */
     @Query("SELECT m FROM Match m WHERE (m.team1.id = :a AND m.team2.id = :b) OR (m.team1.id = :b AND m.team2.id = :a)")
     List<Match> findBetween(@Param("a") Long teamA, @Param("b") Long teamB);

@@ -68,6 +68,11 @@ Flyway applique automatiquement `V1__init.sql` (schéma) puis `V2__seed_data.sql
 | GET | `/api/head-to-head?competitionId=1` | Tête-à-tête recalculé |
 | GET | `/api/teams/{id}/head-to-head?opponentId=2` | Bilan de toutes les confrontations entre deux équipes |
 | GET | `/api/international-ranking` | Classement mondial Elo des sélections, recalculé à chaque appel |
+| GET | `/api/stats/leagues` | Statistiques de tous les championnats de la saison réunis, et bilan de chacun |
+| GET | `/api/palmares/scopes` | Pays (et « Europe ») ayant un palmarès |
+| GET | `/api/palmares?scope=France` | Palmarès historique : champion, 2e, 3e, vainqueur de la coupe (ou des coupes d'Europe) |
+
+Le palmarès (table `honour`, V124/V125) est généré par `import/palmares.py` à partir de Wikipédia : `python palmares.py fetch <cache>`, export des clubs de l'appli (`psql -At -F '|' -c "select name, country from team" > clubs.txt`, pour relier chaque nom au logo du club), puis `python palmares.py sql <cache> clubs.txt backend/src/main/resources/db/migration/V125__palmares_historique.sql`.
 
 ⚠️ Comme pour le projet LoL, **je n'ai pas pu compiler ce backend** dans mon bac à sable (Maven Central bloqué). J'ai en revanche validé le schéma et l'intégralité des ~13 000 lignes SQL générées directement via `psql` (aucune erreur). Le premier `mvn spring-boot:run` chez toi reste le vrai test pour la partie Java elle-même.
 

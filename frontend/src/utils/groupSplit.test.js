@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { connectedComponents, groupAssignment, opponentsGraph, sortByAverageRank, twoPoolSplit } from './groupSplit.js'
+import { connectedComponents, groupAssignment, groupRankMarkers, opponentsGraph, sortByAverageRank, twoPoolSplit, withManualGroups } from './groupSplit.js'
 
 const match = (team1Id, team2Id) => ({ team1Id, team2Id })
 
@@ -116,5 +116,35 @@ describe('twoPoolSplit', () => {
 
   it('renvoie 2 poules vides sans aucune equipe classee', () => {
     expect(twoPoolSplit([], [])).toEqual({ top: [], bottom: [] })
+  })
+})
+
+describe('withManualGroups', () => {
+  const labels = ['Groupe du haut', 'Groupe du bas']
+
+  it('le groupe choisi a la main remplace le groupe deduit, les autres equipes inchangees', () => {
+    const auto = new Map([[1, 0], [2, 1], [3, 0]])
+    const statuses = { 1: { groupName: 'Groupe du bas' }, 2: { groupName: 'Groupe du haut' }, 3: { groupName: null } }
+
+    expect([...withManualGroups(auto, statuses, labels)]).toEqual([[1, 1], [2, 0], [3, 0]])
+  })
+
+  it('ignore un libelle qui ne correspond a aucun groupe', () => {
+    const auto = new Map([[1, 0]])
+
+    expect([...withManualGroups(auto, { 1: { groupName: 'Championnat' } }, labels)]).toEqual([[1, 0]])
+  })
+})
+
+describe('groupRankMarkers', () => {
+  it("icone du groupe reel de l'equipe, a son rang", () => {
+    const markers = [
+      { rank: 1, icon: 'A', tooltip: 'haut' }, { rank: 2, icon: 'A', tooltip: 'haut' },
+      { rank: 3, icon: 'B', tooltip: 'bas' }, { rank: 4, icon: 'B', tooltip: 'bas' }
+    ]
+    const groups = new Map([[10, 0], [20, 1], [30, 0], [40, 1]])
+
+    expect(groupRankMarkers([10, 20, 30, 40], groups, [2, 2], markers).map(m => [m.rank, m.icon]))
+      .toEqual([[1, 'A'], [2, 'B'], [3, 'A'], [4, 'B']])
   })
 })

@@ -16,6 +16,7 @@ import com.charles.footresults.domain.Team;
 import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.TeamDto;
 import com.charles.footresults.repository.ClubUefaRankingRepository;
+import com.charles.footresults.repository.HonourRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import com.charles.footresults.repository.TeamRepository;
@@ -43,6 +44,9 @@ class TeamServiceTest {
 
     @Mock
     private ClubUefaRankingRepository clubRankingRepository;
+
+    @Mock
+    private HonourRepository honourRepository;
 
     @InjectMocks
     private TeamService teamService;
@@ -86,6 +90,9 @@ class TeamServiceTest {
         verify(statusRepository).delete(statutDejaPresent);
         assertThat(statutAReprendre.getTeam()).isSameAs(vllaznia);
         verify(statusRepository).save(statutAReprendre);
+        verify(honourRepository).reassignWinner(doublon, vllaznia);
+        verify(honourRepository).reassignRunnerUp(doublon, vllaznia);
+        verify(honourRepository).reassignThird(doublon, vllaznia);
         verify(teamRepository).delete(doublon);
     }
 
@@ -151,6 +158,27 @@ class TeamServiceTest {
         assertThatThrownBy(() -> teamService.merge(1L, 2L))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessageContaining("2");
+    }
+
+    @Test
+    void suppressionDUneEquipeInutilisee() {
+        when(teamRepository.findById(1L)).thenReturn(Optional.of(doublon));
+
+        teamService.delete(1L);
+
+        verify(teamRepository).delete(doublon);
+    }
+
+    @Test
+    void suppressionRefuseeQuandLEquipeEstUtilisee() {
+        when(teamRepository.findById(1L)).thenReturn(Optional.of(doublon));
+        when(matchRepository.countByTeam1_IdOrTeam2_Id(1L, 1L)).thenReturn(3L);
+        when(statusRepository.findByTeamId(1L)).thenReturn(List.of(new TeamCompetitionStatus(albanie, doublon)));
+
+        assertThatThrownBy(() -> teamService.delete(1L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("3 matchs, 1 statut de competition");
+        verify(teamRepository, never()).delete(any(Team.class));
     }
 
     private void givenTeamsExist() {

@@ -3,8 +3,8 @@
     :competition-id="competitionId"
     :teams="teams"
     :competition-country="competitionCountry"
-    round-placeholder="Round (ex: Coupe nationale)"
-    default-round="Coupe nationale"
+    :round-placeholder="playoff ? 'Tour (ex: Barrage)' : 'Round (ex: Coupe nationale)'"
+    :default-round="playoff ? 'Barrage' : 'Coupe nationale'"
     @match-created="load"
     @team-created="reloadTeams"
   />
@@ -103,7 +103,7 @@
       </div>
     </div>
   </div>
-  <p v-else-if="loaded" class="empty-state">Aucun match dans cette coupe pour l'instant.</p>
+  <p v-else-if="loaded" class="empty-state">{{ playoff ? "Aucun match de barrage pour l'instant." : "Aucun match dans cette coupe pour l'instant." }}</p>
 
   <p v-if="error" class="error-text">{{ error }}</p>
 </template>
@@ -115,6 +115,7 @@ import TeamLogo from './TeamLogo.vue'
 import FlagIcon from './FlagIcon.vue'
 import MatchCreationBar from './MatchCreationBar.vue'
 import { moveTie, sortByBracketPosition, summarizeTie } from '../utils/cupTies.js'
+import { isPlayoffMatch, playoffRounds } from '../utils/playoffRounds.js'
 import TeamSelect from './TeamSelect.vue'
 
 const props = defineProps({
@@ -127,6 +128,9 @@ const props = defineProps({
   // dans l'ordre d'affichage voulu. Chaque tie est classe dans le premier groupe dont le
   // fragment (insensible a la casse) apparait dans le round_label de son premier match.
   explicitRounds: { type: Array, default: null },
+  // Barrages d'un championnat : seuls les matchs "Barrage..." de la competition, tours deduits
+  // de la progression des equipes (cf. playoffRounds) plutot que du libelle de chaque match.
+  playoff: { type: Boolean, default: false },
   showFlags: { type: Boolean, default: false }
 })
 
@@ -206,6 +210,7 @@ function pairChunks(ties) {
 }
 
 const filteredMatches = computed(() => {
+  if (props.playoff) return matches.value.filter(isPlayoffMatch)
   if (!props.roundIncludes) return matches.value
   const fragments = props.roundIncludes.map(f => f.toUpperCase())
   return matches.value.filter(m => fragments.some(f => (m.roundLabel ?? '').toUpperCase().includes(f)))
@@ -294,7 +299,9 @@ const rounds = computed(() => {
   }
 
   let result
-  if (props.explicitRounds) {
+  if (props.playoff) {
+    result = playoffRounds(filteredMatches.value)
+  } else if (props.explicitRounds) {
     const byGroup = new Map()
     for (const [, bucket] of buckets) {
       const upper = bucket.label.toUpperCase()

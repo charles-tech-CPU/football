@@ -83,3 +83,25 @@ export function twoPoolSplit(rankedTeamIds, poolMatches) {
   }
   return { top: rankedTeamIds.slice(0, 6), bottom: rankedTeamIds.slice(6, 12) }
 }
+
+// Groupe choisi a la main dans l'IHM (statut de l'equipe : groupName = libelle d'un groupe),
+// prioritaire sur la repartition deduite des matchs (resultats mal saisis...).
+export function withManualGroups(groupOfTeam, statusByTeam, labels) {
+  const result = new Map(groupOfTeam)
+  for (const [teamId, status] of Object.entries(statusByTeam)) {
+    const index = labels.indexOf(status?.groupName)
+    if (index !== -1) result.set(Number(teamId), index)
+  }
+  return result
+}
+
+// Icones de groupe du classement de phase 1 d'apres le groupe reel de chaque equipe plutot que
+// d'apres son rang : l'icone du groupe i est celle du 1er rang de ce groupe dans rankMarkers.
+export function groupRankMarkers(rankedTeamIds, groupOfTeam, sizes, rankMarkers) {
+  const firstRanks = sizes.map((_, i) => sizes.slice(0, i).reduce((sum, size) => sum + size, 0) + 1)
+  return rankedTeamIds.flatMap((teamId, i) => {
+    const group = groupOfTeam.get(teamId)
+    const marker = group == null ? null : rankMarkers.find(m => m.rank === firstRanks[group])
+    return marker ? [{ ...marker, rank: i + 1 }] : []
+  })
+}

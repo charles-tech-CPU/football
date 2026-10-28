@@ -15,9 +15,11 @@ import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.HeadToHeadCellDto;
 import com.charles.footresults.dto.ProjectedStandingRowDto;
 import com.charles.footresults.dto.StandingRowDto;
+import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +38,9 @@ class StandingsServiceTest {
     @Mock
     private TeamCompetitionStatusRepository statusRepository;
 
+    @Mock
+    private CompetitionRepository competitionRepository;
+
     @InjectMocks
     private StandingsService standingsService;
 
@@ -51,6 +56,7 @@ class StandingsServiceTest {
         lyon = team(3L, "Lyon");
         lens = team(4L, "Lens");
         lenient().when(statusRepository.findByCompetitionId(anyLong())).thenReturn(List.of());
+        lenient().when(competitionRepository.findById(anyLong())).thenReturn(Optional.empty());
     }
 
     @Test
@@ -217,6 +223,32 @@ class StandingsServiceTest {
                         new HeadToHeadCellDto(om.getId(), psg.getId(), 1, 1, 1));
     }
 
+    @Test
+    void barragesHorsClassementEtHorsTeteATete() {
+        Team bray = team(5L, "Bray");
+        Match barrage = match(lens, bray, 2, 1);
+        barrage.setRoundLabel("Barrage (a determiner : 2E-5E)");
+        givenPlayedMatches(match(psg, om, 1, 0), barrage);
+
+        assertThat(standingsService.computeStandings(COMPETITION_ID))
+                .extracting(StandingRowDto::teamName)
+                .containsExactly("PSG", "OM");
+        assertThat(standingsService.computeHeadToHead(COMPETITION_ID)).hasSize(2);
+    }
+
+    @Test
+    void barrageARjouerIgnoreParLeClassementProjete() {
+        Match barrage = unplayed(psg, team(5L, "Bray"));
+        barrage.setRoundLabel("Barrages - Aller");
+        givenPlayedMatches(match(psg, om, 1, 0));
+        givenRemainingMatches(barrage);
+
+        List<ProjectedStandingRowDto> projected = standingsService.computeProjectedStandings(COMPETITION_ID);
+
+        assertThat(projected).extracting(ProjectedStandingRowDto::teamName).containsExactly("PSG", "OM");
+        assertThat(projected).extracting(ProjectedStandingRowDto::remaining).containsExactly(0, 0);
+    }
+
     // --- Classement projete ---
 
     @Test
@@ -269,6 +301,25 @@ class StandingsServiceTest {
         assertThat(lensRow.remaining()).isEqualTo(2);
         assertThat(lensRow.projectedPoints()).isEqualTo(3.0);
         assertThat(projected).extracting(ProjectedStandingRowDto::teamName).doesNotContain("A DETERMINER : HF-HF");
+    }
+
+    @Test
+    void journeesPasEncoreSaisiesComptentCommeMatchsRestantsDeChaqueEquipe() {
+        Match played = match(psg, om, 3, 0);
+        played.setRoundLabel("J1");
+        givenPlayedMatches(played);
+        givenRemainingMatches();
+        Competition league = new Competition();
+        league.setTotalRounds(3);
+        when(competitionRepository.findById(COMPETITION_ID)).thenReturn(Optional.of(league));
+        when(matchRepository.findByCompetitionIdOrderByDateAscTimeAsc(COMPETITION_ID))
+                .thenReturn(List.of(played));
+
+        List<ProjectedStandingRowDto> projected = standingsService.computeProjectedStandings(COMPETITION_ID);
+
+        // J2 et J3 pas encore au calendrier : OM (0 pt, 6 max) peut encore depasser PSG (3 pts).
+        assertThat(projected).extracting(ProjectedStandingRowDto::remaining).containsExactly(2, 2);
+        assertThat(projected).extracting(ProjectedStandingRowDto::worstRank).containsExactly(2, 2);
     }
 
     private void givenRemainingMatches(Match... matches) {

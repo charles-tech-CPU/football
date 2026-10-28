@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calendarProgress, remainingProgress, isLate, isScheduled, lateCount, leagueRound } from './competitionProgress.js'
+import { calendarProgress, remainingProgress, isLate, isScheduled, lateCount, leagueRound, roundsLeft, seasonEndChecklist } from './competitionProgress.js'
 
 const TODAY = '2026-09-26'
 
@@ -123,5 +123,41 @@ describe('remainingProgress', () => {
   it('termine quand tout est joue (forfaits compris)', () => {
     const matches = [played('J1', '2026-09-01'), { ...toPlay('J2', '2026-09-08'), status: 'FORFEIT' }]
     expect(remainingProgress(matches, 2, TODAY)).toEqual({ rounds: 0, otherRounds: 0, finished: true })
+  })
+})
+
+describe('roundsLeft', () => {
+  it('journees restantes, barrages comptant pour une de plus', () => {
+    expect(roundsLeft({ rounds: 2, otherRounds: 3 })).toBe(3)
+    expect(roundsLeft({ rounds: 1, otherRounds: 0 })).toBe(1)
+    expect(roundsLeft(null)).toBe(0)
+  })
+})
+
+describe('seasonEndChecklist', () => {
+  const calendarOk = { firstMissing: null }
+  const pendingBarrage = {
+    roundLabel: 'Barrage (a determiner : 2E-5E)', team1Name: 'A DETERMINER (1)', team2Name: 'A DETERMINER (2)'
+  }
+
+  it('retards, calendrier, barrages a completer puis classement final', () => {
+    const todo = seasonEndChecklist([pendingBarrage], { barrageSlots: 0 }, { late: 2, calendar: { firstMissing: 29 } })
+
+    expect(todo).toEqual([
+      '2 matchs en retard à saisir ou à reprogrammer',
+      'Calendrier à compléter (dates / horaires) à partir de la J29',
+      'Barrages : 1 match encore « A DETERMINER », à compléter avec les qualifiés',
+      'Classement final : vérifier le champion, les places européennes et la relégation'
+    ])
+  })
+
+  it('place de barrage prevue sans aucun match saisi', () => {
+    const todo = seasonEndChecklist([{ roundLabel: 'J30' }], { barrageSlots: 1 }, { late: 0, calendar: calendarOk })
+
+    expect(todo[0]).toBe('Barrages : 1 place de barrage prévue, aucun match saisi')
+  })
+
+  it('tout est en ordre : seul le classement final reste a verifier', () => {
+    expect(seasonEndChecklist([], { barrageSlots: 0 }, { late: 0, calendar: calendarOk })).toHaveLength(1)
   })
 })

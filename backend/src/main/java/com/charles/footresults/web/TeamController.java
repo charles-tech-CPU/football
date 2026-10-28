@@ -145,7 +145,7 @@ public class TeamController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        teamRepository.deleteById(id);
+        teamService.delete(id);
     }
 
     /** POST /api/teams/{id}/merge?intoId=42 : reaffecte les matchs de {id} vers intoId, puis supprime {id}. */

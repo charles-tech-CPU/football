@@ -7,6 +7,33 @@
     @team-created="reloadTeams"
   />
 
+  <div v-if="anomalies" class="calendar-check">
+    <strong>⚠️ Calendrier incohérent</strong>
+    <ul>
+      <li v-for="t in anomalies.wrongCounts" :key="`count-${t.teamId}`">
+        {{ t.name }} : {{ t.count }} match{{ t.count > 1 ? 's' : '' }} au lieu de {{ anomalies.expected }}
+      </li>
+      <li v-for="d in anomalies.duplicates" :key="`dup-${d.homeName}-${d.awayName}`">
+        {{ d.homeName }} reçoit {{ d.awayName }} {{ d.matches.length }} fois :
+        <template v-for="(m, mi) in d.matches" :key="m.id">
+          <span v-if="mi"> · </span>
+          <button v-if="m.status === 'COMPLETED'" type="button" class="link-btn" @click="roundFilter = m.roundLabel">
+            {{ m.roundLabel }}{{ m.date ? ` (${m.date})` : '' }}
+          </button>
+          <span v-else>{{ m.roundLabel }} (à venir)</span>
+        </template>
+      </li>
+      <li v-for="p in anomalies.missing" :key="`miss-${p.homeName}-${p.awayName}`">
+        Manquant : {{ p.homeKnown ? `${p.homeName} reçoit ${p.awayName}` : `${p.homeName} – ${p.awayName}` }}
+      </li>
+    </ul>
+    <p class="section-intro">
+      Un résultat saisi sur le mauvais match crée un doublon et un manque (et une « 2e phase » fantôme
+      dans les résultats) : ouvre la journée du doublon, remplace ses équipes par celles du match
+      manquant et corrige le score, ou supprime le match en trop.
+    </p>
+  </div>
+
   <div v-if="rounds.length > 1" class="filters">
     <select v-model="roundFilter" aria-label="Filtrer par tour">
       <option value="">Toutes les journées / tous les tours</option>
@@ -82,13 +109,16 @@ import MatchCreationBar from './MatchCreationBar.vue'
 import { deleteConfirmMessage, teamChangeLines } from '../utils/matchEdit'
 import { formatTime } from '../utils/format'
 import { roundsByRecency } from '../utils/rounds'
+import { calendarAnomalies } from '../utils/calendarCheck'
 import TeamSelect from './TeamSelect.vue'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },
   // Fragments (insensibles a la casse) : un match n'est garde que si son round_label
   // contient au moins un de ces fragments. Pas de filtre => tous les matchs.
-  roundIncludes: { type: Array, default: null }
+  roundIncludes: { type: Array, default: null },
+  // Championnat a format fixe (pas de 2e phase) : signale doublons et matchs manquants.
+  checkCalendar: { type: Boolean, default: false }
 })
 
 const matches = ref([])
@@ -98,6 +128,7 @@ const error = ref('')
 const edits = reactive({})
 const roundFilter = ref('')
 const competitionCountry = ref(null)
+const totalRounds = ref(null)
 
 const scopedMatches = computed(() => {
   if (!props.roundIncludes) return matches.value
@@ -114,6 +145,8 @@ const playedMatches = computed(() => {
   })
 })
 const rounds = computed(() => roundsByRecency(playedMatches.value))
+
+const anomalies = computed(() => (props.checkCalendar && loaded.value ? calendarAnomalies(matches.value, totalRounds.value) : null))
 
 // Sans filtre, les journees sont paginees par ROUNDS_PER_PAGE, les plus recentes d'abord
 // (page 0 = derniere et avant-derniere journee jouees).
@@ -162,7 +195,9 @@ async function load() {
   ])
   matches.value = matchList
   teams.value = teamList
-  competitionCountry.value = competitions.find(c => c.id === competitionId)?.country ?? null
+  const competition = competitions.find(c => c.id === competitionId)
+  competitionCountry.value = competition?.country ?? null
+  totalRounds.value = competition?.totalRounds ?? null
 
   for (const key of Object.keys(edits)) delete edits[key]
   for (const m of matchList) {
@@ -228,6 +263,25 @@ onMounted(load)
 </script>
 
 <style scoped>
+.calendar-check {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.calendar-check ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+.link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
 .round-pager {
   display: flex;
   align-items: center;

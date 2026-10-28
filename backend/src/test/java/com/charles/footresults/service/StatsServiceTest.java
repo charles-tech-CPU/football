@@ -8,6 +8,8 @@ import com.charles.footresults.domain.Competition;
 import com.charles.footresults.domain.CompetitionType;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.Team;
+import com.charles.footresults.dto.AllLeaguesStatsDto;
+import com.charles.footresults.dto.AllLeaguesStatsDto.LeagueSummary;
 import com.charles.footresults.dto.CompetitionStatsDto;
 import com.charles.footresults.dto.CompetitionStatsDto.TeamValue;
 import com.charles.footresults.dto.MatchDto;
@@ -16,6 +18,7 @@ import com.charles.footresults.repository.MatchRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -118,6 +121,40 @@ class StatsServiceTest {
         when(competitionRepository.existsById(404L)).thenReturn(false);
 
         assertThatThrownBy(() -> statsService.competitionStats(404L)).isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    void tousLesChampionnatsReunisEtBilanParChampionnat() {
+        Competition liga =
+                new Competition("ESPAGNE", "Espagne - Championnat 2027", CompetitionType.LEAGUE, "Espagne", 2027);
+        liga.setId(11L);
+        Competition oldLigue1 =
+                new Competition("FRANCE", "France - Championnat 2026", CompetitionType.LEAGUE, "France", 2026);
+        oldLigue1.setId(9L);
+        Team barca = team(4L, "Barcelone");
+        Team real = team(5L, "Real Madrid");
+        Match clasico = played(2, barca, real, 0, 2);
+        clasico.setCompetition(liga);
+        when(competitionRepository.findByType(CompetitionType.LEAGUE)).thenReturn(List.of(ligue1, liga, oldLigue1));
+        when(matchRepository.findByCompetition_TypeAndCompetition_SeasonOrderByDateAscTimeAsc(
+                        CompetitionType.LEAGUE, 2027))
+                .thenReturn(List.of(played(1, psg, om, 3, 0), clasico, upcoming(3, lens, psg)));
+
+        AllLeaguesStatsDto stats = statsService.allLeaguesStats(Set.of());
+
+        assertThat(stats.overall().matchesPlayed()).isEqualTo(2);
+        assertThat(stats.overall().bestAttacks())
+                .extracting(TeamValue::teamName)
+                .startsWith("PSG", "Real Madrid");
+        // Saison 2026 ecartee ; pays dans l'ordre alphabetique.
+        assertThat(stats.leagues()).extracting(LeagueSummary::country).containsExactly("Espagne", "France");
+        assertThat(stats.leagues().get(0).awayWins()).isEqualTo(1);
+        assertThat(stats.leagues().get(1).homeWins()).isEqualTo(1);
+        assertThat(stats.leagues().get(1).goals()).isEqualTo(3);
+
+        AllLeaguesStatsDto spainOnly = statsService.allLeaguesStats(Set.of("Espagne"));
+        assertThat(spainOnly.overall().matchesPlayed()).isEqualTo(1);
+        assertThat(spainOnly.leagues()).extracting(LeagueSummary::country).containsExactly("Espagne");
     }
 
     private void givenMatches(Match... matches) {

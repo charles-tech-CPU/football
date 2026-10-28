@@ -26,6 +26,7 @@ export default {
 
   getTeams: (params) => api.get('/teams', { params }).then(r => r.data),
   createTeam: (payload) => api.post('/teams', payload).then(r => r.data),
+  deleteTeam: (id) => api.delete(`/teams/${id}`),
   getTeamProfile: (id) => api.get(`/teams/${id}/profile`).then(r => r.data),
   getHeadToHeadBetween: (id, opponentId) =>
     api.get(`/teams/${id}/head-to-head`, { params: { opponentId } }).then(r => r.data),
@@ -55,6 +56,11 @@ export default {
     api.patch(`/competitions/${competitionId}/qualification-slots`, payload).then(r => r.data),
 
   getCompetitionStats: (competitionId) => api.get('/stats', { params: { competitionId } }).then(r => r.data),
+  // countries : liste de pays (vide = tous les championnats)
+  getAllLeaguesStats: (countries = []) =>
+    api.get('/stats/leagues', { params: countries.length ? { countries: countries.join(',') } : {} }).then(r => r.data),
+  getPalmaresScopes: () => api.get('/palmares/scopes').then(r => r.data),
+  getPalmares: (scope) => api.get('/palmares', { params: { scope } }).then(r => r.data),
 
   getClubUefaRankings: () => api.get('/uefa-rankings/clubs').then(r => r.data),
   getCountryUefaRankings: () => api.get('/uefa-rankings/countries').then(r => r.data),

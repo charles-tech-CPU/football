@@ -28,6 +28,30 @@
     </div>
   </section>
 
+  <section v-if="seasonEnds.length" class="season-end">
+    <h2>🔔 Fins de saison en approche</h2>
+    <p class="section-intro">
+      Championnats à {{ SEASON_END_ROUNDS }} journées ou moins de la fin (pastille bleue) : ce qu'il reste à vérifier.
+    </p>
+    <div class="season-end-grid">
+      <router-link
+        v-for="e in seasonEnds"
+        :key="e.country"
+        class="season-end-card"
+        :to="`/pays/${encodeURIComponent(e.country)}`"
+      >
+        <span class="season-end-head">
+          <FlagIcon :country="e.country" />
+          <span class="season-end-name">{{ e.country }}</span>
+          <span class="season-end-count" :title="e.left === 1 ? 'Dernière journée' : `${e.left} journées restantes`">{{ e.left }}</span>
+        </span>
+        <ul class="season-end-todo">
+          <li v-for="(item, i) in e.todo" :key="i">{{ item }}</li>
+        </ul>
+      </router-link>
+    </div>
+  </section>
+
   <template v-if="filteredContinental.length">
     <h2>Coupes d'Europe</h2>
     <div class="continental-grid">
@@ -106,7 +130,14 @@ import FlagIcon from '../components/FlagIcon.vue'
 import LateBadge from '../components/LateBadge.vue'
 import RoundsLeftBadge from '../components/RoundsLeftBadge.vue'
 import CalendarProgress from '../components/CalendarProgress.vue'
-import { calendarProgress, lateCount, remainingProgress } from '../utils/competitionProgress'
+import {
+  SEASON_END_ROUNDS,
+  calendarProgress,
+  lateCount,
+  remainingProgress,
+  roundsLeft,
+  seasonEndChecklist
+} from '../utils/competitionProgress'
 
 const competitions = ref([])
 const loaded = ref(false)
@@ -145,6 +176,16 @@ const continental = computed(() =>
     .filter(c => c.type === 'CONTINENTAL_CUP')
     .sort((a, b) => continentalRank(a) - continentalRank(b) || a.name.localeCompare(b.name))
 )
+// Championnats proches de la fin (pastille bleue <= SEASON_END_ROUNDS, pas encore termines),
+// les plus avances d'abord.
+const seasonEnds = computed(() =>
+  countries.value
+    .filter(c => c.league && stats[c.league.id])
+    .map(c => ({ country: c.country, left: roundsLeft(stats[c.league.id].remaining), todo: stats[c.league.id].checklist }))
+    .filter(e => e.left > 0 && e.left <= SEASON_END_ROUNDS)
+    .sort((a, b) => a.left - b.left || a.country.localeCompare(b.country))
+)
+
 const leagueCount = computed(() => countries.value.filter(c => c.league).length)
 const cupCount = computed(() => countries.value.filter(c => c.cup).length)
 
@@ -167,10 +208,13 @@ async function loadStats() {
   const tracked = competitions.value.filter(c => c.type !== 'DOMESTIC_CUP')
   await Promise.all(tracked.map(async c => {
     const matches = await api.getMatchesByCompetition(c.id)
+    const late = lateCount(matches, today)
+    const calendar = calendarProgress(matches, c.totalRounds)
     stats[c.id] = {
-      late: lateCount(matches, today),
-      calendar: calendarProgress(matches, c.totalRounds),
-      remaining: remainingProgress(matches, c.totalRounds, today)
+      late,
+      calendar,
+      remaining: remainingProgress(matches, c.totalRounds, today),
+      checklist: c.type === 'LEAGUE' ? seasonEndChecklist(matches, c, { late, calendar }) : null
     }
   }))
 }
@@ -196,3 +240,56 @@ async function submit() {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.season-end {
+  margin-bottom: 24px;
+}
+.season-end-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 12px;
+}
+.season-end-card {
+  display: block;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 4px solid #1d4ed8;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  text-decoration: none;
+}
+.season-end-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+.season-end-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.season-end-name {
+  flex: 1;
+  font-weight: 700;
+}
+.season-end-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+}
+.season-end-todo {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+</style>

@@ -201,10 +201,10 @@ class TeamControllerTest {
     }
 
     @Test
-    void suppression() {
+    void suppressionDelegueAuService() {
         teamController.delete(1L);
 
-        verify(teamRepository).deleteById(1L);
+        verify(teamService).delete(1L);
     }
 
     @Test

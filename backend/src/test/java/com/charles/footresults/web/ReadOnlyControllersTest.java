@@ -4,19 +4,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.charles.footresults.dto.AllLeaguesStatsDto;
 import com.charles.footresults.dto.ClubUefaRankingDto;
 import com.charles.footresults.dto.CountryUefaRankingDto;
 import com.charles.footresults.dto.HeadToHeadCellDto;
+import com.charles.footresults.dto.PalmaresDto;
 import com.charles.footresults.dto.ProjectedStandingRowDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.dto.TeamStatusDto;
 import com.charles.footresults.dto.TeamStatusUpdateDto;
 import com.charles.footresults.dto.UefaHistoryPointDto;
+import com.charles.footresults.service.PalmaresService;
 import com.charles.footresults.service.StandingsService;
+import com.charles.footresults.service.StatsService;
 import com.charles.footresults.service.TeamStatusService;
 import com.charles.footresults.service.UefaRankingService;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Controleurs qui se contentent de deleguer a un service : on verifie juste le branchement. */
@@ -25,6 +30,31 @@ class ReadOnlyControllersTest {
     private final StandingsService standingsService = mock(StandingsService.class);
     private final TeamStatusService teamStatusService = mock(TeamStatusService.class);
     private final UefaRankingService uefaRankingService = mock(UefaRankingService.class);
+    private final PalmaresService palmaresService = mock(PalmaresService.class);
+    private final StatsService statsService = mock(StatsService.class);
+
+    @Test
+    void palmares() {
+        PalmaresDto france = mock(PalmaresDto.class);
+        when(palmaresService.scopes()).thenReturn(List.of("France", "Europe"));
+        when(palmaresService.palmares("France")).thenReturn(france);
+        PalmaresController controller = new PalmaresController(palmaresService);
+
+        assertThat(controller.scopes()).containsExactly("France", "Europe");
+        assertThat(controller.palmares("France")).isSameAs(france);
+    }
+
+    @Test
+    void statsDeTousLesChampionnatsOuDUneSelection() {
+        AllLeaguesStatsDto all = mock(AllLeaguesStatsDto.class);
+        AllLeaguesStatsDto top = mock(AllLeaguesStatsDto.class);
+        when(statsService.allLeaguesStats(Set.of())).thenReturn(all);
+        when(statsService.allLeaguesStats(Set.of("France"))).thenReturn(top);
+        StatsController controller = new StatsController(statsService);
+
+        assertThat(controller.allLeagues(null)).isSameAs(all);
+        assertThat(controller.allLeagues(Set.of("France"))).isSameAs(top);
+    }
 
     @Test
     void classementGeneralOuDUnePhase() {

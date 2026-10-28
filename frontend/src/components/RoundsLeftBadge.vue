@@ -7,12 +7,13 @@
 // journees restant a jouer ; les barrages / tours hors journees comptent pour une de plus.
 // Pendant de LateBadge (matchs en retard, en rouge a droite). Cf. remainingProgress.
 import { computed } from 'vue'
+import { roundsLeft } from '../utils/competitionProgress'
 
 const props = defineProps({
   remaining: { type: Object, default: null }
 })
 
-const count = computed(() => (props.remaining ? props.remaining.rounds + (props.remaining.otherRounds ? 1 : 0) : 0))
+const count = computed(() => roundsLeft(props.remaining))
 
 const title = computed(() => {
   const { rounds, otherRounds } = props.remaining ?? {}

@@ -24,9 +24,18 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(row, index) in grp.rows" :key="row.teamId" :class="rowClass(row, grp.baseIndex + index, grp)">
+          <tr
+            v-for="(row, index) in grp.rows"
+            :key="row.teamId"
+            :class="[rowClass(row, grp.baseIndex + index, grp), { 'row-locked': isLocked(row) }]"
+          >
             <td class="col-rank">
-              <span class="rank-num">{{ grp.baseIndex + index + 1 }}</span>
+              <span
+                v-if="isLocked(row)"
+                class="rank-num rank-num--locked"
+                title="Place définitive : plus rien à jouer au classement, quels que soient les matchs restants"
+              >🔒 {{ grp.baseIndex + index + 1 }}</span>
+              <span v-else class="rank-num">{{ grp.baseIndex + index + 1 }}</span>
               <span
                 v-for="(m, mi) in markersFor(grp.baseIndex + index + 1)"
                 :key="mi"
@@ -89,6 +98,9 @@
     <li v-if="barrageSlots > 0">⚔️ Barrage de maintien</li>
     <li v-if="relegationSlots > 0">⬇️ Descend en division inférieure</li>
   </ul>
+  <ul v-if="hasLocked" class="standings-legend">
+    <li><span class="rank-num rank-num--locked legend-lock">🔒</span>Place définitive : l'équipe n'a plus rien à jouer au classement</li>
+  </ul>
 </template>
 
 <script setup>
@@ -126,8 +138,17 @@ const props = defineProps({
   groupRowClasses: { type: Function, default: null },
   // Lignes du classement projete (ProjectedStandingRowDto) : ajoute les colonnes matchs
   // restants / points projetes / fourchette de places possibles.
-  projected: { type: Boolean, default: false }
+  projected: { type: Boolean, default: false },
+  // Ids des equipes dont la place ne peut plus changer (cf. utils/lockedRanks) : rang cadenasse
+  // et ligne estompee. Calcule par l'ecran appelant, seul a connaitre les matchs restants.
+  lockedTeamIds: { type: Set, default: null }
 })
+
+function isLocked(row) {
+  return props.lockedTeamIds?.has(row.teamId) ?? false
+}
+
+const hasLocked = computed(() => props.rows.some(isLocked))
 
 function formatProjected(points) {
   return points.toLocaleString('fr-FR', { maximumFractionDigits: 1 })
@@ -232,6 +253,27 @@ function rowClass(row, index, grp) {
   font-size: 0.9em;
   background: var(--surface-muted);
   color: var(--text-muted);
+}
+
+.rank-num--locked {
+  padding: 0 7px;
+  gap: 3px;
+  background: var(--pitch-800);
+  color: white;
+}
+
+.legend-lock {
+  min-width: 0;
+  margin-right: 6px;
+}
+
+/* Place acquise : la ligne passe au second plan, les equipes encore en lutte ressortent. */
+.row-locked td:not(.col-rank) {
+  color: var(--text-muted);
+}
+
+.row-locked .pts-pill {
+  background: var(--text-muted);
 }
 
 .team-name {

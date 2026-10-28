@@ -114,6 +114,20 @@ class InternationalRankingServiceTest {
     }
 
     @Test
+    void lesArchivesAvant2014NeComptentPas() {
+        givenMatches(
+                played(coupeDuMonde, LocalDate.of(1982, 7, 8), france, espagne, 3, 0, true),
+                played(euroQualifs, day(1), espagne, bresil, 1, 1, true));
+
+        List<InternationalRankingRowDto> rows = service.compute();
+
+        assertThat(rows)
+                .extracting(InternationalRankingRowDto::teamName)
+                .containsExactlyInAnyOrder("Espagne", "Bresil");
+        assertThat(row(rows, "Espagne").played()).isEqualTo(1);
+    }
+
+    @Test
     void aucunMatchJoue() {
         givenMatches();
 

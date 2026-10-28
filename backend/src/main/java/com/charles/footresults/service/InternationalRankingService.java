@@ -18,9 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Classement mondial des selections : un Elo recalcule a la volee a partir de tous les matchs
- * internationaux joues, dans l'ordre chronologique (historique V116-V123 + saison en cours ; un
- * resultat saisi compte des la requete suivante). Inspire du World Football Elo Ratings
+ * Classement mondial des selections : un Elo recalcule a la volee a partir des matchs internationaux
+ * joues depuis {@link #RATING_START}, dans l'ordre chronologique (historique V116-V123 + saison en
+ * cours ; un resultat saisi compte des la requete suivante). Les archives plus anciennes (V126 et
+ * suivantes, depuis 1916) n'entrent pas dans le calcul : selections disparues (URSS, RDA...) et
+ * notes de depart par confederation calibrees pour un historique demarrant en 2014. Inspire du World Football Elo Ratings
  * (eloratings.net) et du power ranking du projet LoL :
  *
  * <ul>
@@ -52,6 +54,7 @@ public class InternationalRankingService {
             "OFC", 1250);
 
     static final int DEFAULT_START_RATING = 1400;
+    static final LocalDate RATING_START = LocalDate.of(2014, 1, 1);
     static final double HOME_ADVANTAGE = 100;
     static final int FORM_LENGTH = 5;
     static final int TREND_DAYS = 90;
@@ -115,7 +118,10 @@ public class InternationalRankingService {
     }
 
     private static boolean isRated(Match m) {
-        return m.getDate() != null && m.getScore1() != null && m.getScore2() != null;
+        return m.getDate() != null
+                && !m.getDate().isBefore(RATING_START)
+                && m.getScore1() != null
+                && m.getScore2() != null;
     }
 
     /** Confederation (prefixe du code) des competitions continentales ou l'equipe a joue le plus. */

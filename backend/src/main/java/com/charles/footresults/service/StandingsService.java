@@ -1,5 +1,6 @@
 package com.charles.footresults.service;
 
+import com.charles.footresults.domain.Competition;
 import com.charles.footresults.domain.CompetitionType;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.MatchStatus;
@@ -8,6 +9,7 @@ import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.HeadToHeadCellDto;
 import com.charles.footresults.dto.ProjectedStandingRowDto;
 import com.charles.footresults.dto.StandingRowDto;
+import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import java.util.ArrayList;
@@ -17,6 +19,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
 /**
@@ -36,12 +40,18 @@ import org.springframework.stereotype.Service;
  * REPARTIR les lignes obtenues par groupe (TeamCompetitionStatus.groupName)
  * pour l'affichage. Une competition sans aucune equipe groupee garde un
  * classement unique, inchange.
+ *
+ * Les barrages (promotion/relegation, place europeenne...) sont saisis dans la competition du
+ * championnat (round_label contenant "Barrage") mais ne comptent pas au classement : ce sont
+ * des confrontations a elimination directe, parfois contre des clubs d'une autre division.
  */
 @Service
 public class StandingsService {
 
     private static final int POINTS_WIN = 3;
     private static final int POINTS_DRAW = 1;
+    private static final Pattern LEAGUE_ROUND = Pattern.compile("^J(\\d+)$");
+    private static final String PLAYOFF_ROUND = "BARRAGE";
 
     private static final Comparator<StandingRowDto> RANKING_ORDER = Comparator.comparingInt(StandingRowDto::points)
             .reversed()
@@ -51,10 +61,15 @@ public class StandingsService {
 
     private final MatchRepository matchRepository;
     private final TeamCompetitionStatusRepository statusRepository;
+    private final CompetitionRepository competitionRepository;
 
-    public StandingsService(MatchRepository matchRepository, TeamCompetitionStatusRepository statusRepository) {
+    public StandingsService(
+            MatchRepository matchRepository,
+            TeamCompetitionStatusRepository statusRepository,
+            CompetitionRepository competitionRepository) {
         this.matchRepository = matchRepository;
         this.statusRepository = statusRepository;
+        this.competitionRepository = competitionRepository;
     }
 
     /**
@@ -175,8 +190,9 @@ public class StandingsService {
      * matchs restants, meilleur cas = toutes victoires, en traitant chaque equipe
      * independamment (deux equipes qui doivent encore s'affronter ne peuvent pas reellement
      * gagner toutes les deux : fourchette volontairement prudente, jamais trop etroite). Seuls
-     * les matchs deja au calendrier sont comptes : une 2e phase pas encore programmee n'est pas
-     * anticipee.
+     * les matchs deja au calendrier sont comptes, plus les journees attendues (totalRounds) pas
+     * encore saisies, un match par equipe et par journee : une 2e phase pas encore programmee n'est
+     * pas anticipee.
      */
     public List<ProjectedStandingRowDto> computeProjectedStandings(Long competitionId) {
         Map<Long, StandingRowDto> rowsByTeam = new LinkedHashMap<>();
@@ -185,6 +201,9 @@ public class StandingsService {
         }
         Map<Long, Integer> remaining = new HashMap<>();
         for (Match m : matchRepository.findByCompetitionIdAndStatusNot(competitionId, MatchStatus.COMPLETED)) {
+            if (isPlayoff(m)) {
+                continue;
+            }
             for (Team team : List.of(m.getTeam1(), m.getTeam2())) {
                 if (isPlaceholder(team)) {
                     continue;
@@ -192,6 +211,10 @@ public class StandingsService {
                 rowsByTeam.computeIfAbsent(team.getId(), id -> new TeamTally(team).toDto(null));
                 remaining.merge(team.getId(), 1, Integer::sum);
             }
+        }
+        int missingRounds = missingRounds(competitionId);
+        if (missingRounds > 0) {
+            rowsByTeam.keySet().forEach(id -> remaining.merge(id, missingRounds, Integer::sum));
         }
 
         int totalPoints =
@@ -235,6 +258,25 @@ public class StandingsService {
         return result;
     }
 
+    /** Journees attendues (totalRounds) au-dela de la derniere journee "J12" deja saisie. */
+    private int missingRounds(Long competitionId) {
+        Integer totalRounds = competitionRepository
+                .findById(competitionId)
+                .map(Competition::getTotalRounds)
+                .orElse(null);
+        if (totalRounds == null) {
+            return 0;
+        }
+        int lastCreated = 0;
+        for (Match m : matchRepository.findByCompetitionIdOrderByDateAscTimeAsc(competitionId)) {
+            Matcher round = LEAGUE_ROUND.matcher(m.getRoundLabel() == null ? "" : m.getRoundLabel());
+            if (round.matches()) {
+                lastCreated = Math.max(lastCreated, Integer.parseInt(round.group(1)));
+            }
+        }
+        return Math.max(0, totalRounds - lastCreated);
+    }
+
     /** Places generiques "A DETERMINER ..." (tirage a venir) : pas de vraies equipes a classer. */
     private boolean isPlaceholder(Team team) {
         return team.getName() != null && team.getName().toUpperCase().startsWith("A DETERMINER");
@@ -254,8 +296,18 @@ public class StandingsService {
         return result;
     }
 
+    /** Matchs joues comptant au classement : tous sauf les barrages. */
     private List<Match> playedMatches(Long competitionId) {
-        return matchRepository.findByCompetitionIdAndStatusOrderByDateAscTimeAsc(competitionId, MatchStatus.COMPLETED);
+        return matchRepository
+                .findByCompetitionIdAndStatusOrderByDateAscTimeAsc(competitionId, MatchStatus.COMPLETED)
+                .stream()
+                .filter(m -> !isPlayoff(m))
+                .toList();
+    }
+
+    /** Match de barrage ("Barrage (2E-5E)", "Barrages - Aller"...), hors classement. */
+    private static boolean isPlayoff(Match m) {
+        return m.getRoundLabel() != null && m.getRoundLabel().toUpperCase().contains(PLAYOFF_ROUND);
     }
 
     private TeamTally tallyFor(Map<Long, TeamTally> byTeam, Team team) {

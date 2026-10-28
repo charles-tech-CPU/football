@@ -1,7 +1,11 @@
 package com.charles.footresults.service;
 
+import com.charles.footresults.domain.Competition;
+import com.charles.footresults.domain.CompetitionType;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.Team;
+import com.charles.footresults.dto.AllLeaguesStatsDto;
+import com.charles.footresults.dto.AllLeaguesStatsDto.LeagueSummary;
 import com.charles.footresults.dto.CompetitionStatsDto;
 import com.charles.footresults.dto.CompetitionStatsDto.TeamValue;
 import com.charles.footresults.dto.MatchDto;
@@ -13,8 +17,10 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.IntPredicate;
 import java.util.function.ToIntFunction;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,7 +54,64 @@ public class StatsService {
         List<Match> played = matchRepository.findByCompetitionIdOrderByDateAscTimeAsc(competitionId).stream()
                 .filter(TeamProfileService::isPlayed)
                 .toList();
+        return statsOf(played);
+    }
 
+    /**
+     * Tous les championnats de la saison la plus recente reunis (memes classements que pour une
+     * competition, toutes equipes confondues), plus le bilan de chaque championnat pour les comparer.
+     * countries vide = tous les pays ; sinon seulement ces championnats (ex : le top 5 UEFA).
+     */
+    public AllLeaguesStatsDto allLeaguesStats(Set<String> countries) {
+        int season = competitionRepository.findByType(CompetitionType.LEAGUE).stream()
+                .mapToInt(Competition::getSeason)
+                .max()
+                .orElse(0);
+        List<Competition> leagues = competitionRepository.findByType(CompetitionType.LEAGUE).stream()
+                .filter(c -> c.getSeason() == season)
+                .filter(c -> countries.isEmpty() || countries.contains(c.getCountry()))
+                .toList();
+        Set<Long> leagueIds = leagues.stream().map(Competition::getId).collect(Collectors.toSet());
+        List<Match> played = matchRepository
+                .findByCompetition_TypeAndCompetition_SeasonOrderByDateAscTimeAsc(CompetitionType.LEAGUE, season)
+                .stream()
+                .filter(TeamProfileService::isPlayed)
+                .filter(m -> leagueIds.contains(m.getCompetition().getId()))
+                .toList();
+
+        Map<Long, List<Match>> byLeague = new LinkedHashMap<>();
+        for (Match m : played) {
+            byLeague.computeIfAbsent(m.getCompetition().getId(), id -> new ArrayList<>())
+                    .add(m);
+        }
+        List<LeagueSummary> summaries = leagues.stream()
+                .map(c -> summaryOf(c, byLeague.getOrDefault(c.getId(), List.of())))
+                .sorted(Comparator.comparing(LeagueSummary::country, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        return new AllLeaguesStatsDto(statsOf(played), summaries);
+    }
+
+    private static LeagueSummary summaryOf(Competition league, List<Match> played) {
+        int goals = 0;
+        int homeWins = 0;
+        int draws = 0;
+        for (Match m : played) {
+            goals += m.getScore1() + m.getScore2();
+            if (m.getScore1() > m.getScore2()) homeWins++;
+            else if (m.getScore1().equals(m.getScore2())) draws++;
+        }
+        return new LeagueSummary(
+                league.getId(),
+                league.getName(),
+                league.getCountry(),
+                played.size(),
+                goals,
+                homeWins,
+                draws,
+                played.size() - homeWins - draws);
+    }
+
+    private static CompetitionStatsDto statsOf(List<Match> played) {
         int goals = 0;
         int homeWins = 0;
         int draws = 0;

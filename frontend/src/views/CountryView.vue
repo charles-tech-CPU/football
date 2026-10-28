@@ -24,7 +24,10 @@
   <template v-if="loaded">
     <template v-if="activeTab === 'championnat'">
       <template v-if="league">
-        <CompetitionMatches :competition-id="league.id" />
+        <CompetitionMatches
+          :competition-id="league.id"
+          :check-calendar="!rankConfig?.resultsGroupSplit && league.code !== 'MALTE'"
+        />
       </template>
       <p v-else class="empty-state">Pas de championnat importé pour ce pays.</p>
     </template>
@@ -47,6 +50,7 @@
       <template v-if="league">
         <ResultsGrid
           :competition-id="league.id"
+          :round-excludes="['BARRAGE']"
           :expect-second-phase="league.code === 'ALBANIE' || league.code === 'SUISSE'"
           :group-split="rankConfig?.resultsGroupSplit"
           :malte-phases="league.code === 'MALTE' ? maltePhasesForGrid : null"
@@ -128,7 +132,8 @@
             :ecl-slots="rankConfig?.resultsGroupSplit ? 0 : league.eclSlots"
             :relegation-slots="rankConfig?.resultsGroupSplit ? 0 : league.relegationSlots"
             :barrage-slots="rankConfig?.resultsGroupSplit ? 0 : league.barrageSlots"
-            :rank-markers="rankConfig?.rankMarkers"
+            :rank-markers="mainRankMarkers"
+            :locked-team-ids="mainLockedIds"
           />
           <ul v-if="rankConfig?.rankMarkers" class="standings-legend">
             <li v-for="(item, ii) in rankConfig.legend" :key="ii">{{ item }}</li>
@@ -147,10 +152,16 @@
                 :barrage-slots="grp.slots.barrageSlots"
                 :relegation-slots="grp.slots.relegationSlots"
                 :rank-markers="grp.slots.rankMarkers"
+                :locked-team-ids="groupLockedIds[gi]"
               />
             </div>
           </template>
         </template>
+
+        <div v-if="hasPlayoffs" class="standings-group">
+          <h2>Barrages</h2>
+          <CupBracket :competition-id="league.id" playoff />
+        </div>
 
         <details class="add-form">
           <summary>Configurer les places qualificatives et statuts</summary>
@@ -177,7 +188,15 @@
             <button type="submit">Enregistrer</button>
           </form>
 
-          <p class="section-intro">
+          <p v-if="rankConfig?.resultsGroupSplit" class="section-intro">
+            Groupe de 2e phase : déduit automatiquement des matchs de 2e phase (à défaut, du classement de la
+            saison régulière). Si une équipe est dans le mauvais groupe, choisis le bon ci-dessous : la
+            répartition de toutes les équipes est alors figée à la main.
+            <button v-if="hasManualGroups" type="button" :disabled="savingGroups" @click="resetGroups">
+              Revenir à la répartition automatique
+            </button>
+          </p>
+          <p v-else class="section-intro">
             Groupe de 2e phase (ex: "Championnat" / "Relégation") : laisse vide tant que la compétition
             n'est pas scindée en plusieurs mini-championnats. Une fois renseigné pour au moins une équipe,
             le classement se sépare automatiquement par groupe.
@@ -200,7 +219,18 @@
                     @update:model-value="v => saveStatus(row.teamId, v)"
                   />
                 </td>
-                <td>
+                <td v-if="rankConfig?.resultsGroupSplit">
+                  <select
+                    :value="groupOfTeam.get(row.teamId) ?? ''"
+                    aria-label="Groupe"
+                    class="group-input"
+                    :disabled="savingGroups"
+                    @change="e => moveToGroup(row.teamId, Number(e.target.value))"
+                  >
+                    <option v-for="(label, li) in groupLabels" :key="li" :value="li">{{ label }}</option>
+                  </select>
+                </td>
+                <td v-else>
                   <input
                     v-model="statusEdits[row.teamId].groupName" aria-label="Groupe"
                     class="group-input"
@@ -211,6 +241,41 @@
               </tr>
             </tbody>
           </table>
+        </details>
+
+        <details class="add-form">
+          <summary>Clubs du championnat (supprimer un club créé par erreur)</summary>
+          <p class="section-intro">
+            Seul un club qui n'est utilisé nulle part (aucun match, toutes compétitions confondues, ni
+            statut, classement UEFA ou palmarès) peut être supprimé. Un doublon d'un club existant se
+            fusionne plutôt depuis l'onglet Équipes.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Club</th>
+                <th>Matchs dans ce championnat</th>
+                <th>Suppression</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="team in countryTeams" :key="team.id">
+                <td>{{ team.name }}</td>
+                <td>{{ leagueMatchCount.get(team.id) ?? 0 }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="delete-btn"
+                    :disabled="leagueMatchCount.has(team.id)"
+                    :title="leagueMatchCount.has(team.id) ? 'Utilisé dans des matchs de ce championnat' : 'Supprimer ce club'"
+                    :aria-label="`Supprimer ${team.name}`"
+                    @click="deleteTeam(team)"
+                  >🗑</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-if="teamError" class="error-text">{{ teamError }}</p>
         </details>
       </template>
       <p v-else class="empty-state">Le classement n'a de sens que pour un championnat.</p>
@@ -229,8 +294,10 @@ import UpcomingMatches from '../components/UpcomingMatches.vue'
 import ResultsGrid from '../components/ResultsGrid.vue'
 import CupBracket from '../components/CupBracket.vue'
 import StatusDropdown from '../components/StatusDropdown.vue'
-import { groupAssignment, twoPoolSplit } from '../utils/groupSplit.js'
+import { groupAssignment, groupRankMarkers, twoPoolSplit, withManualGroups } from '../utils/groupSplit.js'
 import { compareByRoundThenDate, roundNumber } from '../utils/rounds.js'
+import { lockedTeamIds, remainingByTeam } from '../utils/lockedRanks.js'
+import { isPlayoffMatch } from '../utils/playoffRounds.js'
 
 const props = defineProps({
   country: { type: String, required: true }
@@ -745,7 +812,15 @@ const LEAGUE_RANK_CONFIG = {
 
 const rankConfig = computed(() => league.value ? LEAGUE_RANK_CONFIG[league.value.code] ?? null : null)
 
+// Matchs du championnat hors barrages (classes a part, cf. playoffRounds) : les barrages
+// opposent parfois des clubs d'une autre division et ne comptent pas au classement.
 const rawMatches = ref([])
+const hasPlayoffs = ref(false)
+// Clubs du pays (suppression d'un club cree par erreur) et nombre de matchs de chacun dans ce
+// championnat, barrages compris : un club utilise ne peut pas etre supprime.
+const countryTeams = ref([])
+const leagueMatchCount = ref(new Map())
+const teamError = ref('')
 
 // Detecte les "cycles" de confrontations (1ere fois qu'une paire ordonnee d'equipes se
 // rencontre = cycle 1, 2e fois = cycle 2...), exactement comme ResultsGrid.vue - sert ici a
@@ -812,27 +887,50 @@ function groupAssignmentFromMatches(sizes) {
 // matchs de la 2e phase entre membres du groupe), donc identiques au classement general
 // standard tant qu'aucun match de 2e phase n'a ete joue, et evoluent ensuite au fil des
 // resultats - comme demande pour l'Autriche/la Finlande.
+const groupLabels = computed(() => {
+  const split = rankConfig.value?.resultsGroupSplit
+  return split ? split.sizes.map((_, i) => split.labels?.[i] ?? `Groupe ${i + 1}`) : []
+})
+
+// Groupe de chaque equipe : deduit des matchs de 2e phase (a defaut, decoupage du classement de
+// phase 1), puis corrige par le groupe choisi a la main dans l'IHM (cf. moveToGroup).
+const groupOfTeam = computed(() => {
+  const split = rankConfig.value?.resultsGroupSplit
+  if (!split) return new Map()
+  let auto = groupAssignmentFromMatches(split.sizes)
+  if (!auto) {
+    auto = new Map()
+    let start = 0
+    split.sizes.forEach((size, i) => {
+      for (const row of frozenStandings.value.slice(start, start + size)) auto.set(row.teamId, i)
+      start += size
+    })
+  }
+  return withManualGroups(auto, teamStatusMap.value, groupLabels.value)
+})
+
+const hasManualGroups = computed(() =>
+  Object.values(teamStatusMap.value).some(s => groupLabels.value.includes(s?.groupName)))
+
+// Icones de groupe du classement de phase 1 : par rang, sauf repartition corrigee a la main
+// (une equipe peut alors porter l'icone d'un groupe qui ne correspond pas a son rang).
+const mainRankMarkers = computed(() => {
+  const split = rankConfig.value?.resultsGroupSplit
+  if (!split || !hasManualGroups.value || !rankConfig.value.rankMarkers) return rankConfig.value?.rankMarkers
+  return groupRankMarkers(frozenStandings.value.map(r => r.teamId), groupOfTeam.value, split.sizes, rankConfig.value.rankMarkers)
+})
+
 const realGroupStandings = computed(() => {
   const split = rankConfig.value?.resultsGroupSplit
   if (!split) return []
-  const { sizes, labels, groupSlots } = split
+  const { groupSlots } = split
   const defaultSlots = { ldcSlots: 0, elSlots: 0, eclSlots: 0, barrageSlots: 0, relegationSlots: 0, rankMarkers: null }
   const cumulativeByTeam = new Map(standings.value.map(r => [r.teamId, r]))
-  const blocks = sizes.map((size, i) => ({ label: labels?.[i] ?? `Groupe ${i + 1}`, rows: [], slots: groupSlots?.[i] ?? defaultSlots }))
+  const blocks = groupLabels.value.map((label, i) => ({ label, rows: [], slots: groupSlots?.[i] ?? defaultSlots }))
 
-  const groupOfTeam = groupAssignmentFromMatches(sizes)
-  if (groupOfTeam) {
-    for (const row of frozenStandings.value) {
-      const gi = groupOfTeam.get(row.teamId)
-      if (gi != null && blocks[gi]) blocks[gi].rows.push(cumulativeByTeam.get(row.teamId) ?? row)
-    }
-  } else {
-    let start = 0
-    for (let i = 0; i < sizes.length && start < frozenStandings.value.length; i++) {
-      const teamIds = frozenStandings.value.slice(start, start + sizes[i]).map(r => r.teamId)
-      blocks[i].rows = teamIds.map(id => cumulativeByTeam.get(id)).filter(Boolean)
-      start += sizes[i]
-    }
+  for (const row of frozenStandings.value) {
+    const gi = groupOfTeam.value.get(row.teamId)
+    if (gi != null && blocks[gi]) blocks[gi].rows.push(cumulativeByTeam.get(row.teamId) ?? row)
   }
 
   for (const block of blocks) {
@@ -935,14 +1033,23 @@ async function load() {
     slots.barrageSlots = league.value.barrageSlots
     slots.totalRounds = league.value.totalRounds
 
-    const needsRawMatches = !!rankConfig.value?.resultsGroupSplit || league.value.code === 'MALTE'
-    const [standingsList, statuses, matchList] = await Promise.all([
+    // Matchs bruts : 2e phase reconstruite cote client (resultsGroupSplit, Malte) et matchs
+    // restants des places definitives (mainLockedIds).
+    const [standingsList, statuses, matchList, teamList] = await Promise.all([
       api.getStandings(league.value.id),
       api.getTeamStatuses(league.value.id),
-      needsRawMatches ? api.getMatchesByCompetition(league.value.id) : Promise.resolve([])
+      api.getMatchesByCompetition(league.value.id),
+      api.getTeams({ competitionId: league.value.id })
     ])
+    countryTeams.value = teamList
+    const counts = new Map()
+    for (const m of matchList) {
+      for (const id of [m.team1Id, m.team2Id]) counts.set(id, (counts.get(id) ?? 0) + 1)
+    }
+    leagueMatchCount.value = counts
     standings.value = standingsList
-    rawMatches.value = matchList
+    rawMatches.value = matchList.filter(m => !isPlayoffMatch(m))
+    hasPlayoffs.value = matchList.some(isPlayoffMatch)
 
     const map = {}
     for (const s of statuses) map[s.teamId] = s
@@ -963,6 +1070,9 @@ async function load() {
     standings.value = []
     teamStatusMap.value = {}
     rawMatches.value = []
+    hasPlayoffs.value = false
+    countryTeams.value = []
+    leagueMatchCount.value = new Map()
   }
   await loadProjected()
   loaded.value = true
@@ -976,6 +1086,35 @@ const mainStandingsRows = computed(() => {
   if (rankConfig.value?.resultsGroupSplit) return frozenStandings.value
   return showProjected.value ? projectedStandings.value : standings.value
 })
+
+const regularSeasonMatches = computed(() =>
+  allCycles.value.filter(c => c.cycle <= regularSeasonCycles.value).flatMap(c => c.list))
+const secondPhaseMatches = computed(() =>
+  allCycles.value.filter(c => c.cycle > regularSeasonCycles.value).flatMap(c => c.list))
+
+// Places definitives du classement principal (le classement projete a sa propre colonne). Pour un
+// championnat scinde, c'est le classement fige de la saison reguliere : seuls ses matchs comptent,
+// plus les journees pas encore saisies tant que la 2e phase n'a pas commence.
+const mainLockedIds = computed(() => {
+  if (!league.value || projectionActive.value) return null
+  if (!rankConfig.value?.resultsGroupSplit) {
+    return lockedTeamIds(standings.value, remainingByTeam(rawMatches.value, standings.value.map(r => r.teamId), league.value.totalRounds))
+  }
+  const rows = frozenStandings.value
+  const missingRounds = secondPhaseMatches.value.length ? 0 : league.value.totalRounds
+  return lockedTeamIds(rows, remainingByTeam(regularSeasonMatches.value, rows.map(r => r.teamId), missingRounds))
+})
+
+// Mini-championnats : tant qu'aucun match de 2e phase d'une equipe n'est saisi, ses matchs
+// restants sont inconnus (aucune place definitive dans son groupe).
+const groupLockedIds = computed(() => realGroupStandings.value.map(grp => {
+  const ids = grp.rows.map(r => r.teamId)
+  const remaining = remainingByTeam(rawMatches.value, ids, 0)
+  for (const id of ids) {
+    if (!secondPhaseMatches.value.some(m => m.team1Id === id || m.team2Id === id)) remaining.delete(id)
+  }
+  return lockedTeamIds(grp.rows, remaining)
+}))
 
 async function loadProjected() {
   projectedStandings.value = showProjected.value && league.value ? await api.getProjectedStandings(league.value.id) : []
@@ -991,6 +1130,46 @@ async function saveStatus(teamId, value) {
   const payload = { ...value, groupName: value.groupName || null }
   const updated = await api.setTeamStatus(league.value.id, teamId, payload)
   teamStatusMap.value = { ...teamStatusMap.value, [teamId]: updated }
+}
+
+// Le serveur refuse si le club est encore utilise ailleurs (coupe, coupe d'Europe, palmares...)
+// et en donne le detail.
+async function deleteTeam(team) {
+  if (!window.confirm(`Supprimer définitivement le club ${team.name} ?`)) return
+  teamError.value = ''
+  try {
+    await api.deleteTeam(team.id)
+    countryTeams.value = countryTeams.value.filter(t => t.id !== team.id)
+  } catch (e) {
+    teamError.value = e.response?.data?.error ?? 'Erreur lors de la suppression du club.'
+  }
+}
+
+const savingGroups = ref(false)
+
+// Deplace une equipe dans un autre groupe : la repartition de TOUTES les equipes est enregistree
+// (statut groupName), pour que le classement du serveur se scinde lui aussi de facon complete.
+async function moveToGroup(teamId, groupIndex) {
+  const assignment = new Map(groupOfTeam.value).set(teamId, groupIndex)
+  await saveGroups([...assignment].map(([id, gi]) => [id, groupLabels.value[gi]]))
+}
+
+async function resetGroups() {
+  const manual = Object.values(teamStatusMap.value).filter(s => groupLabels.value.includes(s?.groupName))
+  await saveGroups(manual.map(s => [s.teamId, null]))
+}
+
+async function saveGroups(groupByTeam) {
+  savingGroups.value = true
+  try {
+    for (const [teamId, groupName] of groupByTeam) {
+      if ((teamStatusMap.value[teamId]?.groupName ?? null) === groupName) continue
+      await saveStatus(teamId, { ...statusEdits[teamId], groupName })
+    }
+    await load()
+  } finally {
+    savingGroups.value = false
+  }
 }
 
 watch(showProjected, loadProjected)

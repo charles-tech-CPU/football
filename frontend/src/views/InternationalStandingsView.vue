@@ -3,45 +3,71 @@
     <span class="hero-eyebrow">Sélections nationales</span>
     <h1>Classements internationaux</h1>
     <p class="section-intro">
-      Classements des compétitions de sélections nationales, recalculés en direct comme pour les championnats de
-      clubs : saison 2026-2027 en cours, et historique des grandes compétitions (phases finales et qualifications).
+      Choisis une compétition, puis une édition : phase finale et qualifications sont regroupées dans
+      la même édition. Classements recalculés en direct comme pour les championnats de clubs ;
+      <span class="live-dot" aria-hidden="true"></span> = en cours cette saison.
     </p>
   </section>
 
   <InternationalNav />
 
-  <div class="tab-bar">
-    <button
-      v-for="c in CONFEDERATIONS"
-      :key="c.code"
-      class="tab-btn"
-      :class="{ active: activeConfederation === c.code }"
-      @click="selectConfederation(c.code)"
-    >{{ c.label }}</button>
-  </div>
+  <template v-if="families.length">
+    <div class="tab-bar" aria-label="Compétition">
+      <button
+        v-for="f in families"
+        :key="f.key"
+        class="tab-btn"
+        :class="{ active: active?.family.key === f.key }"
+        @click="selectFamily(f)"
+      >{{ f.label }}<span v-if="f.current" class="live-dot" title="En cours cette saison"></span></button>
+    </div>
 
-  <div v-if="editionOptions.length" class="filters">
-    <select v-model="edition" aria-label="Édition">
-      <option v-if="currentCompetitions.length" :value="CURRENT">Saison {{ currentSeasonLabel }} (en cours)</option>
-      <optgroup v-for="g in historyGroups" :key="g.label" :label="g.label">
-        <option v-for="c in g.competitions" :key="c.id" :value="c.id">{{ c.name }}</option>
-      </optgroup>
-    </select>
-  </div>
+    <div v-if="active" class="edition-row">
+      <div class="tab-bar sub-tab-bar" aria-label="Édition">
+        <button
+          v-for="e in recentEditions"
+          :key="e.key"
+          class="tab-btn"
+          :class="{ active: active.edition.key === e.key }"
+          @click="selectEdition(e)"
+        >{{ e.label }}<span v-if="e.current" class="live-dot" title="En cours cette saison"></span></button>
+      </div>
+      <select
+        v-if="olderEditions.length"
+        class="older-editions"
+        :class="{ active: olderEditions.includes(active.edition) }"
+        :value="olderEditions.includes(active.edition) ? active.edition.key : ''"
+        aria-label="Éditions précédentes"
+        @change="selectEdition(olderEditions.find(e => e.key === $event.target.value))"
+      >
+        <option value="" disabled>Éditions précédentes…</option>
+        <option v-for="e in olderEditions" :key="e.key" :value="e.key">{{ e.label }}</option>
+      </select>
+    </div>
 
-  <div class="tab-bar sub-tab-bar">
-    <button class="tab-btn" :class="{ active: activeView === 'classement' }" @click="activeView = 'classement'">Classements</button>
-    <button class="tab-btn" :class="{ active: activeView === 'resultats' }" @click="activeView = 'resultats'">Résultats</button>
-  </div>
+    <div v-if="active" class="phase-row">
+      <div v-if="active.edition.phases.length > 1" class="tab-bar sub-tab-bar" aria-label="Phase">
+        <button
+          v-for="p in active.edition.phases"
+          :key="p.competition.id"
+          class="tab-btn"
+          :class="{ active: active.phase.competition.id === p.competition.id }"
+          @click="selectedId = p.competition.id"
+        >{{ p.label }}</button>
+      </div>
+      <div class="tab-bar sub-tab-bar" aria-label="Affichage">
+        <button class="tab-btn" :class="{ active: activeView === 'classement' }" @click="activeView = 'classement'">Classements</button>
+        <button class="tab-btn" :class="{ active: activeView === 'resultats' }" @click="activeView = 'resultats'">Résultats</button>
+      </div>
+    </div>
 
-  <template v-if="activeCompetitions.length">
-    <div v-for="comp in activeCompetitions" :key="comp.id" class="competition-block">
+    <div v-if="comp" class="competition-block">
       <h2>{{ comp.name }}</h2>
       <InternationalResults
         v-if="activeView === 'resultats'"
         :matches="matchesByCompetition[comp.id] ?? []"
         :rows="standingsByCompetition[comp.id] ?? []"
-        @saved="loadFor([comp])"
+        @saved="loadFor(comp)"
       />
       <template v-else>
         <StandingsTable
@@ -64,7 +90,7 @@
       </template>
     </div>
   </template>
-  <p v-else-if="loaded" class="empty-state">Aucune compétition pour cette confédération.</p>
+  <p v-else-if="loaded" class="empty-state">Aucune compétition de sélections.</p>
 </template>
 
 <script setup>
@@ -74,14 +100,11 @@ import api from '../services/api'
 import StandingsTable from '../components/StandingsTable.vue'
 import InternationalResults from '../components/InternationalResults.vue'
 import InternationalNav from '../components/InternationalNav.vue'
-import { CONFEDERATIONS, confederationForCompetitionCode } from '../utils/confederations'
+import { internationalFamilies, locateCompetition } from '../utils/internationalEditions'
 import { internationalLegend, internationalRowClasses } from '../utils/internationalQualification'
 
-// Edition affichee : toutes les competitions de la saison en cours de la confederation (CURRENT),
-// ou une seule competition de l'historique (son id). Dans l'URL (?competition=12) pour les liens
-// depuis les listes de matchs (fiche club, tete-a-tete).
-const CURRENT = 'current'
-
+// Une seule competition affichee a la fois (phase d'une edition), dans l'URL (?competition=12)
+// pour les liens depuis les listes de matchs (fiche club, tete-a-tete).
 const route = useRoute()
 const router = useRouter()
 
@@ -90,85 +113,64 @@ const standingsByCompetition = ref({})
 const matchesByCompetition = ref({})
 const loadedIds = ref(new Set())
 const activeView = ref('classement')
-const activeConfederation = ref(CONFEDERATIONS[0].code)
-const edition = ref(CURRENT)
+const selectedId = ref(null)
 const loaded = ref(false)
 
 const currentSeason = computed(() => Math.max(...competitions.value.map(c => c.season ?? 0)))
-const currentSeasonLabel = computed(() => `${currentSeason.value - 1}-${currentSeason.value}`)
+const families = computed(() => internationalFamilies(competitions.value, currentSeason.value))
+const active = computed(() => locateCompetition(families.value, selectedId.value))
+const comp = computed(() => active.value?.phase.competition ?? null)
 
-const confederationCompetitions = computed(() =>
-  competitions.value.filter(c => confederationForCompetitionCode(c.code)?.code === activeConfederation.value))
+// Les editions les plus recentes en onglets, les autres (jusqu'a 1916 pour la Copa America) en liste.
+const RECENT_EDITIONS = 10
+const recentEditions = computed(() => active.value?.family.editions.slice(0, RECENT_EDITIONS) ?? [])
+const olderEditions = computed(() => active.value?.family.editions.slice(RECENT_EDITIONS) ?? [])
 
-const currentCompetitions = computed(() =>
-  confederationCompetitions.value.filter(c => c.season === currentSeason.value))
-
-// Historique de la confederation, par annee (la plus recente d'abord).
-const historyGroups = computed(() => {
-  const byYear = new Map()
-  const history = confederationCompetitions.value
-    .filter(c => c.season !== currentSeason.value)
-    .toSorted((a, b) => b.season - a.season || a.name.localeCompare(b.name))
-  for (const c of history) {
-    const label = String(c.season)
-    if (!byYear.has(label)) byYear.set(label, [])
-    byYear.get(label).push(c)
-  }
-  return [...byYear.entries()].map(([label, comps]) => ({ label, competitions: comps }))
-})
-
-const editionOptions = computed(() => [
-  ...(currentCompetitions.value.length ? [CURRENT] : []),
-  ...historyGroups.value.flatMap(g => g.competitions.map(c => c.id))
-])
-
-const activeCompetitions = computed(() => {
-  if (edition.value === CURRENT) return currentCompetitions.value
-  return confederationCompetitions.value.filter(c => c.id === edition.value)
-})
-
-function selectConfederation(code) {
-  activeConfederation.value = code
-  edition.value = editionOptions.value[0] ?? CURRENT
+// Nouvelle competition ou edition : sa phase finale (ou sa 1re phase) de l'edition la plus recente.
+function selectFamily(family) {
+  selectEdition(family.editions[0])
 }
 
-// Classement + matchs (pour l'onglet Resultats) de chaque competition, recharges ensemble
-// pour que la grille des resultats suive toujours l'ordre du classement.
-async function loadFor(comps) {
-  const entries = await Promise.all(comps.map(async c => [c.id, await Promise.all([
-    api.getStandings(c.id),
-    api.getMatchesByCompetition(c.id)
-  ])]))
-  standingsByCompetition.value = { ...standingsByCompetition.value, ...Object.fromEntries(entries.map(([id, [s]]) => [id, s])) }
-  matchesByCompetition.value = { ...matchesByCompetition.value, ...Object.fromEntries(entries.map(([id, [, m]]) => [id, m])) }
-  loadedIds.value = new Set([...loadedIds.value, ...comps.map(c => c.id)])
+function selectEdition(edition) {
+  selectedId.value = edition.phases[0].competition.id
 }
 
+// Classement + matchs (pour l'onglet Resultats), recharges ensemble pour que la grille des
+// resultats suive toujours l'ordre du classement.
+async function loadFor(c) {
+  const [standings, matches] = await Promise.all([api.getStandings(c.id), api.getMatchesByCompetition(c.id)])
+  standingsByCompetition.value = { ...standingsByCompetition.value, [c.id]: standings }
+  matchesByCompetition.value = { ...matchesByCompetition.value, [c.id]: matches }
+  loadedIds.value = new Set([...loadedIds.value, c.id])
+}
+
+// Par defaut : la competition demandee dans l'URL, sinon la premiere en cours cette saison.
 function applyRouteCompetition() {
   const id = Number(route.query.competition)
-  const comp = competitions.value.find(c => c.id === id)
-  if (!comp) return false
-  activeConfederation.value = confederationForCompetitionCode(comp.code)?.code ?? activeConfederation.value
-  edition.value = comp.season === currentSeason.value ? CURRENT : comp.id
-  return true
+  if (locateCompetition(families.value, id)) {
+    selectedId.value = id
+    return
+  }
+  const family = families.value.find(f => f.current) ?? families.value[0]
+  if (family) selectEdition(family.editions.find(e => e.current) ?? family.editions[0])
 }
 
 async function load() {
   loaded.value = false
   competitions.value = await api.getCompetitions({ type: 'INTERNATIONAL' })
-  if (!applyRouteCompetition()) edition.value = editionOptions.value[0] ?? CURRENT
-  await loadFor(activeCompetitions.value)
+  applyRouteCompetition()
+  if (comp.value) await loadFor(comp.value)
   loaded.value = true
 }
 
-watch(activeCompetitions, comps => {
-  if (!loaded.value) return
-  router.replace({ query: edition.value === CURRENT ? {} : { competition: edition.value } })
-  loadFor(comps.filter(c => !loadedIds.value.has(c.id)))
+watch(comp, c => {
+  if (!loaded.value || !c) return
+  router.replace({ query: { competition: c.id } })
+  if (!loadedIds.value.has(c.id)) loadFor(c)
 })
 
-watch(() => route.query.competition, () => {
-  if (loaded.value) applyRouteCompetition()
+watch(() => route.query.competition, id => {
+  if (loaded.value && id && Number(id) !== selectedId.value) applyRouteCompetition()
 })
 
 onMounted(load)
@@ -177,5 +179,43 @@ onMounted(load)
 <style scoped>
 .competition-block {
   margin-bottom: 32px;
+}
+
+.edition-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: flex-start;
+}
+
+.older-editions {
+  margin-top: -8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 0.86em;
+}
+
+.older-editions.active {
+  border-color: var(--primary);
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.phase-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: flex-start;
+}
+
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
 }
 </style>

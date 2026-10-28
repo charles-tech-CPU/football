@@ -1,6 +1,7 @@
 // Etat d'avancement d'une competition pour les cards de l'onglet Competitions :
 // matchs en retard et journees dont le calendrier (date + horaire) est complet.
 import { isPlayed } from './matchEdit.js'
+import { isPlayoffMatch } from './playoffRounds.js'
 
 const DELAYED_STATUSES = new Set(['POSTPONED', 'SUSPENDED'])
 
@@ -77,4 +78,40 @@ export function remainingProgress(matches, totalRounds, today) {
     otherRounds: otherRounds.size,
     finished: pending.length === 0 && missing === 0
   }
+}
+
+// Valeur de la pastille bleue : journees restantes, les barrages / tours hors journees comptant
+// pour une de plus.
+export function roundsLeft(remaining) {
+  return remaining ? remaining.rounds + (remaining.otherRounds ? 1 : 0) : 0
+}
+
+// Seuil (pastille bleue) a partir duquel un championnat est signale en fin de saison.
+export const SEASON_END_ROUNDS = 3
+
+function plural(n, word) {
+  return `${n} ${word}${n > 1 ? 's' : ''}`
+}
+
+// Ce qu'il reste a verifier sur un championnat en fin de saison (cf. SEASON_END_ROUNDS), deduit
+// de ses matchs : retards, calendrier a completer, barrages a preparer, puis classement final.
+export function seasonEndChecklist(matches, competition, { late, calendar }) {
+  const todo = []
+  if (late) todo.push(`${plural(late, 'match')} en retard à saisir ou à reprogrammer`)
+  if (calendar.firstMissing != null) {
+    todo.push(`Calendrier à compléter (dates / horaires) à partir de la J${calendar.firstMissing}`)
+  }
+  const playoffs = matches.filter(isPlayoffMatch)
+  const pendingPlayoffs = playoffs.filter(m => isPendingName(m.team1Name) || isPendingName(m.team2Name))
+  if (pendingPlayoffs.length) {
+    todo.push(`Barrages : ${plural(pendingPlayoffs.length, 'match')} encore « A DETERMINER », à compléter avec les qualifiés`)
+  } else if (!playoffs.length && competition.barrageSlots > 0) {
+    todo.push(`Barrages : ${plural(competition.barrageSlots, 'place')} de barrage prévue${competition.barrageSlots > 1 ? 's' : ''}, aucun match saisi`)
+  }
+  todo.push('Classement final : vérifier le champion, les places européennes et la relégation')
+  return todo
+}
+
+function isPendingName(name) {
+  return (name ?? '').toUpperCase().startsWith('A DETERMINER')
 }
