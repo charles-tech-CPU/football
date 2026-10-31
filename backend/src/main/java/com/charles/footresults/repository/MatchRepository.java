@@ -14,14 +14,15 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
 
     List<Match> findByCompetitionIdOrderByDateAscTimeAsc(Long competitionId);
 
-    List<Match> findByCompetitionIdAndStatusOrderByDateAscTimeAsc(Long competitionId, MatchStatus status);
+    /** Matchs d'une competition parmi ces statuts (ex: joues et forfaits, cf. Match.isDecided). */
+    List<Match> findByCompetitionIdAndStatusInOrderByDateAscTimeAsc(Long competitionId, List<MatchStatus> statuses);
 
     /** Matchs restant a jouer d'une competition (classement projete, cf. StandingsService). */
     List<Match> findByCompetitionIdAndStatusNot(Long competitionId, MatchStatus status);
 
     /** Reserve aux classements de phase (ex: phase de ligue LDC/EL/EC) : ne tient compte que des matchs dont le round_label contient ce fragment. */
-    List<Match> findByCompetitionIdAndStatusAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
-            Long competitionId, MatchStatus status, String roundLabelPart);
+    List<Match> findByCompetitionIdAndStatusInAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
+            Long competitionId, List<MatchStatus> statuses, String roundLabelPart);
 
     /** Tous les matchs d'une journee (affiches du calendrier, cf. FeaturedMatchService). */
     List<Match> findByCompetitionIdAndRoundLabel(Long competitionId, String roundLabel);
@@ -49,17 +50,22 @@ public interface MatchRepository extends JpaRepository<Match, Long> {
     /** Tous les matchs joues de selections nationales, toutes saisons (classement mondial Elo, cf. InternationalRankingService). */
     List<Match> findByCompetition_TypeAndStatus(CompetitionType type, MatchStatus status);
 
-    /** Matchs sans date (tours de qualif. coupes d'Europe sans date exploitable) rejetes en fin de liste. */
-    @Query("SELECT m FROM Match m WHERE m.status = :status ORDER BY m.date DESC NULLS LAST, m.time DESC NULLS LAST")
-    List<Match> findRecentByStatus(@Param("status") MatchStatus status, Pageable pageable);
+    /** Matchs avec leur score parmi ces statuts (joues et forfaits) ; ceux sans date (tours de qualif.
+     * coupes d'Europe sans date exploitable) rejetes en fin de liste. */
+    @Query("SELECT m FROM Match m WHERE m.status IN :statuses AND m.score1 IS NOT NULL AND m.score2 IS NOT NULL "
+            + "ORDER BY m.date DESC NULLS LAST, m.time DESC NULLS LAST")
+    List<Match> findRecentByStatusIn(@Param("statuses") List<MatchStatus> statuses, Pageable pageable);
 
     /**
-     * Matchs a venir (SCHEDULED/FORFEIT ; les reportes/suspendus ont leur propre onglet dedie),
+     * Matchs a venir (SCHEDULED, et FORFEIT tant que son score n'est pas saisi ; les reportes/suspendus
+     * ont leur propre onglet dedie, un forfait avec son score est un resultat acquis),
      * avec filtre optionnel par type de competition (championnat/coupe nationale) ou par code
      * (LDC/EL/EC) et vraie pagination cote base (le calendrier agrege ~8000 matchs toutes
      * competitions confondues, hors de question de tout charger cote client a chaque fois).
      */
     @Query("SELECT m FROM Match m WHERE m.status NOT IN :excludedStatuses "
+            + "AND NOT (m.status = com.charles.footresults.domain.MatchStatus.FORFEIT "
+            + "AND m.score1 IS NOT NULL AND m.score2 IS NOT NULL) "
             + "AND (:type IS NULL OR m.competition.type = :type) "
             + "AND (:code IS NULL OR m.competition.code = :code) "
             + "ORDER BY m.date ASC NULLS LAST, m.time ASC NULLS LAST")

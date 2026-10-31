@@ -2,6 +2,7 @@ package com.charles.footresults.service;
 
 import com.charles.footresults.domain.Competition;
 import com.charles.footresults.domain.CompetitionType;
+import com.charles.footresults.domain.FinalStanding;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.MatchStatus;
 import com.charles.footresults.domain.Team;
@@ -10,6 +11,7 @@ import com.charles.footresults.dto.HeadToHeadCellDto;
 import com.charles.footresults.dto.ProjectedStandingRowDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.CompetitionRepository;
+import com.charles.footresults.repository.FinalStandingRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import java.util.ArrayList;
@@ -44,6 +46,9 @@ import org.springframework.stereotype.Service;
  * Les barrages (promotion/relegation, place europeenne...) sont saisis dans la competition du
  * championnat (round_label contenant "Barrage") mais ne comptent pas au classement : ce sont
  * des confrontations a elimination directe, parfois contre des clubs d'une autre division.
+ *
+ * Exception : une fois la competition cloturee (cf. CompetitionClosureService), son classement est
+ * le classement final fige a la cloture, dans l'ordre valide a la main.
  */
 @Service
 public class StandingsService {
@@ -52,6 +57,8 @@ public class StandingsService {
     private static final int POINTS_DRAW = 1;
     private static final Pattern LEAGUE_ROUND = Pattern.compile("^J(\\d+)$");
     private static final String PLAYOFF_ROUND = "BARRAGE";
+    /** Statuts pouvant porter un resultat acquis (cf. Match.isDecided : un forfait doit avoir son score). */
+    private static final List<MatchStatus> DECIDED_STATUSES = List.of(MatchStatus.COMPLETED, MatchStatus.FORFEIT);
 
     private static final Comparator<StandingRowDto> RANKING_ORDER = Comparator.comparingInt(StandingRowDto::points)
             .reversed()
@@ -62,14 +69,17 @@ public class StandingsService {
     private final MatchRepository matchRepository;
     private final TeamCompetitionStatusRepository statusRepository;
     private final CompetitionRepository competitionRepository;
+    private final FinalStandingRepository finalStandingRepository;
 
     public StandingsService(
             MatchRepository matchRepository,
             TeamCompetitionStatusRepository statusRepository,
-            CompetitionRepository competitionRepository) {
+            CompetitionRepository competitionRepository,
+            FinalStandingRepository finalStandingRepository) {
         this.matchRepository = matchRepository;
         this.statusRepository = statusRepository;
         this.competitionRepository = competitionRepository;
+        this.finalStandingRepository = finalStandingRepository;
     }
 
     /**
@@ -82,8 +92,11 @@ public class StandingsService {
     public List<StandingRowDto> computeStandingsForRound(Long competitionId, String roundLabelPart) {
         Map<Long, TeamTally> byTeam = new LinkedHashMap<>();
         for (Match m :
-                matchRepository.findByCompetitionIdAndStatusAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
-                        competitionId, MatchStatus.COMPLETED, roundLabelPart)) {
+                matchRepository.findByCompetitionIdAndStatusInAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
+                        competitionId, DECIDED_STATUSES, roundLabelPart)) {
+            if (!m.isDecided()) {
+                continue;
+            }
             tallyFor(byTeam, m.getTeam1()).addResult(m.getScore1(), m.getScore2());
             tallyFor(byTeam, m.getTeam2()).addResult(m.getScore2(), m.getScore1());
         }
@@ -93,6 +106,40 @@ public class StandingsService {
     }
 
     public List<StandingRowDto> computeStandings(Long competitionId) {
+        boolean closed = competitionRepository
+                .findById(competitionId)
+                .map(Competition::isClosed)
+                .orElse(false);
+        if (closed) {
+            List<FinalStanding> frozen = finalStandingRepository.findByCompetitionIdOrderByFinalRankAsc(competitionId);
+            if (!frozen.isEmpty()) {
+                return frozen.stream().map(StandingsService::frozenRow).toList();
+            }
+        }
+        return computeLiveStandings(competitionId);
+    }
+
+    /** Ligne du classement fige a la cloture, sous la meme forme qu'une ligne calculee. */
+    public static StandingRowDto frozenRow(FinalStanding f) {
+        Team team = f.getTeam();
+        return new StandingRowDto(
+                team.getId(),
+                team.getName(),
+                team.getLogoPath(),
+                team.getCountry(),
+                f.getPlayed(),
+                f.getWon(),
+                f.getDrawn(),
+                f.getLost(),
+                f.getGoalsFor(),
+                f.getGoalsAgainst(),
+                f.getGoalsFor() - f.getGoalsAgainst(),
+                f.getPoints(),
+                f.getGroupName());
+    }
+
+    /** Classement calcule a partir des matchs, meme pour une competition cloturee. */
+    public List<StandingRowDto> computeLiveStandings(Long competitionId) {
         List<Match> played = playedMatches(competitionId);
         if (played.stream().anyMatch(m -> m.getGroupName() != null)) {
             return standingsByMatchGroup(played);
@@ -100,13 +147,16 @@ public class StandingsService {
 
         Map<Long, String> teamGroup = new LinkedHashMap<>();
         // Une equipe inscrite dans un groupe apparait des le depart (0 match, 0 pt),
-        // meme avant son premier match : un groupe s'affiche toujours complet.
+        // meme avant son premier match : un groupe s'affiche toujours complet. Idem pour
+        // toute equipe inscrite a un championnat (saison preparee avant son 1er match).
         Map<Long, TeamTally> byTeam = new LinkedHashMap<>();
         boolean international = false;
         for (TeamCompetitionStatus s : statusRepository.findByCompetitionId(competitionId)) {
             international = s.getCompetition().getType() == CompetitionType.INTERNATIONAL;
             if (s.getGroupName() != null && !s.getGroupName().isBlank()) {
                 teamGroup.put(s.getTeam().getId(), s.getGroupName());
+                tallyFor(byTeam, s.getTeam());
+            } else if (s.getCompetition().getType() == CompetitionType.LEAGUE) {
                 tallyFor(byTeam, s.getTeam());
             }
         }
@@ -176,12 +226,19 @@ public class StandingsService {
     }
 
     private List<StandingRowDto> sortRows(List<StandingRowDto> rows) {
+        // Saison pas encore commencee (clubs inscrits, aucun match) : ordre alphabetique.
+        if (rows.stream().allMatch(r -> r.played() == 0)) {
+            return rows.stream()
+                    .sorted(Comparator.comparing(
+                            StandingRowDto::teamName, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .toList();
+        }
         return rows.stream().sorted(RANKING_ORDER).toList();
     }
 
     /**
-     * Classement final projete : chaque match pas encore joue (statut different de COMPLETED)
-     * est simule en attribuant a chaque equipe sa moyenne actuelle de points par match (moyenne
+     * Classement final projete : chaque match pas encore joue (ni COMPLETED, ni forfait avec son
+     * score) est simule en attribuant a chaque equipe sa moyenne actuelle de points par match (moyenne
      * du championnat pour une equipe qui n'a encore rien joue). Pas de simulation de buts : a
      * egalite de points projetes, on departage avec le classement actuel.
      *
@@ -201,7 +258,7 @@ public class StandingsService {
         }
         Map<Long, Integer> remaining = new HashMap<>();
         for (Match m : matchRepository.findByCompetitionIdAndStatusNot(competitionId, MatchStatus.COMPLETED)) {
-            if (isPlayoff(m)) {
+            if (isPlayoff(m) || m.isDecided()) {
                 continue;
             }
             for (Team team : List.of(m.getTeam1(), m.getTeam2())) {
@@ -296,12 +353,12 @@ public class StandingsService {
         return result;
     }
 
-    /** Matchs joues comptant au classement : tous sauf les barrages. */
+    /** Matchs joues (forfaits sur tapis vert compris) comptant au classement : tous sauf les barrages. */
     private List<Match> playedMatches(Long competitionId) {
         return matchRepository
-                .findByCompetitionIdAndStatusOrderByDateAscTimeAsc(competitionId, MatchStatus.COMPLETED)
+                .findByCompetitionIdAndStatusInOrderByDateAscTimeAsc(competitionId, DECIDED_STATUSES)
                 .stream()
-                .filter(m -> !isPlayoff(m))
+                .filter(m -> m.isDecided() && !isPlayoff(m))
                 .toList();
     }
 

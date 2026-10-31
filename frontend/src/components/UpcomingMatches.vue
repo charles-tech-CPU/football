@@ -1,5 +1,8 @@
 <template>
-  <p class="section-intro">Matchs pas encore joués (à venir, reportés, suspendus ou forfait).</p>
+  <p class="section-intro">
+    Matchs pas encore joués (à venir, reportés ou suspendus). Un forfait compte comme une victoire 3-0 de
+    l'adversaire (qualification d'office en coupe) et quitte la liste une fois enregistré.
+  </p>
 
   <table v-if="upcoming.length">
     <thead>
@@ -33,7 +36,13 @@
           </span>
         </td>
         <td>
-          <MatchStatusSelect v-model="edits[m.id].status" />
+          <MatchStatusSelect
+            v-model="edits[m.id].status"
+            v-model:score1="edits[m.id].score1"
+            v-model:score2="edits[m.id].score2"
+            :team1-name="m.team1Name"
+            :team2-name="m.team2Name"
+/>
         </td>
         <td>
           <button @click="saveMatch(m)">Enregistrer</button>
@@ -59,6 +68,7 @@ import MatchScoreCells from './MatchScoreCells.vue'
 import MatchStatusSelect from './MatchStatusSelect.vue'
 import { useMatchEdits } from '../composables/useMatchEdits'
 import TeamSelect from './TeamSelect.vue'
+import { isDecided } from '../utils/matchEdit.js'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },
@@ -77,7 +87,7 @@ const loaded = ref(false)
 const sortedTeams = computed(() => teams.value.slice().sort((a, b) => a.name.localeCompare(b.name)))
 
 const upcoming = computed(() => {
-  let list = matches.value.filter(m => m.status !== 'COMPLETED')
+  let list = matches.value.filter(m => !isDecided(m))
   if (props.roundIncludes) {
     const fragments = props.roundIncludes.map(f => f.toUpperCase())
     list = list.filter(m => fragments.some(f => (m.roundLabel ?? '').toUpperCase().includes(f)))

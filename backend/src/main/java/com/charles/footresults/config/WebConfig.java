@@ -1,9 +1,11 @@
 package com.charles.footresults.config;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -22,9 +24,12 @@ public class WebConfig implements WebMvcConfigurer {
     static final String DEFAULT_ALLOWED_ORIGINS = "http://*:5174,https://*.ts.net:[*]";
 
     private final String[] allowedOrigins;
+    private final String logosDir;
 
-    public WebConfig(@Value("${app.cors.allowed-origins:}") String allowedOrigins) {
+    public WebConfig(
+            @Value("${app.cors.allowed-origins:}") String allowedOrigins, @Value("${app.logos.dir:}") String logosDir) {
         this.allowedOrigins = parseOrigins(allowedOrigins);
+        this.logosDir = logosDir;
     }
 
     /** Motifs de la liste, sans espaces ni entrees vides ; les motifs par defaut si la liste n'en contient aucun. */
@@ -41,6 +46,14 @@ public class WebConfig implements WebMvcConfigurer {
                 .map(String::trim)
                 .filter(pattern -> !pattern.isEmpty())
                 .toArray(String[]::new);
+    }
+
+    /** Blasons envoyes depuis l'appli (cf. LogoService) d'abord, puis ceux embarques a l'import. */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String uploaded = Path.of(logosDir.isBlank() ? "." : logosDir).toUri().toString();
+        registry.addResourceHandler("/logos/**")
+                .addResourceLocations(uploaded.endsWith("/") ? uploaded : uploaded + "/", "classpath:/static/logos/");
     }
 
     @Override

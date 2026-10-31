@@ -16,6 +16,9 @@ import com.charles.footresults.domain.Team;
 import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.TeamDto;
 import com.charles.footresults.repository.ClubUefaRankingRepository;
+import com.charles.footresults.repository.CompetitionRepository;
+import com.charles.footresults.repository.EuropeanSlotRepository;
+import com.charles.footresults.repository.FinalStandingRepository;
 import com.charles.footresults.repository.HonourRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
@@ -47,6 +50,15 @@ class TeamServiceTest {
 
     @Mock
     private HonourRepository honourRepository;
+
+    @Mock
+    private FinalStandingRepository finalStandingRepository;
+
+    @Mock
+    private EuropeanSlotRepository europeanSlotRepository;
+
+    @Mock
+    private CompetitionRepository competitionRepository;
 
     @InjectMocks
     private TeamService teamService;

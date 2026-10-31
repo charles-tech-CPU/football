@@ -68,10 +68,12 @@ public class MatchService {
                 .toList();
     }
 
-    /** Derniers matchs joues, toutes competitions confondues, du plus recent au plus ancien. */
+    /** Derniers matchs joues (forfaits avec leur score compris), toutes competitions confondues, du plus recent au plus ancien. */
     @Transactional(readOnly = true)
     public List<MatchDto> findRecentResults(int limit) {
-        return matchRepository.findRecentByStatus(MatchStatus.COMPLETED, PageRequest.of(0, limit)).stream()
+        return matchRepository
+                .findRecentByStatusIn(List.of(MatchStatus.COMPLETED, MatchStatus.FORFEIT), PageRequest.of(0, limit))
+                .stream()
                 .map(MatchDto::from)
                 .toList();
     }
@@ -246,12 +248,22 @@ public class MatchService {
         Match match = matchRepository
                 .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Match introuvable : " + id));
+        requireOpen(match.getCompetition());
         applyFields(match, dto);
         return MatchDto.from(matchRepository.save(match));
     }
 
     public void delete(Long id) {
+        matchRepository.findById(id).ifPresent(m -> requireOpen(m.getCompetition()));
         matchRepository.deleteById(id);
+    }
+
+    /** Une competition cloturee (cf. CompetitionClosureService) est en lecture seule jusqu'a sa reouverture. */
+    private static void requireOpen(Competition competition) {
+        if (competition != null && competition.isClosed()) {
+            throw new IllegalArgumentException(competition.getName()
+                    + " est cloturee : rouvre-la (onglet Classement ou Coupe) pour modifier ses matchs");
+        }
     }
 
     private void applyFields(Match match, MatchCreateDto dto) {
@@ -261,6 +273,7 @@ public class MatchService {
         Competition competition = competitionRepository
                 .findById(dto.competitionId())
                 .orElseThrow(() -> new EntityNotFoundException("Competition introuvable : " + dto.competitionId()));
+        requireOpen(competition);
         Team team1 = teamRepository
                 .findById(dto.team1Id())
                 .orElseThrow(() -> new EntityNotFoundException("Equipe introuvable : " + dto.team1Id()));

@@ -3,6 +3,7 @@ package com.charles.footresults.repository;
 import com.charles.footresults.domain.Honour;
 import com.charles.footresults.domain.Team;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -31,6 +32,16 @@ public interface HonourRepository extends JpaRepository<Honour, Long> {
     @Query(
             "select count(h) from Honour h where h.winnerTeam.id = :teamId or h.runnerUpTeam.id = :teamId or h.thirdTeam.id = :teamId")
     long countByTeam(@Param("teamId") Long teamId);
+
+    /** Lignes de palmares citant une equipe, la plus recente d'abord (nom deja utilise pour ce club). */
+    @Query(
+            "select h from Honour h where h.winnerTeam.id = :teamId or h.runnerUpTeam.id = :teamId or h.thirdTeam.id = :teamId order by h.seasonEnd desc")
+    List<Honour> findByTeam(@Param("teamId") Long teamId);
+
+    /** Saison la plus recente d'une competition du palmares (format du libelle de saison). */
+    Optional<Honour> findFirstByScopeAndKindOrderBySeasonEndDesc(String scope, String kind);
+
+    Optional<Honour> findFirstByScopeAndKindAndSeason(String scope, String kind, String season);
 
     @Query("select distinct h.scope from Honour h order by h.scope")
     List<String> findScopes();

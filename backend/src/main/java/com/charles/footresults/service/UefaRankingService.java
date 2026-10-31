@@ -3,7 +3,6 @@ package com.charles.footresults.service;
 import com.charles.footresults.domain.ClubUefaRanking;
 import com.charles.footresults.domain.CountryUefaRanking;
 import com.charles.footresults.domain.Match;
-import com.charles.footresults.domain.MatchStatus;
 import com.charles.footresults.dto.ClubUefaRankingDto;
 import com.charles.footresults.dto.CountryUefaRankingDto;
 import com.charles.footresults.dto.StandingRowDto;
@@ -255,7 +254,7 @@ public class UefaRankingService {
         BigDecimal undated = BigDecimal.ZERO;
         TreeMap<LocalDate, BigDecimal> byDate = new TreeMap<>();
         for (Match m : matches) {
-            if (!hasFinalScore(m)) {
+            if (!m.isDecided()) {
                 continue;
             }
             RoundCategory category = categorize(m, leaguePhaseStart);
@@ -327,7 +326,7 @@ public class UefaRankingService {
                 TieKey key = tieKeyFor(m, category);
                 ties.computeIfAbsent(key, k -> new ArrayList<>()).add(m);
             }
-            if (hasFinalScore(m)) {
+            if (m.isDecided()) {
                 addResult(pointsByTeam, m.getTeam1().getId(), category, m.getScore1(), m.getScore2());
                 addResult(pointsByTeam, m.getTeam2().getId(), category, m.getScore2(), m.getScore1());
             }
@@ -367,7 +366,7 @@ public class UefaRankingService {
     private Set<Long> leaguePhaseEliminated(Map<Long, List<Match>> leaguePhaseByCompetition) {
         Set<Long> eliminated = new HashSet<>();
         for (Map.Entry<Long, List<Match>> entry : leaguePhaseByCompetition.entrySet()) {
-            boolean complete = entry.getValue().stream().allMatch(m -> m.getStatus() == MatchStatus.COMPLETED);
+            boolean complete = entry.getValue().stream().allMatch(Match::isDecided);
             if (complete) {
                 List<StandingRowDto> standings =
                         standingsService.computeStandingsForRound(entry.getKey(), LEAGUE_PHASE_ROUND);
@@ -377,10 +376,6 @@ public class UefaRankingService {
             }
         }
         return eliminated;
-    }
-
-    private boolean hasFinalScore(Match m) {
-        return m.getStatus() == MatchStatus.COMPLETED && m.getScore1() != null && m.getScore2() != null;
     }
 
     private boolean isTieCategory(RoundCategory category) {
@@ -457,8 +452,16 @@ public class UefaRankingService {
 
     /** Vainqueur d'une confrontation (1 ou plusieurs manches) une fois TOUTES les manches jouees ; null si pas encore decidee. */
     private Long tieLoser(List<Match> legs) {
-        if (!legs.stream().allMatch(this::hasFinalScore)) {
+        if (!legs.stream().allMatch(Match::isDecided)) {
             return null;
+        }
+        // Forfait : l'equipe qui abandonne est eliminee, quel que soit le score des autres manches.
+        for (Match leg : legs) {
+            if (leg.isForfeitWithScore() && !leg.getScore1().equals(leg.getScore2())) {
+                return leg.getScore1() < leg.getScore2()
+                        ? leg.getTeam1().getId()
+                        : leg.getTeam2().getId();
+            }
         }
         Match first = legs.get(0);
         long teamA = first.getTeam1().getId();

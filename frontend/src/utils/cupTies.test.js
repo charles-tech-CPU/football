@@ -19,6 +19,19 @@ function leg(date, home, away, score1, score2, penalties = {}) {
 }
 
 describe('summarizeTie', () => {
+  it("un forfait qualifie l'equipe qui n'abandonne pas, quel que soit l'aggregat", () => {
+    const forfeit = { ...leg('2027-04-14', OM, PSG, 3, 0), status: 'FORFEIT' }
+    const tie = summarizeTie([leg('2027-04-07', PSG, OM, 4, 0), forfeit])
+
+    expect(tie).toMatchObject({ winnerId: 2, forfeit: true, needsPenalty: false })
+  })
+
+  it('un forfait sans score ne decide rien', () => {
+    const tie = summarizeTie([{ ...leg('2027-05-01', PSG, OM, null, null), status: 'FORFEIT' }])
+
+    expect(tie).toMatchObject({ winnerId: null, forfeit: false })
+  })
+
   it("un match sec : le vainqueur est celui qui marque le plus", () => {
     const tie = summarizeTie([leg('2027-05-01', PSG, OM, 2, 1)])
 

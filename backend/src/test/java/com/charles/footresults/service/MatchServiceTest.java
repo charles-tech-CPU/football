@@ -21,6 +21,7 @@ import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
 import java.util.List;
@@ -168,6 +169,23 @@ class MatchServiceTest {
     }
 
     @Test
+    void uneCompetitionClotureeRefuseTouteModificationDeSesMatchs() {
+        ligue1.setClosedAt(LocalDateTime.of(2026, 11, 2, 20, 0));
+        when(competitionRepository.findById(ligue1.getId())).thenReturn(Optional.of(ligue1));
+        Match existing = new Match();
+        existing.setId(5L);
+        existing.setCompetition(ligue1);
+        when(matchRepository.findById(5L)).thenReturn(Optional.of(existing));
+        MatchCreateDto dto = dto(1, 0, null);
+
+        assertThatThrownBy(() -> matchService.create(dto)).hasMessageContaining("est cloturee");
+        assertThatThrownBy(() -> matchService.update(5L, dto)).hasMessageContaining("est cloturee");
+        assertThatThrownBy(() -> matchService.delete(5L)).hasMessageContaining("est cloturee");
+        verify(matchRepository, never()).save(any(Match.class));
+        verify(matchRepository, never()).deleteById(5L);
+    }
+
+    @Test
     void suppressionDelegueAuRepository() {
         matchService.delete(7L);
 
@@ -312,7 +330,8 @@ class MatchServiceTest {
     void lesListesDeMatchsSontConvertiesEnDto() {
         when(matchRepository.findByCompetitionIdOrderByDateAscTimeAsc(10L)).thenReturn(List.of(match()));
         when(matchRepository.findByTeam1_IdOrTeam2_IdOrderByDateDesc(1L, 1L)).thenReturn(List.of(match()));
-        when(matchRepository.findRecentByStatus(MatchStatus.COMPLETED, PageRequest.of(0, 5)))
+        when(matchRepository.findRecentByStatusIn(
+                        List.of(MatchStatus.COMPLETED, MatchStatus.FORFEIT), PageRequest.of(0, 5)))
                 .thenReturn(List.of(match()));
         when(matchRepository.findByStatusInOrderByDateAscTimeAsc(List.of(MatchStatus.POSTPONED, MatchStatus.SUSPENDED)))
                 .thenReturn(List.of(match()));

@@ -23,6 +23,8 @@
       </div>
     </div>
 
+    <router-link v-if="hasArchives" class="hero-chip archives-link" to="/archives">📚 Archives des saisons passées</router-link>
+
     <div class="hero-search">
       <input v-model="search" aria-label="Rechercher un pays ou une compétition" placeholder="Rechercher un pays ou une compétition..." />
     </div>
@@ -95,7 +97,8 @@
           <span class="country-card-name">{{ c.country }}</span>
           <span class="country-card-badges">
             <span v-if="c.league" class="badge badge-league">Championnat</span>
-            <span v-if="c.league && stats[c.league.id]?.remaining.finished" class="badge badge-finished">Terminé ✓</span>
+            <span v-if="c.league?.closedAt" class="badge badge-finished">Clôturé 🔒</span>
+            <span v-else-if="c.league && stats[c.league.id]?.remaining.finished" class="badge badge-finished">Terminé ✓</span>
             <span v-if="c.cup" class="badge badge-cup">Coupe</span>
           </span>
           <CalendarProgress v-if="c.league && stats[c.league.id]?.calendar.total && !stats[c.league.id].remaining.finished" :progress="stats[c.league.id].calendar" />
@@ -138,6 +141,7 @@ import {
   roundsLeft,
   seasonEndChecklist
 } from '../utils/competitionProgress'
+import { archivedSeasons, currentSeason, sortContinental } from '../utils/archives'
 
 const competitions = ref([])
 const loaded = ref(false)
@@ -159,28 +163,24 @@ const countries = computed(() => {
     if (!c.country) continue
     if (!byCountry.has(c.country)) byCountry.set(c.country, { country: c.country, league: null, cup: null })
     const entry = byCountry.get(c.country)
-    if (c.type === 'LEAGUE') entry.league = c
-    if (c.type === 'DOMESTIC_CUP') entry.cup = c
+    // Saison suivante deja preparee (cf. NextSeasonPanel) : la plus recente est mise en avant.
+    if (c.type === 'LEAGUE' && (!entry.league || c.season > entry.league.season)) entry.league = c
+    if (c.type === 'DOMESTIC_CUP' && (!entry.cup || c.season > entry.cup.season)) entry.cup = c
   }
   return [...byCountry.values()].sort((a, b) => a.country.localeCompare(b.country))
 })
 
-// LDC > EL > EC, puis le reste par ordre alphabetique.
-const CONTINENTAL_ORDER = ['LDC', 'EL', 'EC']
-const continentalRank = c => {
-  const i = CONTINENTAL_ORDER.indexOf(c.code)
-  return i === -1 ? CONTINENTAL_ORDER.length : i
-}
-const continental = computed(() =>
-  competitions.value
-    .filter(c => c.type === 'CONTINENTAL_CUP')
-    .sort((a, b) => continentalRank(a) - continentalRank(b) || a.name.localeCompare(b.name))
-)
+// Coupes d'Europe de la saison en cours (les precedentes sont aux archives), LDC > EL > EC.
+const continental = computed(() => {
+  const season = currentSeason(competitions.value)
+  return sortContinental(competitions.value.filter(c => c.type === 'CONTINENTAL_CUP' && c.season === season))
+})
+const hasArchives = computed(() => archivedSeasons(competitions.value).length > 0)
 // Championnats proches de la fin (pastille bleue <= SEASON_END_ROUNDS, pas encore termines),
 // les plus avances d'abord.
 const seasonEnds = computed(() =>
   countries.value
-    .filter(c => c.league && stats[c.league.id])
+    .filter(c => c.league && !c.league.closedAt && stats[c.league.id])
     .map(c => ({ country: c.country, left: roundsLeft(stats[c.league.id].remaining), todo: stats[c.league.id].checklist }))
     .filter(e => e.left > 0 && e.left <= SEASON_END_ROUNDS)
     .sort((a, b) => a.left - b.left || a.country.localeCompare(b.country))
@@ -242,6 +242,10 @@ onMounted(load)
 </script>
 
 <style scoped>
+.archives-link {
+  margin-top: 12px;
+  text-decoration: none;
+}
 .season-end {
   margin-bottom: 24px;
 }

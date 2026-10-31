@@ -1,6 +1,7 @@
 package com.charles.footresults.domain;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -56,6 +57,22 @@ public class Competition {
     /** Nombre de journees attendues (LEAGUE uniquement), pour suivre l'avancement du calendrier. Null si inconnu. */
     @Column(name = "total_rounds")
     private Integer totalRounds;
+
+    /**
+     * Date de cloture de fin de saison (classement final fige, palmares renseigne, matchs en lecture
+     * seule, cf. CompetitionClosureService) ; null tant que la competition est en cours.
+     */
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
+
+    /** Vainqueur (champion ou vainqueur de la coupe) fixe a la cloture ; null tant qu'elle n'est pas cloturee. */
+    @ManyToOne
+    @JoinColumn(name = "winner_team_id")
+    private Team winnerTeam;
+
+    public boolean isClosed() {
+        return closedAt != null;
+    }
 
     public Competition(String code, String name, CompetitionType type, String country, Integer season) {
         this.code = code;

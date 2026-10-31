@@ -38,6 +38,7 @@
               </div>
               <div v-for="(leg, li) in tie.legs" :key="leg.id" class="tie-leg-wrap">
                 <span v-if="tie.legs.length > 1" class="leg-tag">{{ legLabel(li, tie.legs.length) }}</span>
+                <span v-if="leg.status === 'FORFEIT'" class="leg-tag">Forfait</span>
                 <div class="tie-leg">
                   <template v-if="teamEditingKey === teamKey(leg, 1)">
                     <span class="grid-edit" @click.stop @keydown.stop>

@@ -9,6 +9,8 @@ import StatsView from '../views/StatsView.vue'
 import CalendarView from '../views/CalendarView.vue'
 import PostponedMatchesView from '../views/PostponedMatchesView.vue'
 import UefaRankingsView from '../views/UefaRankingsView.vue'
+import EuropeanSlotsView from '../views/EuropeanSlotsView.vue'
+import ArchivesView from '../views/ArchivesView.vue'
 import InternationalCalendarView from '../views/InternationalCalendarView.vue'
 import InternationalStandingsView from '../views/InternationalStandingsView.vue'
 import InternationalRankingView from '../views/InternationalRankingView.vue'
@@ -29,6 +31,8 @@ const routes = [
   { path: '/calendrier', name: 'calendar', component: CalendarView },
   { path: '/reportes-suspendus', name: 'postponed', component: PostponedMatchesView },
   { path: '/classement-uefa', name: 'uefa-rankings', component: UefaRankingsView },
+  { path: '/qualifies-europe', name: 'european-slots', component: EuropeanSlotsView },
+  { path: '/archives', name: 'archives', component: ArchivesView },
   { path: '/calendrier-international', name: 'international-calendar', component: InternationalCalendarView },
   { path: '/classements-internationaux', name: 'international-standings', component: InternationalStandingsView },
   { path: '/classement-mondial', name: 'international-ranking', component: InternationalRankingView }

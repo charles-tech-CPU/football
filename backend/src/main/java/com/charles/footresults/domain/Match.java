@@ -10,8 +10,8 @@ import lombok.Setter;
 /**
  * Un match de football (un seul match, pas de "best of" comme au LoL).
  * score1/score2 = buts marques. Le classement (points/V-N-D/buts) n'est
- * jamais stocke : il est recalcule depuis les matchs COMPLETED d'une
- * competition de type LEAGUE (voir StandingsService).
+ * jamais stocke : il est recalcule depuis les matchs COMPLETED (et les
+ * forfaits avec leur score, cf. isDecided) d'une competition (voir StandingsService).
  *
  * "date" est nullable : les tours de qualification des coupes d'Europe
  * n'ont pas de date exploitable dans le fichier source (seul le score
@@ -91,4 +91,17 @@ public class Match {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MatchStatus status = MatchStatus.SCHEDULED;
+
+    /**
+     * Resultat acquis : match joue (COMPLETED) ou gagne sur tapis vert (FORFEIT avec son score,
+     * 3-0 pour l'equipe qui n'abandonne pas). Un forfait sans score attend d'etre complete.
+     */
+    public boolean isDecided() {
+        return (status == MatchStatus.COMPLETED || status == MatchStatus.FORFEIT) && score1 != null && score2 != null;
+    }
+
+    /** Forfait avec son score : le vainqueur est qualifie quel que soit le score des autres manches. */
+    public boolean isForfeitWithScore() {
+        return status == MatchStatus.FORFEIT && score1 != null && score2 != null;
+    }
 }

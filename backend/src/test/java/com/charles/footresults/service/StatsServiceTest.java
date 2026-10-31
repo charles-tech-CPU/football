@@ -136,6 +136,10 @@ class StatsServiceTest {
         Match clasico = played(2, barca, real, 0, 2);
         clasico.setCompetition(liga);
         when(competitionRepository.findByType(CompetitionType.LEAGUE)).thenReturn(List.of(ligue1, liga, oldLigue1));
+        // Saison en cours = celle des coupes d'Europe, meme si un championnat 2028 est deja prepare.
+        Competition ldc =
+                new Competition("LDC", "Ligue des Champions 2027", CompetitionType.CONTINENTAL_CUP, null, 2027);
+        when(competitionRepository.findByType(CompetitionType.CONTINENTAL_CUP)).thenReturn(List.of(ldc));
         when(matchRepository.findByCompetition_TypeAndCompetition_SeasonOrderByDateAscTimeAsc(
                         CompetitionType.LEAGUE, 2027))
                 .thenReturn(List.of(played(1, psg, om, 3, 0), clasico, upcoming(3, lens, psg)));

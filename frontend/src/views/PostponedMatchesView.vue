@@ -39,7 +39,13 @@
           <TeamSelect v-model="edits[m.id].team2Id" :teams="teamOptionsFor(m, edits[m.id].team2Id)" aria-label="Équipe extérieur" />
         </td>
         <td>
-          <MatchStatusSelect v-model="edits[m.id].status" />
+          <MatchStatusSelect
+            v-model="edits[m.id].status"
+            v-model:score1="edits[m.id].score1"
+            v-model:score2="edits[m.id].score2"
+            :team1-name="m.team1Name"
+            :team2-name="m.team2Name"
+/>
         </td>
         <td>
           <button @click="saveMatch(m)">Enregistrer</button>

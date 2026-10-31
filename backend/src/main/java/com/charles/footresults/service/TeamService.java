@@ -6,6 +6,9 @@ import com.charles.footresults.domain.Team;
 import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.TeamDto;
 import com.charles.footresults.repository.ClubUefaRankingRepository;
+import com.charles.footresults.repository.CompetitionRepository;
+import com.charles.footresults.repository.EuropeanSlotRepository;
+import com.charles.footresults.repository.FinalStandingRepository;
 import com.charles.footresults.repository.HonourRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
@@ -36,18 +39,27 @@ public class TeamService {
     private final TeamCompetitionStatusRepository statusRepository;
     private final ClubUefaRankingRepository clubRankingRepository;
     private final HonourRepository honourRepository;
+    private final FinalStandingRepository finalStandingRepository;
+    private final EuropeanSlotRepository europeanSlotRepository;
+    private final CompetitionRepository competitionRepository;
 
     public TeamService(
             TeamRepository teamRepository,
             MatchRepository matchRepository,
             TeamCompetitionStatusRepository statusRepository,
             ClubUefaRankingRepository clubRankingRepository,
-            HonourRepository honourRepository) {
+            HonourRepository honourRepository,
+            FinalStandingRepository finalStandingRepository,
+            EuropeanSlotRepository europeanSlotRepository,
+            CompetitionRepository competitionRepository) {
         this.teamRepository = teamRepository;
         this.matchRepository = matchRepository;
         this.statusRepository = statusRepository;
         this.clubRankingRepository = clubRankingRepository;
         this.honourRepository = honourRepository;
+        this.finalStandingRepository = finalStandingRepository;
+        this.europeanSlotRepository = europeanSlotRepository;
+        this.competitionRepository = competitionRepository;
     }
 
     public TeamDto merge(Long sourceId, Long targetId) {
@@ -99,6 +111,9 @@ public class TeamService {
         honourRepository.reassignWinner(source, target);
         honourRepository.reassignRunnerUp(source, target);
         honourRepository.reassignThird(source, target);
+        finalStandingRepository.reassignTeam(source, target);
+        europeanSlotRepository.reassignTeam(source, target);
+        competitionRepository.reassignWinner(source, target);
 
         if (target.getLogoPath() == null && source.getLogoPath() != null) {
             target.setLogoPath(source.getLogoPath());
@@ -122,6 +137,8 @@ public class TeamService {
                 "ligne du classement UEFA",
                 "lignes du classement UEFA");
         addUsage(usages, honourRepository.countByTeam(id), "ligne de palmares", "lignes de palmares");
+        addUsage(
+                usages, finalStandingRepository.countByTeamId(id), "classement final fige", "classements finaux figes");
         if (!usages.isEmpty()) {
             throw new IllegalArgumentException("Impossible de supprimer " + team.getName() + ", encore utilisee : "
                     + String.join(", ", usages) + ". Corrige ou fusionne-la plutot.");

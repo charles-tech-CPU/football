@@ -29,6 +29,36 @@ export function isPlayed(m) {
   return m.score1 != null && m.score2 != null
 }
 
+// Resultat acquis, comptant au classement : match joue ou gagne sur tapis vert (forfait avec son
+// score). Un forfait sans score (equipe forfait pas encore designee) reste a completer.
+export function isDecided(m) {
+  return (m.status === 'COMPLETED' || m.status === 'FORFEIT') && isPlayed(m)
+}
+
+// Score sur tapis vert : 3-0 pour l'equipe qui n'abandonne pas.
+export const FORFEIT_GOALS = 3
+
+// Valeur du menu de statut : un forfait se choisit par equipe ("FORFEIT_1" = l'equipe 1
+// abandonne), deduite du score sur tapis vert ; "FORFEIT" seul = equipe forfait pas encore designee.
+export function statusChoice(edit) {
+  if (edit.status !== 'FORFEIT') return edit.status
+  if (!isScore(edit.score1) || !isScore(edit.score2) || edit.score1 === edit.score2) return 'FORFEIT'
+  return edit.score1 < edit.score2 ? 'FORFEIT_1' : 'FORFEIT_2'
+}
+
+// Statut et score correspondant a un choix du menu : un forfait remplit le score sur tapis vert,
+// quitter un forfait efface ce score (le match redevient a jouer).
+export function applyStatusChoice(edit, choice) {
+  if (choice === 'FORFEIT_1') return { status: 'FORFEIT', score1: 0, score2: FORFEIT_GOALS }
+  if (choice === 'FORFEIT_2') return { status: 'FORFEIT', score1: FORFEIT_GOALS, score2: 0 }
+  const leavingForfeit = edit.status === 'FORFEIT' && choice !== 'FORFEIT'
+  return {
+    status: choice,
+    score1: leavingForfeit ? null : edit.score1,
+    score2: leavingForfeit ? null : edit.score2
+  }
+}
+
 // Valeurs editables d'un match (champs de formulaire : chaines vides plutot que null).
 export function editFromMatch(m) {
   return {
@@ -50,9 +80,10 @@ function isScore(value) {
 
 // Tirs au but a saisir : match decisif d'une confrontation de coupe (match.knockout, fourni par
 // le calendrier) dont le score saisi laisse les 2 equipes a egalite, manches precedentes comprises.
+// Jamais sur un forfait : l'equipe qui n'abandonne pas est qualifiee d'office.
 export function penaltiesNeeded(match, edit) {
   const ko = match.knockout
-  if (!ko?.decider || !isScore(edit.score1) || !isScore(edit.score2)) return false
+  if (!ko?.decider || edit.status === 'FORFEIT' || !isScore(edit.score1) || !isScore(edit.score2)) return false
   return edit.score1 + ko.otherLegsGoals1 === edit.score2 + ko.otherLegsGoals2
 }
 

@@ -30,6 +30,11 @@ export default {
   getTeamProfile: (id) => api.get(`/teams/${id}/profile`).then(r => r.data),
   getHeadToHeadBetween: (id, opponentId) =>
     api.get(`/teams/${id}/head-to-head`, { params: { opponentId } }).then(r => r.data),
+  uploadTeamLogo: (id, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/teams/${id}/logo`, form).then(r => r.data)
+  },
   mergeTeam: (id, intoId) => api.post(`/teams/${id}/merge`, null, { params: { intoId } }).then(r => r.data),
 
   getMatchesByCompetition: (competitionId) =>
@@ -52,6 +57,12 @@ export default {
     api.get('/team-status', { params: { competitionId } }).then(r => r.data),
   setTeamStatus: (competitionId, teamId, payload) =>
     api.put('/team-status', payload, { params: { competitionId, teamId } }).then(r => r.data),
+  getClosure: (competitionId) => api.get(`/competitions/${competitionId}/closure`).then(r => r.data),
+  closeCompetition: (competitionId, payload) =>
+    api.post(`/competitions/${competitionId}/closure`, payload).then(r => r.data),
+  createNextSeason: (competitionId, payload) =>
+    api.post(`/competitions/${competitionId}/next-season`, payload).then(r => r.data),
+  reopenCompetition: (competitionId) => api.delete(`/competitions/${competitionId}/closure`).then(r => r.data),
   updateQualificationSlots: (competitionId, payload) =>
     api.patch(`/competitions/${competitionId}/qualification-slots`, payload).then(r => r.data),
 
@@ -66,6 +77,13 @@ export default {
   getCountryUefaRankings: () => api.get('/uefa-rankings/countries').then(r => r.data),
   getClubUefaHistory: (id) => api.get(`/uefa-rankings/clubs/${id}/history`).then(r => r.data),
   getCountryUefaHistory: (id) => api.get(`/uefa-rankings/countries/${id}/history`).then(r => r.data),
+
+  getEuropeanSlots: (season) => api.get('/european-slots', { params: { season } }).then(r => r.data),
+  generateEuropeanSlots: (season) => api.post('/european-slots/generate', null, { params: { season } }).then(r => r.data),
+  fillEuropeanSlots: (season) => api.post('/european-slots/fill', null, { params: { season } }).then(r => r.data),
+  createEuropeanSlot: (payload) => api.post('/european-slots', payload).then(r => r.data),
+  updateEuropeanSlot: (id, payload) => api.put(`/european-slots/${id}`, payload).then(r => r.data),
+  deleteEuropeanSlot: (id) => api.delete(`/european-slots/${id}`),
 
   getInternationalRanking: () => api.get('/international-ranking').then(r => r.data)
 }

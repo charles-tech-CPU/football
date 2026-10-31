@@ -7,9 +7,21 @@
       <h1>{{ country }}</h1>
     </div>
     <div v-if="loaded" class="hero-meta">
-      <span class="hero-chip">📅 Saison {{ season }}</span>
+      <span v-if="seasons.length < 2" class="hero-chip">📅 Saison {{ season }}</span>
+      <span v-else class="season-switch" role="group" aria-label="Saison">
+        <button
+          v-for="s in seasons"
+          :key="s"
+          type="button"
+          class="hero-chip"
+          :class="{ 'hero-chip--active': s === season }"
+          @click="selectSeason(s)"
+        >📅 Saison {{ s }}</button>
+      </span>
       <span v-if="league" class="hero-chip">🏟️ Championnat</span>
       <span v-if="cup" class="hero-chip">🏆 Coupe nationale</span>
+      <span v-if="league?.closedAt" class="hero-chip">🔒 Championnat clôturé</span>
+      <span v-if="cup?.closedAt" class="hero-chip">🔒 Coupe clôturée</span>
     </div>
   </section>
 
@@ -62,6 +74,7 @@
     <template v-else-if="activeTab === 'coupe'">
       <template v-if="cup">
         <CupBracket :competition-id="cup.id" />
+        <ClosurePanel :competition="cup" @changed="load" />
       </template>
       <p v-else class="empty-state">Pas de coupe nationale importée pour ce pays.</p>
     </template>
@@ -162,6 +175,15 @@
           <h2>Barrages</h2>
           <CupBracket :competition-id="league.id" playoff />
         </div>
+
+        <ClosurePanel
+          :competition="league"
+          :proposed-rows="closureProposal"
+          :next-season-exists="seasons.includes(league.season + 1)"
+          :has-cup="cup != null"
+          @changed="load"
+          @next-season="c => selectSeason(c.season)"
+        />
 
         <details class="add-form">
           <summary>Configurer les places qualificatives et statuts</summary>
@@ -285,7 +307,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../services/api'
 import FlagIcon from '../components/FlagIcon.vue'
 import StandingsTable from '../components/StandingsTable.vue'
@@ -294,10 +316,14 @@ import UpcomingMatches from '../components/UpcomingMatches.vue'
 import ResultsGrid from '../components/ResultsGrid.vue'
 import CupBracket from '../components/CupBracket.vue'
 import StatusDropdown from '../components/StatusDropdown.vue'
+import ClosurePanel from '../components/ClosurePanel.vue'
 import { groupAssignment, groupRankMarkers, twoPoolSplit, withManualGroups } from '../utils/groupSplit.js'
 import { compareByRoundThenDate, roundNumber } from '../utils/rounds.js'
 import { lockedTeamIds, remainingByTeam } from '../utils/lockedRanks.js'
 import { isPlayoffMatch } from '../utils/playoffRounds.js'
+import { isDecided } from '../utils/matchEdit.js'
+import { proposedRanking } from '../utils/closure.js'
+import { countryCompetitions, countrySeasons } from '../utils/seasons.js'
 
 const props = defineProps({
   country: { type: String, required: true }
@@ -320,7 +346,15 @@ const projectedStandings = ref([])
 const slots = reactive({ ldcSlots: 0, elSlots: 0, eclSlots: 0, relegationSlots: 0, barrageSlots: 0, totalRounds: null })
 const statusEdits = reactive({})
 
+// Saisons du pays (saison suivante preparee, cf. NextSeasonPanel), la plus recente par defaut ou
+// celle de l'URL (?saison=2027).
+const seasons = ref([])
 const season = computed(() => league.value?.season ?? cup.value?.season ?? '')
+const router = useRouter()
+
+function selectSeason(s) {
+  router.replace({ query: { ...route.query, saison: s } })
+}
 
 // Particularites de format propres a un championnat precis, qui ne se deduisent pas des
 // places qualificatives/barrage/relegation generiques (ex: mini-championnat final entre
@@ -845,7 +879,7 @@ const regularSeasonCycles = computed(() => rankConfig.value?.resultsGroupSplit?.
 function standingsFromMatches(matchList) {
   const byTeam = new Map()
   for (const m of matchList) {
-    if (m.status !== 'COMPLETED' || m.score1 == null || m.score2 == null) continue
+    if (!isDecided(m)) continue
     if (!byTeam.has(m.team1Id)) byTeam.set(m.team1Id, { teamId: m.team1Id, teamName: m.team1Name, teamLogoPath: m.team1LogoPath, teamCountry: m.team1Country, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0 })
     if (!byTeam.has(m.team2Id)) byTeam.set(m.team2Id, { teamId: m.team2Id, teamName: m.team2Name, teamLogoPath: m.team2LogoPath, teamCountry: m.team2Country, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0 })
     const t1 = byTeam.get(m.team1Id), t2 = byTeam.get(m.team2Id)
@@ -939,6 +973,10 @@ const realGroupStandings = computed(() => {
   return blocks
 })
 
+// Classement final propose a la cloture : mini-championnats dans l'ordre pour un championnat scinde.
+const closureProposal = computed(() =>
+  proposedRanking(standings.value, rankConfig.value?.resultsGroupSplit ? realGroupStandings.value : []))
+
 // Malte (cf. commentaire LEAGUE_RANK_CONFIG.MALTE) : 2 championnats successifs, chacun
 // identifie par une plage de journees fixe plutot que par cycle.
 const MALTE_PHASES = [
@@ -1019,9 +1057,11 @@ const maltePhasesForGrid = computed(() =>
 async function load() {
   loaded.value = false
   const competitions = await api.getCompetitions()
-  const forCountry = competitions.filter(c => c.country === props.country)
-  league.value = forCountry.find(c => c.type === 'LEAGUE') ?? null
-  cup.value = forCountry.find(c => c.type === 'DOMESTIC_CUP') ?? null
+  seasons.value = countrySeasons(competitions, props.country)
+  const requested = Number(route.query.saison)
+  const selected = countryCompetitions(competitions, props.country, seasons.value.includes(requested) ? requested : null)
+  league.value = selected.league
+  cup.value = selected.cup
 
   if (activeTab.value === 'classement' && !league.value && cup.value) activeTab.value = 'coupe'
 
@@ -1174,5 +1214,6 @@ async function saveGroups(groupByTeam) {
 
 watch(showProjected, loadProjected)
 watch(() => props.country, load)
+watch(() => route.query.saison, load)
 onMounted(load)
 </script>

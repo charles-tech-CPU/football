@@ -17,7 +17,7 @@
         {{ d.homeName }} reçoit {{ d.awayName }} {{ d.matches.length }} fois :
         <template v-for="(m, mi) in d.matches" :key="m.id">
           <span v-if="mi"> · </span>
-          <button v-if="m.status === 'COMPLETED'" type="button" class="link-btn" @click="roundFilter = m.roundLabel">
+          <button v-if="isDecided(m)" type="button" class="link-btn" @click="roundFilter = m.roundLabel">
             {{ m.roundLabel }}{{ m.date ? ` (${m.date})` : '' }}
           </button>
           <span v-else>{{ m.roundLabel }} (à venir)</span>
@@ -106,7 +106,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import api from '../services/api'
 import TeamLogo from './TeamLogo.vue'
 import MatchCreationBar from './MatchCreationBar.vue'
-import { deleteConfirmMessage, teamChangeLines } from '../utils/matchEdit'
+import { deleteConfirmMessage, isDecided, teamChangeLines } from '../utils/matchEdit'
 import { formatTime } from '../utils/format'
 import { roundsByRecency } from '../utils/rounds'
 import { calendarAnomalies } from '../utils/calendarCheck'
@@ -137,7 +137,7 @@ const scopedMatches = computed(() => {
 })
 
 const playedMatches = computed(() => {
-  const played = scopedMatches.value.filter(m => m.status === 'COMPLETED')
+  const played = scopedMatches.value.filter(isDecided)
   return played.slice().sort((a, b) => {
     const ad = a.date ?? '', bd = b.date ?? ''
     if (ad !== bd) return bd.localeCompare(ad)
@@ -161,7 +161,7 @@ const filteredMatches = computed(() => {
 })
 
 function isDraw(m) {
-  return m.status === 'COMPLETED' && m.score1 === m.score2
+  return isDecided(m) && m.score1 === m.score2
 }
 
 const STATUS_LABELS = {

@@ -218,6 +218,23 @@ class UefaRankingServiceTest {
     }
 
     @Test
+    void forfaitAuRetourElimineLEquipeQuiAbandonneMalgreLAller() {
+        givenMatches(
+                played("QUART DE FINALE - Aller", date(4, 7), inter, psg, 4, 0),
+                match("QUART DE FINALE - Retour", date(4, 14), psg, inter, 3, 0, MatchStatus.FORFEIT));
+
+        assertThat(liveCups(psg, inter)).containsEntry("PSG", "LDC").containsEntry("Inter", null);
+    }
+
+    @Test
+    void forfaitSansScoreNeDecidePasLaConfrontation() {
+        givenMatches(match("FINALE", date(5, 30), psg, inter, null, null, MatchStatus.FORFEIT));
+
+        assertThat(liveCups(psg, inter))
+                .allSatisfy((name, cup) -> assertThat(cup).isEqualTo("LDC"));
+    }
+
+    @Test
     void finaleSurUnSeulMatchAuxTirsAuBut() {
         Match finale = played("FINALE", date(5, 30), psg, inter, 0, 0);
         finale.setPenaltyScore1(3);

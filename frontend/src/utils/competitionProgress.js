@@ -108,7 +108,7 @@ export function seasonEndChecklist(matches, competition, { late, calendar }) {
   } else if (!playoffs.length && competition.barrageSlots > 0) {
     todo.push(`Barrages : ${plural(competition.barrageSlots, 'place')} de barrage prévue${competition.barrageSlots > 1 ? 's' : ''}, aucun match saisi`)
   }
-  todo.push('Classement final : vérifier le champion, les places européennes et la relégation')
+  todo.push('Classement final : vérifier le champion, les places européennes et la relégation, puis clôturer la saison (onglet Classement)')
   return todo
 }
 

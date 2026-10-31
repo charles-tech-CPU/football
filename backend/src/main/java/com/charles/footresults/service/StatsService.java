@@ -58,15 +58,20 @@ public class StatsService {
     }
 
     /**
-     * Tous les championnats de la saison la plus recente reunis (memes classements que pour une
+     * Tous les championnats de la saison en cours reunis (memes classements que pour une
      * competition, toutes equipes confondues), plus le bilan de chaque championnat pour les comparer.
      * countries vide = tous les pays ; sinon seulement ces championnats (ex : le top 5 UEFA).
      */
     public AllLeaguesStatsDto allLeaguesStats(Set<String> countries) {
-        int season = competitionRepository.findByType(CompetitionType.LEAGUE).stream()
+        // Saison en cours = celle des coupes d'Europe : un championnat de la saison suivante deja
+        // prepare (cf. NextSeasonService) n'efface pas les autres avant le debut de cette saison.
+        int season = competitionRepository.findByType(CompetitionType.CONTINENTAL_CUP).stream()
                 .mapToInt(Competition::getSeason)
                 .max()
-                .orElse(0);
+                .orElseGet(() -> competitionRepository.findByType(CompetitionType.LEAGUE).stream()
+                        .mapToInt(Competition::getSeason)
+                        .max()
+                        .orElse(0));
         List<Competition> leagues = competitionRepository.findByType(CompetitionType.LEAGUE).stream()
                 .filter(c -> c.getSeason() == season)
                 .filter(c -> countries.isEmpty() || countries.contains(c.getCountry()))

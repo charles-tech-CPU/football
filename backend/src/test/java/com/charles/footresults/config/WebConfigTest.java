@@ -20,7 +20,7 @@ class WebConfigTest {
 
     private static CorsConfiguration apiCors(String allowedOrigins) {
         InspectableCorsRegistry registry = new InspectableCorsRegistry();
-        new WebConfig(allowedOrigins).addCorsMappings(registry);
+        new WebConfig(allowedOrigins, "").addCorsMappings(registry);
         return registry.configurations().get("/api/**");
     }
 

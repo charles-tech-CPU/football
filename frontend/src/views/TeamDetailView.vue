@@ -10,6 +10,7 @@
         {{ profile.team.name }}
       </h1>
       <router-link :to="{ name: 'head-to-head', query: { equipe1: profile.team.id } }" class="h2h-link">⚔️ Tête-à-tête avec une autre équipe</router-link>
+      <LogoUpload :team-id="profile.team.id" @uploaded="t => { profile.team.logoPath = t.logoPath }" />
 
       <div class="hero-stats">
         <div v-if="profile.league" class="hero-stat">
@@ -65,6 +66,7 @@ import { onMounted, ref, watch } from 'vue'
 import api from '../services/api'
 import FlagIcon from '../components/FlagIcon.vue'
 import TeamLogo from '../components/TeamLogo.vue'
+import LogoUpload from '../components/LogoUpload.vue'
 import RankMove from '../components/RankMove.vue'
 import TeamMatchList from '../components/TeamMatchList.vue'
 import UefaHistoryChart from '../components/UefaHistoryChart.vue'

@@ -76,6 +76,7 @@ class CompetitionControllerTest {
                         0,
                         2,
                         0,
+                        null,
                         null));
     }
 

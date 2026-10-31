@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deleteConfirmMessage, editFromMatch, isPlayed, matchPayload, penaltiesNeeded, rowClassFor, statusRowClass, teamChangeLines, teamOptionsFor } from './matchEdit.js'
+import { applyStatusChoice, deleteConfirmMessage, editFromMatch, isDecided, isPlayed, matchPayload, penaltiesNeeded, rowClassFor, statusChoice, statusRowClass, teamChangeLines, teamOptionsFor } from './matchEdit.js'
 
 const MATCH = {
   id: 7,
@@ -125,6 +125,11 @@ describe('penaltiesNeeded', () => {
     expect(penaltiesNeeded(retour, { score1: 1, score2: 1 })).toBe(false)
   })
 
+  it('jamais sur un forfait : l equipe qui n abandonne pas est qualifiee d office', () => {
+    const retour = { ...MATCH, knockout: { decider: true, otherLegsGoals1: 3, otherLegsGoals2: 0 } }
+    expect(penaltiesNeeded(retour, { score1: 0, score2: 3, status: 'FORFEIT' })).toBe(false)
+  })
+
   it('jamais sur un match aller ni en championnat', () => {
     const aller = { ...MATCH, knockout: { decider: false, otherLegsGoals1: 0, otherLegsGoals2: 0 } }
     expect(penaltiesNeeded(aller, { score1: 1, score2: 1 })).toBe(false)
@@ -184,6 +189,41 @@ describe('isPlayed', () => {
     expect(isPlayed({ score1: 0, score2: 0 })).toBe(true)
     expect(isPlayed({ score1: 2, score2: null })).toBe(false)
     expect(isPlayed({ score1: null, score2: null })).toBe(false)
+  })
+})
+
+describe('isDecided', () => {
+  it('match joue ou forfait avec son score', () => {
+    expect(isDecided({ status: 'COMPLETED', score1: 1, score2: 0 })).toBe(true)
+    expect(isDecided({ status: 'FORFEIT', score1: 0, score2: 3 })).toBe(true)
+  })
+
+  it('ni un forfait sans score, ni un match reporte', () => {
+    expect(isDecided({ status: 'FORFEIT', score1: null, score2: null })).toBe(false)
+    expect(isDecided({ status: 'POSTPONED', score1: 1, score2: 0 })).toBe(false)
+  })
+})
+
+describe('statusChoice / applyStatusChoice', () => {
+  it("le forfait d'une equipe donne 3-0 a son adversaire", () => {
+    expect(applyStatusChoice({ status: '', score1: null, score2: null }, 'FORFEIT_1'))
+      .toEqual({ status: 'FORFEIT', score1: 0, score2: 3 })
+    expect(applyStatusChoice({ status: '', score1: null, score2: null }, 'FORFEIT_2'))
+      .toEqual({ status: 'FORFEIT', score1: 3, score2: 0 })
+  })
+
+  it("l'equipe forfait se deduit du score sur tapis vert", () => {
+    expect(statusChoice({ status: 'FORFEIT', score1: 0, score2: 3 })).toBe('FORFEIT_1')
+    expect(statusChoice({ status: 'FORFEIT', score1: 3, score2: 0 })).toBe('FORFEIT_2')
+    expect(statusChoice({ status: 'FORFEIT', score1: null, score2: null })).toBe('FORFEIT')
+    expect(statusChoice({ status: 'POSTPONED', score1: null, score2: null })).toBe('POSTPONED')
+  })
+
+  it('quitter un forfait efface le score sur tapis vert, les autres statuts gardent le score', () => {
+    expect(applyStatusChoice({ status: 'FORFEIT', score1: 0, score2: 3 }, ''))
+      .toEqual({ status: '', score1: null, score2: null })
+    expect(applyStatusChoice({ status: '', score1: 1, score2: 1 }, 'SUSPENDED'))
+      .toEqual({ status: 'SUSPENDED', score1: 1, score2: 1 })
   })
 })
 

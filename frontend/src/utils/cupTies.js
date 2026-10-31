@@ -1,5 +1,6 @@
 // Resume d'une confrontation a elimination directe (1 match sec ou aller-retour) : aggregat,
 // tirs au but eventuels et vainqueur. "A" designe l'equipe qui recoit au premier match.
+// Un forfait (avec son score sur tapis vert) qualifie d'office l'equipe qui n'abandonne pas.
 export function summarizeTie(legs) {
   const sorted = legs.toSorted((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
   const first = sorted[0]
@@ -14,8 +15,11 @@ export function summarizeTie(legs) {
   const { penA, penB } = aggTied ? penaltiesOf(decider, teamAId) : NO_PENALTIES
   const wentToPenalties = penA != null && penB != null
 
+  const forfeitWinnerId = forfeitWinnerOf(sorted)
   let winnerId = null
-  if (wentToPenalties) {
+  if (forfeitWinnerId != null) {
+    winnerId = forfeitWinnerId
+  } else if (wentToPenalties) {
     winnerId = penA > penB ? teamAId : teamBId
   } else if (hasAllScores && aggA !== aggB) {
     winnerId = aggA > aggB ? teamAId : teamBId
@@ -31,7 +35,8 @@ export function summarizeTie(legs) {
     hasAllScores,
     winnerId,
     decider,
-    needsPenalty: aggTied && !wentToPenalties,
+    needsPenalty: aggTied && !wentToPenalties && forfeitWinnerId == null,
+    forfeit: forfeitWinnerId != null,
     wentToPenalties,
     penA,
     penB
@@ -39,6 +44,13 @@ export function summarizeTie(legs) {
 }
 
 const NO_PENALTIES = { penA: null, penB: null }
+
+// Vainqueur sur tapis vert : celui qui gagne une manche declaree forfait, null sinon.
+function forfeitWinnerOf(legs) {
+  const leg = legs.find(l => l.status === 'FORFEIT' && l.score1 != null && l.score2 != null && l.score1 !== l.score2)
+  if (!leg) return null
+  return leg.score1 > leg.score2 ? leg.team1Id : leg.team2Id
+}
 
 // Buts cumules de A et B sur les manches deja jouees ; hasAllScores = toutes les manches jouees.
 function aggregate(legs, teamAId) {

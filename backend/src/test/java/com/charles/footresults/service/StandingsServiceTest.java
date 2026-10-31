@@ -16,6 +16,7 @@ import com.charles.footresults.dto.HeadToHeadCellDto;
 import com.charles.footresults.dto.ProjectedStandingRowDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.CompetitionRepository;
+import com.charles.footresults.repository.FinalStandingRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import java.util.List;
@@ -40,6 +41,9 @@ class StandingsServiceTest {
 
     @Mock
     private CompetitionRepository competitionRepository;
+
+    @Mock
+    private FinalStandingRepository finalStandingRepository;
 
     @InjectMocks
     private StandingsService standingsService;
@@ -133,6 +137,28 @@ class StandingsServiceTest {
     }
 
     @Test
+    void forfaitAvecScoreCompteCommeUneVictoireSurTapisVertSansScoreIlNeCompteRien() {
+        givenPlayedMatches(forfeit(om, psg, 0, 3), forfeit(lyon, lens, null, null));
+
+        List<StandingRowDto> standings = standingsService.computeStandings(COMPETITION_ID);
+
+        assertThat(standings).extracting(StandingRowDto::teamName).containsExactly("PSG", "OM");
+        assertThat(standings.get(0).points()).isEqualTo(3);
+        assertThat(standings.get(0).goalsFor()).isEqualTo(3);
+        assertThat(standings.get(1).lost()).isEqualTo(1);
+    }
+
+    @Test
+    void forfaitAvecScoreNeComptePlusCommeMatchRestantDuClassementProjete() {
+        givenPlayedMatches(forfeit(psg, om, 3, 0));
+        givenRemainingMatches(forfeit(psg, om, 3, 0), unplayed(om, psg));
+
+        List<ProjectedStandingRowDto> projected = standingsService.computeProjectedStandings(COMPETITION_ID);
+
+        assertThat(projected).extracting(ProjectedStandingRowDto::remaining).containsExactly(1, 1);
+    }
+
+    @Test
     void championnatScindeLeGroupeAvecLePlusDePointsEnPremier() {
         Competition league = competition(CompetitionType.LEAGUE);
         when(statusRepository.findByCompetitionId(COMPETITION_ID))
@@ -184,6 +210,18 @@ class StandingsServiceTest {
     }
 
     @Test
+    void lesClubsInscritsAUnChampionnatPasEncoreCommenceApparaissentParOrdreAlphabetique() {
+        Competition league = competition(CompetitionType.LEAGUE);
+        when(statusRepository.findByCompetitionId(COMPETITION_ID))
+                .thenReturn(List.of(status(league, psg, null), status(league, lens, null), status(league, om, null)));
+        givenPlayedMatches();
+
+        assertThat(standingsService.computeStandings(COMPETITION_ID))
+                .extracting(StandingRowDto::teamName, StandingRowDto::played)
+                .containsExactly(tuple("Lens", 0), tuple("OM", 0), tuple("PSG", 0));
+    }
+
+    @Test
     void lesEquipesSansGroupeSontAjouteesApresLesGroupes() {
         Competition league = competition(CompetitionType.LEAGUE);
         when(statusRepository.findByCompetitionId(COMPETITION_ID))
@@ -195,14 +233,15 @@ class StandingsServiceTest {
 
         List<StandingRowDto> standings = standingsService.computeStandings(COMPETITION_ID);
 
-        assertThat(standings).extracting(StandingRowDto::teamName).containsExactly("PSG", "OM", "Lyon", "Lens");
+        // Groupe "Championnat" sans match joue : ordre alphabetique.
+        assertThat(standings).extracting(StandingRowDto::teamName).containsExactly("OM", "PSG", "Lyon", "Lens");
         assertThat(standings.get(2).group()).isNull();
     }
 
     @Test
     void classementDUnePhaseNeRetientQueLesMatchsDeCettePhase() {
-        when(matchRepository.findByCompetitionIdAndStatusAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
-                        COMPETITION_ID, MatchStatus.COMPLETED, "Phase de ligue"))
+        when(matchRepository.findByCompetitionIdAndStatusInAndRoundLabelContainingIgnoreCaseOrderByDateAscTimeAsc(
+                        COMPETITION_ID, List.of(MatchStatus.COMPLETED, MatchStatus.FORFEIT), "Phase de ligue"))
                 .thenReturn(List.of(match(om, psg, 2, 1), match(lyon, lens, 1, 0)));
 
         List<StandingRowDto> standings = standingsService.computeStandingsForRound(COMPETITION_ID, "Phase de ligue");
@@ -334,8 +373,15 @@ class StandingsServiceTest {
     }
 
     private void givenPlayedMatches(Match... matches) {
-        when(matchRepository.findByCompetitionIdAndStatusOrderByDateAscTimeAsc(COMPETITION_ID, MatchStatus.COMPLETED))
+        when(matchRepository.findByCompetitionIdAndStatusInOrderByDateAscTimeAsc(
+                        COMPETITION_ID, List.of(MatchStatus.COMPLETED, MatchStatus.FORFEIT)))
                 .thenReturn(List.of(matches));
+    }
+
+    private static Match forfeit(Team team1, Team team2, Integer score1, Integer score2) {
+        Match match = match(team1, team2, score1, score2);
+        match.setStatus(MatchStatus.FORFEIT);
+        return match;
     }
 
     private static Team team(Long id, String name) {

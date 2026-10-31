@@ -16,6 +16,7 @@ import com.charles.footresults.dto.TeamDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import com.charles.footresults.repository.TeamRepository;
+import com.charles.footresults.service.LogoService;
 import com.charles.footresults.service.TeamService;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
@@ -41,6 +42,9 @@ class TeamControllerTest {
 
     @Mock
     private TeamService teamService;
+
+    @Mock
+    private LogoService logoService;
 
     @InjectMocks
     private TeamController teamController;

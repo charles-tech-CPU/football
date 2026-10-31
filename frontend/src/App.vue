@@ -12,7 +12,7 @@
         </span>
         <span class="brand-text">
           <span class="brand-name">Foot Results</span>
-          <span class="brand-sub">Saison 2026-2027</span>
+          <span class="brand-sub">Saison {{ seasonLabel }}</span>
         </span>
       </router-link>
       <nav class="tabs-nav">
@@ -21,6 +21,7 @@
         <router-link to="/tete-a-tete">Tête-à-tête</router-link>
         <router-link to="/calendrier">Calendrier</router-link>
         <router-link to="/classement-uefa">Classement UEFA</router-link>
+        <router-link to="/qualifies-europe">Qualifiés Europe</router-link>
         <router-link to="/statistiques">Statistiques</router-link>
         <router-link to="/classements-internationaux" :class="{ 'router-link-exact-active': isInternational }">International</router-link>
       </nav>
@@ -43,9 +44,18 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { PORTAL_URL } from './portal'
+import api from './services/api'
+import { currentSeason } from './utils/archives'
+
+// Saison en cours = celle des coupes d'Europe (2027 -> "2026-2027").
+const season = ref(2027)
+const seasonLabel = computed(() => `${season.value - 1}-${season.value}`)
+onMounted(async () => {
+  season.value = currentSeason(await api.getCompetitions({ type: 'CONTINENTAL_CUP' })) ?? season.value
+})
 
 // Un seul onglet "International" pour ses trois sous-pages (cf. InternationalNav).
 const INTERNATIONAL_PATHS = ['/classements-internationaux', '/calendrier-international', '/classement-mondial']

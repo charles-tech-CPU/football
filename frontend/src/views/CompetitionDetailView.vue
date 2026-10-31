@@ -8,6 +8,7 @@
     <div v-if="competition" class="hero-meta">
       <span class="hero-chip">🏆 Coupe d'Europe</span>
       <span class="hero-chip">📅 Saison {{ competition.season }}</span>
+      <span v-if="competition.closedAt" class="hero-chip">🔒 Clôturée</span>
     </div>
   </section>
 
@@ -67,6 +68,7 @@
         :round-includes="['FINALE', 'SEIZIEME', 'HUITIEME', 'HUITEME', 'QUART', 'DEMI']"
         :show-flags="true"
       />
+      <ClosurePanel :competition="competition" @changed="load" />
     </template>
   </template>
 </template>
@@ -77,6 +79,7 @@ import api from '../services/api'
 import CupBracket from '../components/CupBracket.vue'
 import StandingsTable from '../components/StandingsTable.vue'
 import ResultsGrid from '../components/ResultsGrid.vue'
+import ClosurePanel from '../components/ClosurePanel.vue'
 
 const props = defineProps({
   id: { type: [String, Number], required: true }

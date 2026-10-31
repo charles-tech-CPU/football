@@ -147,7 +147,7 @@ describe('seasonEndChecklist', () => {
       '2 matchs en retard à saisir ou à reprogrammer',
       'Calendrier à compléter (dates / horaires) à partir de la J29',
       'Barrages : 1 match encore « A DETERMINER », à compléter avec les qualifiés',
-      'Classement final : vérifier le champion, les places européennes et la relégation'
+      'Classement final : vérifier le champion, les places européennes et la relégation, puis clôturer la saison (onglet Classement)'
     ])
   })
 

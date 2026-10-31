@@ -10,6 +10,7 @@ import com.charles.footresults.dto.TeamProfileDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import com.charles.footresults.repository.TeamRepository;
+import com.charles.footresults.service.LogoService;
 import com.charles.footresults.service.TeamHeadToHeadService;
 import com.charles.footresults.service.TeamProfileService;
 import com.charles.footresults.service.TeamService;
@@ -18,7 +19,9 @@ import jakarta.validation.Valid;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/teams")
@@ -30,6 +33,7 @@ public class TeamController {
     private final TeamService teamService;
     private final TeamProfileService teamProfileService;
     private final TeamHeadToHeadService teamHeadToHeadService;
+    private final LogoService logoService;
 
     public TeamController(
             TeamRepository teamRepository,
@@ -37,13 +41,15 @@ public class TeamController {
             TeamCompetitionStatusRepository teamCompetitionStatusRepository,
             TeamService teamService,
             TeamProfileService teamProfileService,
-            TeamHeadToHeadService teamHeadToHeadService) {
+            TeamHeadToHeadService teamHeadToHeadService,
+            LogoService logoService) {
         this.teamRepository = teamRepository;
         this.competitionRepository = competitionRepository;
         this.teamCompetitionStatusRepository = teamCompetitionStatusRepository;
         this.teamService = teamService;
         this.teamProfileService = teamProfileService;
         this.teamHeadToHeadService = teamHeadToHeadService;
+        this.logoService = logoService;
     }
 
     /**
@@ -124,6 +130,12 @@ public class TeamController {
         team.setName(name);
         team.setCountry(dto.country());
         return TeamDto.from(teamRepository.save(team));
+    }
+
+    /** POST /api/teams/{id}/logo (multipart, champ "file") : remplace le blason du club. */
+    @PostMapping(value = "/{id}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public TeamDto uploadLogo(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        return logoService.upload(id, file);
     }
 
     /** "  fc   noah " -> "fc noah" : evite les doublons qui ne different que par les espaces. */

@@ -439,6 +439,22 @@ nav.tabs-nav a.router-link-exact-active {
   color: white;
 }
 
+/* Choix de la saison d'un pays (saison suivante preparee). */
+.season-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+button.hero-chip {
+  cursor: pointer;
+  opacity: 0.7;
+}
+button.hero-chip:hover,
+.hero-chip--active {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.28);
+}
+
 /* Bandeaux Coupes d'Europe : une ambiance par competition. */
 .hero--ldc {
   background:
