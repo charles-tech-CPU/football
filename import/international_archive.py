@@ -40,10 +40,11 @@ FIRST_VERSION = 126
 USER_AGENT = 'FootResults-history/1.0 (import local)'
 
 # Selections disparues absentes d'international_history_data (le jeu de donnees donne aux autres
-# leur nom actuel : "Russia" pour l'URSS, "Germany" pour la RFA...).
+# leur nom actuel : "Russia" pour l'URSS, "Germany" pour la RFA...). La Tchecoslovaquie et la
+# Yougoslavie sont comptees avec leur successeur reconnu par la FIFA, la Tchequie et la Serbie (cf. V135).
 EXTRA_TEAMS = {
-    'Czechoslovakia': ('Tchecoslovaquie', 'UEFA'), 'German DR': ('RDA', 'UEFA'), 'Saarland': ('Sarre', 'UEFA'),
-    'Yugoslavia': ('Yougoslavie', 'UEFA'), 'Vietnam Republic': ('Vietnam du Sud', 'AFC'),
+    'Czechoslovakia': ('Tchequie', 'UEFA'), 'German DR': ('RDA', 'UEFA'), 'Saarland': ('Sarre', 'UEFA'),
+    'Yugoslavia': ('Serbie', 'UEFA'), 'Vietnam Republic': ('Vietnam du Sud', 'AFC'),
     'Yemen DPR': ('Yemen du Sud', 'AFC'),
 }
 
