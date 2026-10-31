@@ -438,6 +438,28 @@ def assign_groups(edition, tables):
 ROUND_NAMES = {1: 'Finale', 2: 'Demi-finales', 4: 'Quarts de finale', 8: '8es de finale', 16: '16es de finale'}
 
 
+def won_previous(team, match, ko):
+    """Vrai si l'equipe a gagne (ou fait nul, faute de tirs au but connus) son dernier match avant celui-ci."""
+    before = [o for o in ko if o['date'] < match['date'] and team in (o['home_team'], o['away_team'])]
+    if not before:
+        return True
+    last = before[-1]
+    home, away = int(last['home_score']), int(last['away_score'])
+    if home == away:
+        return True
+    return (home > away) == (last['home_team'] == team)
+
+
+def final_of(ko):
+    """Finale = dernier match ; le meme jour que le match pour la 3e place (CAN 1968 et 1996, Coupe
+    d'Asie 1972, Gold Cup 1996), celui qui oppose les deux vainqueurs des demi-finales."""
+    last_day = [m for m in ko if m['date'] == ko[-1]['date']]
+    for m in reversed(last_day):
+        if won_previous(m['home_team'], m, ko) and won_previous(m['away_team'], m, ko):
+            return m
+    return ko[-1]
+
+
 def finals_ko_labels(ko):
     """Phase finale : finale = dernier match, puis tour precedent de chaque equipe encore en lice."""
     labels = {}
@@ -445,7 +467,7 @@ def finals_ko_labels(ko):
     if not ko:
         return labels
     pair = lambda m: frozenset((m['home_team'], m['away_team']))
-    final = ko[-1]
+    final = final_of(ko)
     current = [final]
     size = 1
     while current:

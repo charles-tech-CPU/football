@@ -25,27 +25,35 @@
     <div v-if="active" class="edition-row">
       <div class="tab-bar sub-tab-bar" aria-label="Édition">
         <button
+          class="tab-btn"
+          :class="{ active: showBilan }"
+          title="Bilan de chaque sélection, toutes éditions confondues"
+          @click="showBilan = true"
+        >📊 Bilan</button>
+        <button
           v-for="e in recentEditions"
           :key="e.key"
           class="tab-btn"
-          :class="{ active: active.edition.key === e.key }"
-          @click="selectEdition(e)"
+          :class="{ active: !showBilan && active.edition.key === e.key }"
+          @click="openEdition(e)"
         >{{ e.label }}<span v-if="e.current" class="live-dot" title="En cours cette saison"></span></button>
       </div>
       <select
         v-if="olderEditions.length"
         class="older-editions"
-        :class="{ active: olderEditions.includes(active.edition) }"
-        :value="olderEditions.includes(active.edition) ? active.edition.key : ''"
+        :class="{ active: !showBilan && olderEditions.includes(active.edition) }"
+        :value="!showBilan && olderEditions.includes(active.edition) ? active.edition.key : ''"
         aria-label="Éditions précédentes"
-        @change="selectEdition(olderEditions.find(e => e.key === $event.target.value))"
+        @change="openEdition(olderEditions.find(e => e.key === $event.target.value))"
       >
         <option value="" disabled>Éditions précédentes…</option>
         <option v-for="e in olderEditions" :key="e.key" :value="e.key">{{ e.label }}</option>
       </select>
     </div>
 
-    <div v-if="active" class="phase-row">
+    <InternationalBilan v-if="active && showBilan" :family="active.family.key" />
+
+    <div v-if="active && !showBilan" class="phase-row">
       <div v-if="active.edition.phases.length > 1" class="tab-bar sub-tab-bar" aria-label="Phase">
         <button
           v-for="p in active.edition.phases"
@@ -61,7 +69,7 @@
       </div>
     </div>
 
-    <div v-if="comp" class="competition-block">
+    <div v-if="comp && !showBilan" class="competition-block">
       <h2>{{ comp.name }}</h2>
       <InternationalResults
         v-if="activeView === 'resultats'"
@@ -100,6 +108,7 @@ import api from '../services/api'
 import StandingsTable from '../components/StandingsTable.vue'
 import InternationalResults from '../components/InternationalResults.vue'
 import InternationalNav from '../components/InternationalNav.vue'
+import InternationalBilan from '../components/InternationalBilan.vue'
 import { internationalFamilies, locateCompetition } from '../utils/internationalEditions'
 import { internationalLegend, internationalRowClasses } from '../utils/internationalQualification'
 
@@ -114,6 +123,8 @@ const matchesByCompetition = ref({})
 const loadedIds = ref(new Set())
 const activeView = ref('classement')
 const selectedId = ref(null)
+// Onglet "Bilan" de la competition (toutes editions), dans l'URL (?bilan=1).
+const showBilan = ref(route.query.bilan === '1')
 const loaded = ref(false)
 
 const currentSeason = computed(() => Math.max(...competitions.value.map(c => c.season ?? 0)))
@@ -129,6 +140,11 @@ const olderEditions = computed(() => active.value?.family.editions.slice(RECENT_
 // Nouvelle competition ou edition : sa phase finale (ou sa 1re phase) de l'edition la plus recente.
 function selectFamily(family) {
   selectEdition(family.editions[0])
+}
+
+function openEdition(edition) {
+  showBilan.value = false
+  selectEdition(edition)
 }
 
 function selectEdition(edition) {
@@ -165,8 +181,12 @@ async function load() {
 
 watch(comp, c => {
   if (!loaded.value || !c) return
-  router.replace({ query: { competition: c.id } })
+  router.replace({ query: { competition: c.id, bilan: showBilan.value ? '1' : undefined } })
   if (!loadedIds.value.has(c.id)) loadFor(c)
+})
+
+watch(showBilan, bilan => {
+  if (comp.value) router.replace({ query: { competition: comp.value.id, bilan: bilan ? '1' : undefined } })
 })
 
 watch(() => route.query.competition, id => {

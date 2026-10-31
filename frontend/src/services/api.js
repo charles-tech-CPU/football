@@ -85,5 +85,6 @@ export default {
   updateEuropeanSlot: (id, payload) => api.put(`/european-slots/${id}`, payload).then(r => r.data),
   deleteEuropeanSlot: (id) => api.delete(`/european-slots/${id}`),
 
-  getInternationalRanking: () => api.get('/international-ranking').then(r => r.data)
+  getInternationalRanking: () => api.get('/international-ranking').then(r => r.data),
+  getInternationalStats: (family) => api.get('/international-stats', { params: { family } }).then(r => r.data)
 }
