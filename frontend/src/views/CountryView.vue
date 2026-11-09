@@ -21,6 +21,7 @@
       <span v-if="league" class="hero-chip">🏟️ Championnat</span>
       <span v-if="cup" class="hero-chip">🏆 Coupe nationale</span>
       <span v-if="league?.closedAt" class="hero-chip">🔒 Championnat clôturé</span>
+      <span v-if="drawPending" class="hero-chip hero-chip--pending" title="Aucun match saisi pour ce championnat">🎲 Calendrier pas encore tiré au sort</span>
       <span v-if="cup?.closedAt" class="hero-chip">🔒 Coupe clôturée</span>
     </div>
   </section>
@@ -850,6 +851,8 @@ const rankConfig = computed(() => league.value ? LEAGUE_RANK_CONFIG[league.value
 // opposent parfois des clubs d'une autre division et ne comptent pas au classement.
 const rawMatches = ref([])
 const hasPlayoffs = ref(false)
+// Saison preparee mais calendrier pas encore tire au sort : aucun match saisi.
+const drawPending = ref(false)
 // Clubs du pays (suppression d'un club cree par erreur) et nombre de matchs de chacun dans ce
 // championnat, barrages compris : un club utilise ne peut pas etre supprime.
 const countryTeams = ref([])
@@ -1090,6 +1093,7 @@ async function load() {
     standings.value = standingsList
     rawMatches.value = matchList.filter(m => !isPlayoffMatch(m))
     hasPlayoffs.value = matchList.some(isPlayoffMatch)
+    drawPending.value = matchList.length === 0
 
     const map = {}
     for (const s of statuses) map[s.teamId] = s
@@ -1111,6 +1115,7 @@ async function load() {
     teamStatusMap.value = {}
     rawMatches.value = []
     hasPlayoffs.value = false
+    drawPending.value = false
     countryTeams.value = []
     leagueMatchCount.value = new Map()
   }

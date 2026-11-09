@@ -455,6 +455,11 @@ button.hero-chip:hover,
   background: rgba(255, 255, 255, 0.28);
 }
 
+.hero-chip--pending {
+  border: 1px dashed #fbbf24;
+  background: rgba(245, 158, 11, 0.25);
+}
+
 /* Bandeaux Coupes d'Europe : une ambiance par competition. */
 .hero--ldc {
   background:

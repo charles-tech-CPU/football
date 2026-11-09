@@ -86,22 +86,25 @@
         v-for="c in filteredCountries"
         :key="c.country"
         class="country-card"
+        :class="{ 'country-card--pending': c.league && stats[c.league.id]?.drawPending }"
         :to="`/pays/${encodeURIComponent(c.country)}`"
       >
         <span class="card-flag">
           <FlagIcon :country="c.country" />
           <LateBadge :count="c.league && stats[c.league.id]?.late" />
-          <RoundsLeftBadge :remaining="c.league && stats[c.league.id]?.remaining" />
+          <span v-if="c.league && stats[c.league.id]?.drawPending" class="draw-pending-badge" title="Calendrier pas encore tiré au sort" aria-label="Calendrier pas encore tiré au sort">🎲</span>
+          <RoundsLeftBadge v-else :remaining="c.league && stats[c.league.id]?.remaining" />
         </span>
         <div class="country-card-info">
           <span class="country-card-name">{{ c.country }}</span>
           <span class="country-card-badges">
             <span v-if="c.league" class="badge badge-league">Championnat</span>
             <span v-if="c.league?.closedAt" class="badge badge-finished">Clôturé 🔒</span>
+            <span v-else-if="c.league && stats[c.league.id]?.drawPending" class="badge badge-pending">Calendrier à tirer</span>
             <span v-else-if="c.league && stats[c.league.id]?.remaining.finished" class="badge badge-finished">Terminé ✓</span>
             <span v-if="c.cup" class="badge badge-cup">Coupe</span>
           </span>
-          <CalendarProgress v-if="c.league && stats[c.league.id]?.calendar.total && !stats[c.league.id].remaining.finished" :progress="stats[c.league.id].calendar" />
+          <CalendarProgress v-if="c.league && stats[c.league.id]?.calendar.total && !stats[c.league.id].remaining.finished && !stats[c.league.id].drawPending" :progress="stats[c.league.id].calendar" />
         </div>
       </router-link>
     </div>
@@ -214,6 +217,8 @@ async function loadStats() {
       late,
       calendar,
       remaining: remainingProgress(matches, c.totalRounds, today),
+      // Saison preparee (cf. NextSeasonPanel) mais calendrier pas encore tire au sort.
+      drawPending: c.type === 'LEAGUE' && !c.closedAt && matches.length === 0,
       checklist: c.type === 'LEAGUE' ? seasonEndChecklist(matches, c, { late, calendar }) : null
     }
   }))
@@ -242,6 +247,33 @@ onMounted(load)
 </script>
 
 <style scoped>
+.country-card--pending {
+  border-style: dashed;
+  border-color: #b45309;
+  background: repeating-linear-gradient(135deg, var(--surface), var(--surface) 10px, #fffbeb 10px, #fffbeb 20px);
+}
+.draw-pending-badge {
+  position: absolute;
+  top: -8px;
+  left: -10px;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #f59e0b;
+  border: 2px solid var(--surface);
+  font-size: 11px;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.35);
+  z-index: 1;
+}
+.badge-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
 .archives-link {
   margin-top: 12px;
   text-decoration: none;
