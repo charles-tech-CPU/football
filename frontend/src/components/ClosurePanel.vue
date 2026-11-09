@@ -1,6 +1,9 @@
 <template>
-  <section v-if="state" class="closure">
-    <template v-if="state.closedAt">
+  <section class="closure">
+    <p v-if="loadError" class="error-text">
+      ⚠️ Clôture de la saison indisponible : {{ loadError }}
+    </p>
+    <template v-if="state?.closedAt">
       <div class="closure-banner">
         <span>🔒 Saison clôturée le {{ closedDate }} : classement figé, matchs en lecture seule.</span>
         <button type="button" :disabled="busy" @click="reopen">Rouvrir</button>
@@ -22,7 +25,7 @@
       />
     </template>
 
-    <details v-else class="add-form">
+    <details v-else-if="state" class="add-form">
       <summary>🏁 Clôturer la saison</summary>
       <p class="section-intro">
         La clôture fige le classement final dans l'ordre ci-dessous, ajoute la saison au palmarès
@@ -103,6 +106,7 @@ const winnerId = ref(null)
 const runnerUpId = ref(null)
 const busy = ref(false)
 const error = ref('')
+const loadError = ref('')
 
 const isLeague = computed(() => props.competition.type === 'LEAGUE')
 const pending = computed(() => pendingCount(matches.value))
@@ -112,10 +116,23 @@ const canClose = computed(() => season.value && (isLeague.value ? ranking.value.
 
 async function load() {
   error.value = ''
-  const [closure, matchList] = await Promise.all([
-    api.getClosure(props.competition.id),
-    api.getMatchesByCompetition(props.competition.id)
-  ])
+  loadError.value = ''
+  let closure, matchList
+  try {
+    ;[closure, matchList] = await Promise.all([
+      api.getClosure(props.competition.id),
+      api.getMatchesByCompetition(props.competition.id)
+    ])
+  } catch (e) {
+    // Sans ce message, le panneau disparaissait sans explication (ex. backend pas a jour : 404).
+    state.value = null
+    const status = e.response?.status
+    loadError.value = e.response?.data?.error
+      ?? (status === 404
+        ? 'le serveur ne connaît pas la clôture (HTTP 404) : backend à recompiler et redémarrer.'
+        : `erreur ${status ?? 'réseau'} lors du chargement.`)
+    return
+  }
   state.value = closure
   season.value = closure.suggestedSeason
   matches.value = matchList
