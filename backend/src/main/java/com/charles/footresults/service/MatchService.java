@@ -13,6 +13,7 @@ import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.MatchRepository;
 import com.charles.footresults.repository.TeamRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -251,6 +252,58 @@ public class MatchService {
         requireOpen(match.getCompetition());
         applyFields(match, dto);
         return MatchDto.from(matchRepository.save(match));
+    }
+
+    /**
+     * Inverse domicile et exterieur (clubs, scores et tirs au but) d'un match de championnat et des
+     * matchs retour choisis, qui doivent opposer les memes clubs a l'envers dans la meme competition.
+     * Retourne les matchs inverses, le match demande en premier.
+     */
+    public List<MatchDto> swapHomeAway(Long id, List<Long> reverseMatchIds) {
+        Match match = matchRepository
+                .findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Match introuvable : " + id));
+        Competition competition = match.getCompetition();
+        requireOpen(competition);
+        if (competition.getType() != CompetitionType.LEAGUE) {
+            throw new IllegalArgumentException("L'inversion domicile / exterieur est reservee aux championnats");
+        }
+        List<Match> toSwap = new ArrayList<>(List.of(match));
+        for (Long reverseId : reverseMatchIds == null ? List.<Long>of() : reverseMatchIds) {
+            Match reverse = matchRepository
+                    .findById(reverseId)
+                    .orElseThrow(() -> new EntityNotFoundException("Match introuvable : " + reverseId));
+            if (!isReverseOf(reverse, match)) {
+                throw new IllegalArgumentException("Le match " + reverseId + " n'est pas un match retour de "
+                        + match.getTeam1().getName() + " - " + match.getTeam2().getName());
+            }
+            if (toSwap.stream().noneMatch(m -> m.getId().equals(reverseId))) {
+                toSwap.add(reverse);
+            }
+        }
+        toSwap.forEach(MatchService::swapSides);
+        return matchRepository.saveAll(toSwap).stream().map(MatchDto::from).toList();
+    }
+
+    private static boolean isReverseOf(Match reverse, Match match) {
+        return !reverse.getId().equals(match.getId())
+                && reverse.getCompetition()
+                        .getId()
+                        .equals(match.getCompetition().getId())
+                && reverse.getTeam1().getId().equals(match.getTeam2().getId())
+                && reverse.getTeam2().getId().equals(match.getTeam1().getId());
+    }
+
+    private static void swapSides(Match m) {
+        Team team1 = m.getTeam1();
+        m.setTeam1(m.getTeam2());
+        m.setTeam2(team1);
+        Integer score1 = m.getScore1();
+        m.setScore1(m.getScore2());
+        m.setScore2(score1);
+        Integer penalty1 = m.getPenaltyScore1();
+        m.setPenaltyScore1(m.getPenaltyScore2());
+        m.setPenaltyScore2(penalty1);
     }
 
     public void delete(Long id) {

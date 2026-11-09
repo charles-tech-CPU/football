@@ -398,6 +398,64 @@ class MatchServiceTest {
                 null);
     }
 
+    @Test
+    void inversionEchangeClubsEtScoresDuMatchEtDuRetourChoisi() {
+        Match aller = match();
+        aller.setId(100L);
+        aller.setScore1(2);
+        aller.setScore2(1);
+        Match retour = match();
+        retour.setId(101L);
+        retour.setRoundLabel("J10");
+        retour.setTeam1(om);
+        retour.setTeam2(psg);
+        when(matchRepository.findById(100L)).thenReturn(Optional.of(aller));
+        when(matchRepository.findById(101L)).thenReturn(Optional.of(retour));
+        when(matchRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<MatchDto> swapped = matchService.swapHomeAway(100L, List.of(101L));
+
+        assertThat(swapped).extracting(MatchDto::id).containsExactly(100L, 101L);
+        assertThat(aller.getTeam1()).isEqualTo(om);
+        assertThat(aller.getTeam2()).isEqualTo(psg);
+        assertThat(aller.getScore1()).isEqualTo(1);
+        assertThat(aller.getScore2()).isEqualTo(2);
+        assertThat(retour.getTeam1()).isEqualTo(psg);
+        assertThat(retour.getTeam2()).isEqualTo(om);
+    }
+
+    @Test
+    void inversionRefuseUnMatchQuiNEstPasLeRetour() {
+        Match aller = match();
+        aller.setId(100L);
+        Match autre = match();
+        autre.setId(102L);
+        when(matchRepository.findById(100L)).thenReturn(Optional.of(aller));
+        when(matchRepository.findById(102L)).thenReturn(Optional.of(autre));
+        List<Long> ids = List.of(102L);
+
+        assertThatThrownBy(() -> matchService.swapHomeAway(100L, ids))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("pas un match retour");
+        verify(matchRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void inversionReserveeAuxChampionnats() {
+        Competition coupe =
+                new Competition("FRANCE_CUP", "Coupe de France", CompetitionType.DOMESTIC_CUP, "France", 2027);
+        coupe.setId(11L);
+        Match match = match();
+        match.setId(100L);
+        match.setCompetition(coupe);
+        when(matchRepository.findById(100L)).thenReturn(Optional.of(match));
+        List<Long> none = List.of();
+
+        assertThatThrownBy(() -> matchService.swapHomeAway(100L, none))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("championnats");
+    }
+
     private Match match() {
         Match match = new Match();
         match.setCompetition(ligue1);

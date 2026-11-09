@@ -46,6 +46,7 @@
         </td>
         <td>
           <button @click="saveMatch(m)">Enregistrer</button>
+          <SwapHomeButton :match="m" @swapped="load" />
           <button type="button" class="delete-btn" title="Supprimer ce match" aria-label="Supprimer ce match" @click="deleteMatch(m)">🗑</button>
         </td>
       </tr>
@@ -68,6 +69,7 @@ import MatchScoreCells from './MatchScoreCells.vue'
 import MatchStatusSelect from './MatchStatusSelect.vue'
 import { useMatchEdits } from '../composables/useMatchEdits'
 import TeamSelect from './TeamSelect.vue'
+import SwapHomeButton from './SwapHomeButton.vue'
 import { isDecided } from '../utils/matchEdit.js'
 
 const props = defineProps({

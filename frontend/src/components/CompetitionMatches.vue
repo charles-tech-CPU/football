@@ -91,6 +91,7 @@
         <td>{{ statusLabel(m.status) }}</td>
         <td>
           <button @click="saveScore(m)">Enregistrer</button>
+          <SwapHomeButton :match="m" @swapped="applySwapped" />
           <button type="button" class="delete-btn" title="Supprimer ce match" aria-label="Supprimer ce match" @click="deleteMatch(m)">🗑</button>
         </td>
       </tr>
@@ -111,6 +112,7 @@ import { formatTime } from '../utils/format'
 import { roundsByRecency } from '../utils/rounds'
 import { calendarAnomalies } from '../utils/calendarCheck'
 import TeamSelect from './TeamSelect.vue'
+import SwapHomeButton from './SwapHomeButton.vue'
 
 const props = defineProps({
   competitionId: { type: [String, Number], required: true },
@@ -181,6 +183,15 @@ function statusRowClass(status) {
   if (status === 'SUSPENDED') return { 'row-suspended': true }
   if (status === 'FORFEIT') return { 'row-forfeit': true }
   return {}
+}
+
+// Matchs inverses (cf. SwapHomeButton) : mis a jour sur place pour garder filtre et page.
+function applySwapped(swapped) {
+  for (const s of swapped) {
+    const i = matches.value.findIndex(m => m.id === s.id)
+    if (i !== -1) matches.value[i] = { ...matches.value[i], ...s }
+    edits[s.id] = { team1Id: s.team1Id, team2Id: s.team2Id, score1: s.score1, score2: s.score2 }
+  }
 }
 
 async function load() {

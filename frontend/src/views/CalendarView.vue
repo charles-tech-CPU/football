@@ -76,6 +76,7 @@
         </td>
         <td>
           <button @click="saveMatch(m)">Enregistrer</button>
+          <SwapHomeButton :match="m" @swapped="load" />
           <button type="button" class="delete-btn" title="Supprimer ce match" aria-label="Supprimer ce match" @click="deleteMatch(m)">🗑</button>
         </td>
       </tr>
@@ -117,6 +118,7 @@ import { competitionBadgeClass, competitionLink } from '../utils/competitionBadg
 import { penaltiesNeeded, teamOptionsFor as teamOptionsAmong } from '../utils/matchEdit'
 import { useMatchEdits } from '../composables/useMatchEdits'
 import TeamSelect from '../components/TeamSelect.vue'
+import SwapHomeButton from '../components/SwapHomeButton.vue'
 
 function isContinental(m) {
   return m.competitionCode === 'LDC' || m.competitionCode === 'EL' || m.competitionCode === 'EC'

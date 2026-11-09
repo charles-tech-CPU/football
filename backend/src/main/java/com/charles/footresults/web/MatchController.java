@@ -3,6 +3,7 @@ package com.charles.footresults.web;
 import com.charles.footresults.dto.MatchCreateDto;
 import com.charles.footresults.dto.MatchDto;
 import com.charles.footresults.dto.MatchPageDto;
+import com.charles.footresults.dto.MatchSwapDto;
 import com.charles.footresults.service.MatchService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -71,6 +72,15 @@ public class MatchController {
     @PutMapping("/{id}")
     public MatchDto update(@PathVariable Long id, @Valid @RequestBody MatchCreateDto dto) {
         return matchService.update(id, dto);
+    }
+
+    /**
+     * POST /api/matches/{id}/swap : inverse domicile et exterieur (clubs et scores) d'un match de
+     * championnat et des matchs retour choisis.
+     */
+    @PostMapping("/{id}/swap")
+    public List<MatchDto> swap(@PathVariable Long id, @RequestBody(required = false) MatchSwapDto dto) {
+        return matchService.swapHomeAway(id, dto == null ? List.of() : dto.reverseMatchIds());
     }
 
     @DeleteMapping("/{id}")

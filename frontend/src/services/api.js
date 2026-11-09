@@ -45,6 +45,7 @@ export default {
   createMatch: (payload) => api.post('/matches', payload).then(r => r.data),
   updateMatch: (id, payload) => api.put(`/matches/${id}`, payload).then(r => r.data),
   deleteMatch: (id) => api.delete(`/matches/${id}`),
+  swapHomeAway: (id, reverseMatchIds) => api.post(`/matches/${id}/swap`, { reverseMatchIds }).then(r => r.data),
 
   getStandings: (competitionId, round) =>
     api.get('/standings', { params: { competitionId, round } }).then(r => r.data),
