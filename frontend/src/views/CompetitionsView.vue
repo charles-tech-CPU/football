@@ -227,7 +227,7 @@ async function loadStats() {
 async function load() {
   competitions.value = await api.getCompetitions()
   loaded.value = true
-  loadStats()
+  void loadStats()
 }
 
 async function submit() {

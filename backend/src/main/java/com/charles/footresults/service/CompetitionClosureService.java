@@ -17,6 +17,7 @@ import com.charles.footresults.repository.TeamRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +119,7 @@ public class CompetitionClosureService {
                     "Seuls un championnat, une coupe nationale ou une coupe d'Europe (LDC, EL, EC) se cloturent");
         }
         honourRepository.save(honour);
-        competition.setClosedAt(LocalDateTime.now());
+        competition.setClosedAt(LocalDateTime.now(ZoneId.systemDefault()));
         competition.setWinnerTeam(honour.getWinnerTeam());
         competitionRepository.save(competition);
         if (competition.getCountry() != null) {

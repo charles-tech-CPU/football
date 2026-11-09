@@ -13,14 +13,20 @@ function isPendingTeam(name) {
 }
 
 // "Barrage (a determiner : 2E-5E)" -> places "2E" et "5E" ; null hors place a determiner.
-const PENDING_SLOTS_RE = /\(a d[ée]terminer\s*:\s*([^)]*)\)/i
+const PENDING_SLOTS_RE = /\(a d[ée]terminer\s*:([^)]*)\)/i
 
 // Libelle du barrage sans places a determiner ni manche : "Barrages - Aller" -> "Barrages".
 export function playoffLabel(raw = '') {
-  return raw
-    .replace(PENDING_SLOTS_RE, '')
-    .replace(/[\s-]*\b(aller|retour)\s*$/i, '')
-    .trim()
+  const label = raw.replace(PENDING_SLOTS_RE, '').trim()
+  const leg = label.match(/\b(?:aller|retour)$/i)
+  return trimSeparators(leg ? label.slice(0, leg.index) : label)
+}
+
+// Retire espaces et tirets en fin de libelle (sans regex, pour eviter tout retour arriere).
+function trimSeparators(text) {
+  let end = text.length
+  while (end > 0 && (text[end - 1] === '-' || text[end - 1].trim() === '')) end--
+  return text.slice(0, end)
 }
 
 // Les 2 manches d'une confrontation : memes 2 equipes, ou, tant que les equipes restent

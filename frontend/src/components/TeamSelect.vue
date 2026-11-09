@@ -1,10 +1,12 @@
 <template>
   <span class="team-select">
     <input
+      :id="inputId"
       ref="input"
       v-model="query"
       type="text"
       role="combobox"
+      :aria-controls="listId"
       autocomplete="off"
       :aria-label="ariaLabel"
       :aria-expanded="open"
@@ -20,7 +22,7 @@
       @blur="close"
     />
     <Teleport to="body">
-      <ul v-if="open" class="team-select-list" role="listbox" :style="listStyle">
+      <ul v-if="open" :id="listId" class="team-select-list" role="listbox" :style="listStyle">
         <li
           v-for="(t, i) in filtered"
           :key="t.id"
@@ -35,6 +37,7 @@
         <li
           v-if="createOption"
           role="option"
+          aria-selected="false"
           class="team-select-create"
           :class="{ active: activeIndex === filtered.length }"
           @mousedown.prevent="create"
@@ -53,7 +56,7 @@
 // haut/bas pour se deplacer, Entree pour valider. Remplace un <select> (v-model = id du club).
 // Avec creatable, un nom tape qui ne correspond a aucun club propose de le creer (evenement
 // create avec le nom saisi : le parent cree le club puis le selectionne).
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { filterTeams, normalizeName } from '../utils/teamSearch'
 
 const props = defineProps({
@@ -62,11 +65,14 @@ const props = defineProps({
   ariaLabel: { type: String, default: 'Équipe' },
   placeholder: { type: String, default: 'Rechercher un club' },
   required: { type: Boolean, default: false },
-  creatable: { type: Boolean, default: false }
+  creatable: { type: Boolean, default: false },
+  // id du champ de saisie, pour un <label for> exterieur
+  inputId: { type: String, default: undefined }
 })
 const emit = defineEmits(['update:modelValue', 'create'])
 
 const input = ref(null)
+const listId = `team-select-list-${useId()}`
 const query = ref('')
 const open = ref(false)
 const searching = ref(false)
@@ -113,7 +119,7 @@ function openList() {
   input.value.select()
   window.addEventListener('scroll', onScroll, true)
   window.addEventListener('resize', close)
-  scrollActiveIntoView()
+  void scrollActiveIntoView()
 }
 
 function close() {
@@ -142,7 +148,7 @@ function move(step) {
   const count = optionCount.value
   if (!count) return
   activeIndex.value = (activeIndex.value + step + count) % count
-  scrollActiveIntoView()
+  void scrollActiveIntoView()
 }
 
 function onEnter(e) {

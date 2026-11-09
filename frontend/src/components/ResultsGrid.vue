@@ -349,7 +349,7 @@ const miniLeagueFixtures = computed(() => {
 const miniLeaguePositions = computed(() => {
   const set = new Set()
   for (const f of miniLeagueFixtures.value) { set.add(f.posA); set.add(f.posB) }
-  return [...set].sort()
+  return [...set].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true }))
 })
 
 function miniFixtureBetween(rowPos, colPos) {

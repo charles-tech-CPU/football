@@ -183,19 +183,19 @@ async function load() {
 
 function onFilterChange() {
   currentPage.value = 0
-  load()
+  void load()
 }
 
 function prevPage() {
   if (currentPage.value === 0) return
   currentPage.value--
-  load()
+  void load()
 }
 
 function nextPage() {
   if (currentPage.value >= totalPages.value - 1) return
   currentPage.value++
-  load()
+  void load()
 }
 
 onMounted(load)

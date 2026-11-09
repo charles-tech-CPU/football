@@ -222,7 +222,7 @@ async function loadAllLeagues() {
 }
 
 watch(activeTab, tab => {
-  if (tab === 'championnats' && !allLeagues.value) loadAllLeagues()
+  if (tab === 'championnats' && !allLeagues.value) void loadAllLeagues()
 })
 
 watch(groupKey, loadAllLeagues)

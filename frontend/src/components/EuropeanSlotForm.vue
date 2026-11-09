@@ -16,8 +16,9 @@
     <label>Voie d'accès
       <input :value="modelValue.route" aria-label="Voie d'accès" placeholder="ex: Champion, Tenant du titre" @input="set('route', $event.target.value)" />
     </label>
-    <label>Club
+    <label :for="clubInputId">Club
       <TeamSelect
+        :input-id="clubInputId"
         :model-value="modelValue.teamId"
         :teams="teams"
         aria-label="Club"
@@ -30,8 +31,11 @@
 
 <script setup>
 // Champs d'une place europeenne (creation ou modification, cf. EuropeanSlotsView).
+import { useId } from 'vue'
 import TeamSelect from './TeamSelect.vue'
 import { SLOT_COMPETITIONS, SLOT_STAGES } from '../utils/europeanSlots.js'
+
+const clubInputId = `slot-club-${useId()}`
 
 const props = defineProps({
   modelValue: { type: Object, required: true },

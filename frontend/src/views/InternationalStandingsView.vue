@@ -182,7 +182,7 @@ async function load() {
 watch(comp, c => {
   if (!loaded.value || !c) return
   router.replace({ query: { competition: c.id, bilan: showBilan.value ? '1' : undefined } })
-  if (!loadedIds.value.has(c.id)) loadFor(c)
+  if (!loadedIds.value.has(c.id)) void loadFor(c)
 })
 
 watch(showBilan, bilan => {
