@@ -1,10 +1,11 @@
 <template>
   <div ref="root" class="status-dropdown">
-    <button type="button" class="status-dropdown-trigger" @click="open = !open">
+    <button ref="trigger" type="button" class="status-dropdown-trigger" @click="toggle">
       {{ summary }}
       <span class="chevron">▾</span>
     </button>
-    <div v-if="open" class="status-dropdown-menu">
+    <Teleport to="body">
+    <div v-if="open" ref="menu" class="status-dropdown-menu" :style="menuStyle">
       <label v-for="opt in options" :key="opt.key">
         <input v-model="local[opt.key]" type="checkbox" @change="emitChange" />
         {{ opt.label }}
@@ -19,6 +20,7 @@
         </select>
       </label>
     </div>
+    </Teleport>
   </div>
 </template>
 
@@ -38,6 +40,9 @@ const options = [
 
 const open = ref(false)
 const root = ref(null)
+const trigger = ref(null)
+const menu = ref(null)
+const menuStyle = ref({})
 const local = reactive({ ...props.modelValue })
 
 watch(() => props.modelValue, v => Object.assign(local, v))
@@ -54,12 +59,51 @@ function emitChange() {
   emit('update:modelValue', { ...local })
 }
 
+// Le menu est affiche hors du tableau (Teleport) pour ne pas etre coupe par lui (derniere ligne
+// du classement) ; il s'ouvre au-dessus du bouton s'il n'y a pas la place en dessous.
+const MENU_HEIGHT = 170
+
+function placeMenu() {
+  const r = trigger.value.getBoundingClientRect()
+  const below = window.innerHeight - r.bottom
+  const style = { left: `${r.left}px` }
+  if (below < MENU_HEIGHT && r.top > below) style.bottom = `${window.innerHeight - r.top + 4}px`
+  else style.top = `${r.bottom + 4}px`
+  menuStyle.value = style
+}
+
+function toggle() {
+  if (open.value) {
+    close()
+    return
+  }
+  placeMenu()
+  open.value = true
+  window.addEventListener('scroll', onScroll, true)
+  window.addEventListener('resize', close)
+}
+
+function close() {
+  open.value = false
+  window.removeEventListener('scroll', onScroll, true)
+  window.removeEventListener('resize', close)
+}
+
+function onScroll(e) {
+  if (!menu.value?.contains(e.target)) close()
+}
+
 function handleClickOutside(e) {
-  if (root.value && !root.value.contains(e.target)) open.value = false
+  if (!open.value) return
+  if (root.value?.contains(e.target) || menu.value?.contains(e.target)) return
+  close()
 }
 
 onMounted(() => document.addEventListener('click', handleClickOutside))
-onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+  close()
+})
 </script>
 
 <style scoped>
@@ -89,10 +133,10 @@ onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 }
 
 .status-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 5;
+  position: fixed;
+  z-index: 1100;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
