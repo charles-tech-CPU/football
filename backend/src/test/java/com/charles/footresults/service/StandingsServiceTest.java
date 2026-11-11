@@ -210,6 +210,28 @@ class StandingsServiceTest {
     }
 
     @Test
+    void competitionInternationalePlayInEtQuartsHorsClassementDesGroupes() {
+        Competition nations = competition(CompetitionType.INTERNATIONAL);
+        Team panama = team(5L, "Panama");
+        when(statusRepository.findByCompetitionId(COMPETITION_ID))
+                .thenReturn(List.of(
+                        status(nations, psg, "Ligue A - Groupe 1"),
+                        status(nations, om, "Ligue A - Groupe 1"),
+                        status(nations, lyon, "Ligue C - Groupe 2")));
+        Match groupe = match(psg, om, 1, 0);
+        groupe.setRoundLabel("J1");
+        Match playIn = match(lyon, om, 3, 0);
+        playIn.setRoundLabel("Play-in aller");
+        Match quart = match(psg, panama, 0, 2);
+        quart.setRoundLabel("Quart de finale aller");
+        givenPlayedMatches(groupe, playIn, quart);
+
+        assertThat(standingsService.computeStandings(COMPETITION_ID))
+                .extracting(StandingRowDto::teamName, StandingRowDto::played, StandingRowDto::points)
+                .containsExactly(tuple("PSG", 1, 3), tuple("OM", 1, 0), tuple("Lyon", 0, 0));
+    }
+
+    @Test
     void lesClubsInscritsAUnChampionnatPasEncoreCommenceApparaissentParOrdreAlphabetique() {
         Competition league = competition(CompetitionType.LEAGUE);
         when(statusRepository.findByCompetitionId(COMPETITION_ID))

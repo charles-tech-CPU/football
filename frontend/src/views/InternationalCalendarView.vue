@@ -17,6 +17,7 @@
       <option value="all">Toutes les confédérations</option>
       <option v-for="c in CONFEDERATIONS" :key="c.code" :value="c.code">{{ c.label }}</option>
     </select>
+    <InternationalMatchCreation :matches="allMatches" @match-created="reloadKeepingOrder" />
     <span v-if="filteredMatches.length" class="page-info">{{ filteredMatches.length }} match{{ filteredMatches.length > 1 ? 's' : '' }}</span>
   </div>
 
@@ -87,6 +88,7 @@
 import { computed, onMounted, ref } from 'vue'
 import api from '../services/api'
 import FlagIcon from '../components/FlagIcon.vue'
+import InternationalMatchCreation from '../components/InternationalMatchCreation.vue'
 import InternationalNav from '../components/InternationalNav.vue'
 import MatchDateTimeCells from '../components/MatchDateTimeCells.vue'
 import MatchScoreCells from '../components/MatchScoreCells.vue'
@@ -96,6 +98,8 @@ import { isPlayed } from '../utils/matchEdit.js'
 import { CONFEDERATIONS, confederationForCompetitionCode, confederationBadgeClass } from '../utils/confederations'
 
 const matches = ref([])
+// Tous les matchs de la saison (joues compris) : competitions et selections du formulaire d'ajout.
+const allMatches = ref([])
 const loaded = ref(false)
 const confederationFilter = ref('all')
 
@@ -111,7 +115,8 @@ const { edits, error, resetEdits, rowClass, saveMatch } = useMatchEdits({ reload
 
 // Matchs joues : dans l'onglet Resultats des classements internationaux, plus ici.
 async function fetchUpcoming() {
-  return (await api.getInternationalMatches()).filter(m => !isPlayed(m))
+  allMatches.value = await api.getInternationalMatches()
+  return allMatches.value.filter(m => !isPlayed(m))
 }
 
 async function load() {

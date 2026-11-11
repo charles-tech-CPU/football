@@ -162,6 +162,9 @@ public class StandingsService {
         }
 
         for (Match m : played) {
+            if (international && !isGroupMatch(m, teamGroup)) {
+                continue;
+            }
             tallyFor(byTeam, m.getTeam1()).addResult(m.getScore1(), m.getScore2());
             tallyFor(byTeam, m.getTeam2()).addResult(m.getScore2(), m.getScore1());
         }
@@ -365,6 +368,19 @@ public class StandingsService {
     /** Match de barrage ("Barrage (2E-5E)", "Barrages - Aller"...), hors classement. */
     private static boolean isPlayoff(Match m) {
         return m.getRoundLabel() != null && m.getRoundLabel().toUpperCase().contains(PLAYOFF_ROUND);
+    }
+
+    /**
+     * Selections nationales : seuls les matchs de groupe comptent au classement (deux equipes du meme
+     * groupe, journee "J<n>" ou tour non renseigne). Play-in, quarts de finale, finales... opposent des
+     * equipes de groupes ou de ligues differents et restent hors classement.
+     */
+    private static boolean isGroupMatch(Match m, Map<Long, String> teamGroup) {
+        String group = teamGroup.get(m.getTeam1().getId());
+        return group != null
+                && group.equals(teamGroup.get(m.getTeam2().getId()))
+                && (m.getRoundLabel() == null
+                        || LEAGUE_ROUND.matcher(m.getRoundLabel()).matches());
     }
 
     private TeamTally tallyFor(Map<Long, TeamTally> byTeam, Team team) {
