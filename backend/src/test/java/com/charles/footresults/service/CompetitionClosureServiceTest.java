@@ -17,6 +17,7 @@ import com.charles.footresults.domain.Honour;
 import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.Team;
 import com.charles.footresults.dto.ClosureRequestDto;
+import com.charles.footresults.dto.PointsAdjustmentDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.FinalStandingRepository;
@@ -114,6 +115,48 @@ class CompetitionClosureServiceTest {
         assertThat(finlande.isClosed()).isTrue();
         assertThat(finlande.getWinnerTeam()).isEqualTo(kups);
         verify(europeanSlotService).fill(2028, "Finlande");
+    }
+
+    @Test
+    void unAjustementDePointsEstFigeAvecSonMotif() {
+        when(standingsService.computeLiveStandings(1L))
+                .thenReturn(List.of(row(hjk, 50), row(kups, 48), row(ilves, 40)));
+        List<FinalStanding> saved = new ArrayList<>();
+        when(finalStandingRepository.save(any(FinalStanding.class))).thenAnswer(inv -> {
+            saved.add(inv.getArgument(0));
+            return inv.getArgument(0);
+        });
+
+        // HJK sanctionne de 3 points : KuPS passe devant.
+        closureService.close(
+                1L,
+                new ClosureRequestDto(
+                        "2026",
+                        List.of(10L, 11L, 12L),
+                        null,
+                        null,
+                        List.of(new PointsAdjustmentDto(11L, null, -3, " Sanction financiere "))));
+
+        assertThat(saved)
+                .extracting(
+                        f -> f.getTeam().getName(),
+                        FinalStanding::getPoints,
+                        FinalStanding::getPointsAdjustment,
+                        FinalStanding::getAdjustmentReason)
+                .containsExactly(
+                        tuple("KUPS", 48, 0, null),
+                        tuple("HJK", 47, -3, "Sanction financiere"),
+                        tuple("ILVES", 40, 0, null));
+    }
+
+    @Test
+    void unAjustementPourUneEquipeHorsClassementEstRefuse() {
+        when(standingsService.computeLiveStandings(1L)).thenReturn(List.of(row(hjk, 50), row(kups, 48)));
+        ClosureRequestDto dto = new ClosureRequestDto(
+                "2026", List.of(11L, 10L), null, null, List.of(new PointsAdjustmentDto(12L, null, 2, null)));
+
+        assertThatThrownBy(() -> closureService.close(1L, dto)).hasMessageContaining("absente du classement");
+        verify(finalStandingRepository, never()).save(any());
     }
 
     @Test

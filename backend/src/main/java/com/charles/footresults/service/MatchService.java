@@ -41,18 +41,21 @@ public class MatchService {
     private final TeamRepository teamRepository;
     private final StandingsService standingsService;
     private final FeaturedMatchService featuredMatchService;
+    private final MatchHighlightService matchHighlightService;
 
     public MatchService(
             MatchRepository matchRepository,
             CompetitionRepository competitionRepository,
             TeamRepository teamRepository,
             StandingsService standingsService,
-            FeaturedMatchService featuredMatchService) {
+            FeaturedMatchService featuredMatchService,
+            MatchHighlightService matchHighlightService) {
         this.matchRepository = matchRepository;
         this.competitionRepository = competitionRepository;
         this.teamRepository = teamRepository;
         this.standingsService = standingsService;
         this.featuredMatchService = featuredMatchService;
+        this.matchHighlightService = matchHighlightService;
     }
 
     @Transactional(readOnly = true)
@@ -107,6 +110,8 @@ public class MatchService {
         Map<Long, Integer> ranks = leagueRanks(result.getContent());
         Map<Long, Map<Long, Integer>> cupRanks = continentalRanks(result.getContent());
         Set<Long> featured = featuredMatchService.featuredMatchIds(result.getContent(), ranks);
+        Set<Long> relegationBattles = matchHighlightService.relegationBattleIds(result.getContent());
+        Map<Long, String> rivalries = matchHighlightService.rivalryLabels(result.getContent());
         List<MatchDto> items = result.getContent().stream()
                 .map(m -> {
                     Map<Long, Integer> r =
@@ -116,7 +121,8 @@ public class MatchService {
                                     r.get(m.getTeam1().getId()),
                                     r.get(m.getTeam2().getId()),
                                     featured.contains(m.getId()),
-                                    knockoutInfo(m));
+                                    knockoutInfo(m))
+                            .withHighlights(relegationBattles.contains(m.getId()), rivalries.get(m.getId()));
                 })
                 .toList();
         return new MatchPageDto(items, result.getTotalElements());

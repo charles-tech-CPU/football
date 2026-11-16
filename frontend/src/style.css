@@ -1287,6 +1287,23 @@ tbody tr.standing-orange-dark:hover { background: #fdba74; }
   width: 120px;
 }
 
+/* Bouton qui vide l'horaire d'un match */
+.clear-time-btn {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8em;
+  cursor: pointer;
+}
+
+.clear-time-btn:hover {
+  color: var(--danger);
+  border-color: currentColor;
+}
+
 /* Match sans horaire connu (seule la date est fixee) */
 .no-time-tag {
   display: inline-block;

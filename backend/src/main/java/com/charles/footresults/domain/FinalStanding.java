@@ -62,4 +62,12 @@ public class FinalStanding {
 
     @Column(nullable = false)
     private int points;
+
+    /** Points ajoutes (negatif : retrait) aux points calcules, deja compris dans points. */
+    @Column(name = "points_adjustment", nullable = false)
+    private int pointsAdjustment;
+
+    /** Motif de l'ajustement (sanction, correction...) ; null sans ajustement. */
+    @Column(name = "adjustment_reason", length = 200)
+    private String adjustmentReason;
 }

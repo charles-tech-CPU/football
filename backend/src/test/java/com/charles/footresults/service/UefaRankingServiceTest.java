@@ -106,9 +106,10 @@ class UefaRankingServiceTest {
 
         Map<String, BigDecimal> points = points2027(psg, inter, celtic);
 
-        assertThat(points.get("PSG")).isEqualByComparingTo("3");
-        assertThat(points.get("Inter")).isEqualByComparingTo("0");
-        assertThat(points.get("Celtic")).isEqualByComparingTo("1");
+        // + 6 pts de participation a la phase de ligue de la LDC (phase pas finie : pas de bonus de rang).
+        assertThat(points.get("PSG")).isEqualByComparingTo("9");
+        assertThat(points.get("Inter")).isEqualByComparingTo("6");
+        assertThat(points.get("Celtic")).isEqualByComparingTo("7");
     }
 
     @Test
@@ -121,7 +122,41 @@ class UefaRankingServiceTest {
                 played("DEMI-FINALE", date(4, 28), psg, inter, 2, 1),
                 played("FINALE", date(5, 30), psg, celtic, 1, 0));
 
-        assertThat(points2027(psg).get("PSG")).isEqualByComparingTo("12");
+        // 6 victoires (12 pts) + 1,5 pt par tour atteint (huitiemes, quarts, demies, finale).
+        assertThat(points2027(psg).get("PSG")).isEqualByComparingTo("18");
+    }
+
+    @Test
+    void bonusDeClassementDeFinDePhaseDeLigue() {
+        assertThat(UefaRankingService.leaguePhaseRankBonus("LDC", 1)).isEqualByComparingTo("6");
+        assertThat(UefaRankingService.leaguePhaseRankBonus("LDC", 2)).isEqualByComparingTo("5.75");
+        assertThat(UefaRankingService.leaguePhaseRankBonus("EL", 24)).isEqualByComparingTo("0.25");
+        assertThat(UefaRankingService.leaguePhaseRankBonus("EL", 25)).isEqualByComparingTo("0");
+        assertThat(UefaRankingService.leaguePhaseRankBonus("EC", 1)).isEqualByComparingTo("4");
+        assertThat(UefaRankingService.leaguePhaseRankBonus("EC", 8)).isEqualByComparingTo("2.25");
+        assertThat(UefaRankingService.leaguePhaseRankBonus("EC", 9)).isEqualByComparingTo("2.125");
+        assertThat(UefaRankingService.leaguePhaseRankBonus("EC", 24)).isEqualByComparingTo("0.25");
+    }
+
+    @Test
+    void uneFoisLaPhaseDeLigueTermineeLeClassementRapporteSonBonus() {
+        givenMatches(played("Phase de ligue", LEAGUE_PHASE_START, psg, inter, 1, 0));
+        when(standingsService.computeStandingsForRound(ldc.getId(), "PHASE DE LIGUE"))
+                .thenReturn(List.of(row(psg.getId()), row(inter.getId())));
+
+        Map<String, BigDecimal> points = points2027(psg, inter);
+
+        // PSG : victoire 2 + participation 6 + 1er 6 = 14 ; Inter : participation 6 + 2e 5,75.
+        assertThat(points.get("PSG")).isEqualByComparingTo("14");
+        assertThat(points.get("Inter")).isEqualByComparingTo("11.75");
+    }
+
+    @Test
+    void lesSeiziemesNeDonnentPasDeBonusDeTour() {
+        assertThat(UefaRankingService.knockoutRound("SEIZIEME DE FINALE")).isNull();
+        assertThat(UefaRankingService.knockoutRound("QUART DE FINALE - Aller")).isEqualTo("QUART");
+        assertThat(UefaRankingService.knockoutRound("DEMI-FINALE")).isEqualTo("DEMI");
+        assertThat(UefaRankingService.knockoutRound("FINALE")).isEqualTo("FINALE");
     }
 
     @Test
@@ -362,12 +397,13 @@ class UefaRankingServiceTest {
                 .collect(Collectors.toMap(CountryUefaRankingDto::country, Function.identity()));
 
         CountryUefaRankingDto france = byCountry.get("France");
-        assertThat(france.points2027()).isEqualByComparingTo("2");
+        // Points des matchs + 6 pts de participation a la phase de ligue de la LDC.
+        assertThat(france.points2027()).isEqualByComparingTo("8");
         assertThat(Arrays.asList(france.ldcNow(), france.elNow(), france.ecNow()))
                 .containsExactly(1, 1, 2);
         assertThat(france.colorCode()).isEqualTo("BLUE");
-        assertThat(byCountry.get("Italie").points2027()).isEqualByComparingTo("0");
-        assertThat(byCountry.get("Portugal").points2027()).isEqualByComparingTo("1");
+        assertThat(byCountry.get("Italie").points2027()).isEqualByComparingTo("6");
+        assertThat(byCountry.get("Portugal").points2027()).isEqualByComparingTo("7");
         assertThat(byCountry.get("Portugal").colorCode()).isEqualTo("RED");
         assertThat(byCountry.get("Suisse").ldcNow()).isZero();
         assertThat(byCountry.get("Suisse").colorCode()).isEqualTo("RED");
@@ -449,16 +485,17 @@ class UefaRankingServiceTest {
 
         List<UefaHistoryPointDto> history = uefaRankingService.findClubHistory(7L);
 
-        // Point de depart : qualif sans date (victoire = 1 pt) ; puis une victoire (+2), une defaite.
+        // Point de depart : qualif sans date (victoire = 1 pt) ; puis une victoire (+2) et la
+        // participation a la phase de ligue (+6), une defaite.
         assertThat(history)
                 .extracting(UefaHistoryPointDto::date)
                 .containsExactly(null, LEAGUE_PHASE_START, date(10, 1));
         assertThat(history)
                 .extracting(p -> p.seasonPoints().stripTrailingZeros().toPlainString())
-                .containsExactly("1", "3", "3");
+                .containsExactly("1", "9", "9");
         assertThat(history)
                 .extracting(p -> p.coefficient().stripTrailingZeros().toPlainString())
-                .containsExactly("16", "18", "18");
+                .containsExactly("16", "24", "24");
     }
 
     @Test
@@ -482,10 +519,11 @@ class UefaRankingServiceTest {
 
         List<UefaHistoryPointDto> history = uefaRankingService.findCountryHistory(3L);
 
-        // (0/9 + 249.025/9 + 185/7 + 135/8 + 155/7) / 5 = 18.623 ; +2 pts pour 9 clubs => 18.668.
+        // (0/9 + 249.025/9 + 185/7 + 135/8 + 155/7) / 5 = 18.623 ; +8 pts (victoire 2 + participation
+        // LDC 6) pour 9 clubs => 18.801.
         // Le match du PSG (autre pays) n'ajoute aucun point a la courbe anglaise.
         assertThat(history).extracting(UefaHistoryPointDto::date).containsExactly(null, LEAGUE_PHASE_START);
-        assertThat(history).extracting(p -> p.coefficient().toPlainString()).containsExactly("18.623", "18.668");
+        assertThat(history).extracting(p -> p.coefficient().toPlainString()).containsExactly("18.623", "18.801");
     }
 
     @Test

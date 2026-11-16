@@ -1,10 +1,56 @@
 <template>
   <div v-if="stats" class="bilan">
-    <input v-model="search" class="bilan-search" aria-label="Filtrer par sélection" placeholder="Filtrer par sélection..." />
+    <div class="bilan-toolbar">
+      <div class="tab-bar">
+        <button type="button" class="tab-btn" :class="{ active: view === 'matchs' }" @click="view = 'matchs'">Bilan des matchs</button>
+        <button type="button" class="tab-btn" :class="{ active: view === 'parcours' }" @click="view = 'parcours'">Parcours en phase finale</button>
+      </div>
+      <input v-model="search" class="bilan-search" aria-label="Filtrer par sélection" placeholder="Filtrer par sélection..." />
+    </div>
 
-    <h2>Parcours en phase finale</h2>
-    <div class="table-scroll">
-      <table>
+    <div v-if="view === 'matchs'" class="table-scroll">
+      <table class="bilan-table">
+        <thead>
+          <tr>
+            <th rowspan="2">#</th>
+            <th rowspan="2">Sélection</th>
+            <th
+              v-for="g in groups"
+              :key="g.key"
+              :colspan="RECORD_COLUMNS.length + 1"
+              class="bilan-group sortable"
+              :class="{ sorted: sortBy === g.key }"
+              :title="`Trier sur le bilan ${g.title.toLowerCase()}`"
+              @click="sortBy = g.key"
+            >
+              {{ g.title }}{{ sortBy === g.key ? ' ▼' : '' }}
+            </th>
+          </tr>
+          <tr>
+            <template v-for="g in groups" :key="g.key">
+              <th class="bilan-first" :title="g.key === 'finals' ? 'Participations à la phase finale' : 'Campagnes de qualification jouées'">Éd.</th>
+              <th v-for="c in RECORD_COLUMNS" :key="c.key" :title="c.title">{{ c.label }}</th>
+            </template>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="r in records" :key="r.teamId">
+            <td class="muted">{{ r.rank }}</td>
+            <td class="bilan-team"><span class="team-cell"><FlagIcon :country="r.teamName" /> {{ r.teamName }}</span></td>
+            <template v-for="g in groups" :key="g.key">
+              <template v-if="r[g.key]">
+                <td class="bilan-first">{{ r[g.key].editions }}</td>
+                <td v-for="c in RECORD_COLUMNS" :key="c.key" :class="c.cls">{{ c.value(r[g.key]) }}</td>
+              </template>
+              <td v-else class="bilan-first bilan-zero" :colspan="RECORD_COLUMNS.length + 1">—</td>
+            </template>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div v-else class="table-scroll">
+      <table class="bilan-table">
         <thead>
           <tr>
             <th>Sélection</th>
@@ -14,7 +60,7 @@
         </thead>
         <tbody>
           <tr v-for="j in journeys" :key="j.teamId">
-            <td>
+            <td class="bilan-team">
               <span class="team-cell"><FlagIcon :country="j.teamName" /> {{ j.teamName }}</span>
               <span v-if="j.titleEditions.length" class="bilan-titles">{{ j.titleEditions.map(editionLabel).join(', ') }}</span>
             </td>
@@ -25,59 +71,23 @@
       </table>
     </div>
 
-    <template v-for="section in recordSections" :key="section.title">
-      <h2>{{ section.title }}</h2>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Sélection</th>
-              <th title="Éditions jouées">Éd.</th>
-              <th>MJ</th>
-              <th>V</th>
-              <th>N</th>
-              <th>D</th>
-              <th>BP</th>
-              <th>BC</th>
-              <th>Diff</th>
-              <th title="3 points la victoire, 1 le nul">Pts</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in section.rows" :key="r.teamId">
-              <td>{{ r.rank }}</td>
-              <td><span class="team-cell"><FlagIcon :country="r.teamName" /> {{ r.teamName }}</span></td>
-              <td>{{ r.editions }}</td>
-              <td>{{ r.played }}</td>
-              <td>{{ r.won }}</td>
-              <td>{{ r.drawn }}</td>
-              <td>{{ r.lost }}</td>
-              <td>{{ r.goalsFor }}</td>
-              <td>{{ r.goalsAgainst }}</td>
-              <td>{{ formatDiff(r.goalsFor - r.goalsAgainst) }}</td>
-              <td><strong>{{ r.points }}</strong></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </template>
-    <p class="section-intro">
-      Stade atteint : tour le plus avancé joué (le match pour la 3e place compte comme une demi-finale ;
-      une 2e phase de groupes compte selon son nombre d'équipes). Bilans à 3 points la victoire, matchs
-      gagnés aux tirs au but comptés comme nuls.
+    <p class="section-intro small">
+      V / N / P : victoires, nuls, défaites (matchs gagnés aux tirs au but comptés comme nuls). Pts : 3 points la
+      victoire, 1 le nul. Clique sur « Phase finale » ou « Qualifications » pour trier. Stade atteint : tour le plus
+      avancé joué (le match pour la 3e place compte comme une demi-finale ; une 2e phase de groupes compte selon son
+      nombre d'équipes).
     </p>
   </div>
   <p v-else-if="error" class="error-text">{{ error }}</p>
 </template>
 
 <script setup>
-// Bilan historique d'une competition de selections (cf. InternationalStatsService) : parcours en
-// phase finale, bilan en phase finale et en qualifications, toutes editions confondues.
+// Bilan historique d'une competition de selections (cf. InternationalStatsService) : un tableau
+// compact par selection (phase finale et qualifications cote a cote) et le parcours en phase finale.
 import { computed, ref, watch } from 'vue'
 import api from '../services/api'
 import FlagIcon from './FlagIcon.vue'
-import { journeyColumnsFor, rankedRows } from '../utils/internationalBilan.js'
+import { journeyColumnsFor, mergedRecords, rankedRows } from '../utils/internationalBilan.js'
 
 const props = defineProps({
   family: { type: String, required: true }
@@ -86,17 +96,30 @@ const props = defineProps({
 const stats = ref(null)
 const error = ref('')
 const search = ref('')
+const view = ref('matchs')
+const sortBy = ref('finals')
+
+const RECORD_COLUMNS = [
+  { key: 'played', label: 'MJ', title: 'Matchs joués', value: r => r.played },
+  { key: 'won', label: 'V', title: 'Victoires', value: r => r.won, cls: 'win' },
+  { key: 'drawn', label: 'N', title: 'Nuls', value: r => r.drawn },
+  { key: 'lost', label: 'P', title: 'Défaites', value: r => r.lost, cls: 'loss' },
+  { key: 'goalsFor', label: 'BP', title: 'Buts pour', value: r => r.goalsFor },
+  { key: 'goalsAgainst', label: 'BC', title: 'Buts contre', value: r => r.goalsAgainst },
+  { key: 'diff', label: 'Diff', title: 'Différence de buts', value: r => formatDiff(r.goalsFor - r.goalsAgainst) },
+  { key: 'points', label: 'Pts', title: '3 points la victoire, 1 le nul', value: r => r.points, cls: 'bilan-points' }
+]
 
 const journeyColumns = computed(() => journeyColumnsFor(stats.value?.journeys ?? []))
 const journeys = computed(() => rankedRows(stats.value?.journeys ?? [], search.value))
-const recordSections = computed(() => {
+const groups = computed(() => {
   if (!stats.value) return []
-  const qualifiers = stats.value.qualifiers.length
-  return [
-    { title: qualifiers ? 'Bilan en phase finale' : 'Bilan', rows: rankedRows(stats.value.finals, search.value) },
-    ...(qualifiers ? [{ title: 'Bilan en qualifications', rows: rankedRows(stats.value.qualifiers, search.value) }] : [])
-  ]
+  return stats.value.qualifiers.length
+    ? [{ key: 'finals', title: 'Phase finale' }, { key: 'qualifiers', title: 'Qualifications' }]
+    : [{ key: 'finals', title: 'Bilan' }]
 })
+const records = computed(() =>
+  rankedRows(mergedRecords(stats.value?.finals ?? [], stats.value?.qualifiers ?? [], sortBy.value), search.value))
 
 // "1959B" -> "1959 (bis)", "1819" (Ligue des Nations) -> "2018-2019".
 function editionLabel(edition) {
@@ -111,6 +134,7 @@ function formatDiff(n) {
 
 async function load() {
   stats.value = null
+  sortBy.value = 'finals'
   error.value = ''
   try {
     stats.value = await api.getInternationalStats(props.family)
@@ -123,17 +147,62 @@ watch(() => props.family, load, { immediate: true })
 </script>
 
 <style scoped>
-.bilan-search {
-  max-width: 320px;
+.bilan-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 8px;
+}
+.bilan-search {
+  max-width: 260px;
 }
 .table-scroll {
   overflow-x: auto;
 }
+.bilan-table {
+  width: auto;
+  font-size: 13px;
+  border-collapse: collapse;
+}
+.bilan-table th,
+.bilan-table td {
+  padding: 3px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+.bilan-table .bilan-team {
+  text-align: left;
+}
+.bilan-group {
+  border-bottom: 1px solid var(--border);
+}
+.bilan-first {
+  border-left: 2px solid var(--border);
+}
+.sortable {
+  cursor: pointer;
+}
+.sorted {
+  color: var(--primary);
+}
+.bilan-points {
+  font-weight: 700;
+}
 .bilan-titles {
   display: block;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
+}
+.win {
+  color: #16a34a;
+}
+.loss {
+  color: #dc2626;
+}
+.muted {
+  color: var(--text-muted);
 }
 .bilan-zero {
   color: var(--text-muted);

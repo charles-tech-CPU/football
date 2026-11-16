@@ -8,6 +8,7 @@ import com.charles.footresults.domain.Match;
 import com.charles.footresults.domain.Team;
 import com.charles.footresults.dto.ClosureDto;
 import com.charles.footresults.dto.ClosureRequestDto;
+import com.charles.footresults.dto.PointsAdjustmentDto;
 import com.charles.footresults.dto.StandingRowDto;
 import com.charles.footresults.repository.CompetitionRepository;
 import com.charles.footresults.repository.FinalStandingRepository;
@@ -18,10 +19,12 @@ import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -80,11 +83,16 @@ public class CompetitionClosureService {
     @Transactional(readOnly = true)
     public ClosureDto closure(Long competitionId) {
         Competition competition = competition(competitionId);
+        List<FinalStanding> standings = finalStandingRepository.findByCompetitionIdOrderByFinalRankAsc(competitionId);
         List<StandingRowDto> frozen =
-                finalStandingRepository.findByCompetitionIdOrderByFinalRankAsc(competitionId).stream()
-                        .map(StandingsService::frozenRow)
-                        .toList();
-        return new ClosureDto(competitionId, competition.getClosedAt(), suggestedSeason(competition), frozen);
+                standings.stream().map(StandingsService::frozenRow).toList();
+        List<PointsAdjustmentDto> adjustments = standings.stream()
+                .filter(f -> f.getPointsAdjustment() != 0)
+                .map(f -> new PointsAdjustmentDto(
+                        f.getTeam().getId(), f.getTeam().getName(), f.getPointsAdjustment(), f.getAdjustmentReason()))
+                .toList();
+        return new ClosureDto(
+                competitionId, competition.getClosedAt(), suggestedSeason(competition), frozen, adjustments);
     }
 
     public ClosureDto close(Long competitionId, ClosureRequestDto dto) {
@@ -94,7 +102,7 @@ public class CompetitionClosureService {
         }
         Honour honour;
         if (competition.getType() == CompetitionType.LEAGUE && competition.getCountry() != null) {
-            List<Team> podium = freezeStandings(competition, dto.ranking());
+            List<Team> podium = freezeStandings(competition, dto.ranking(), dto.adjustments());
             honour = honour(competition.getCountry(), LEAGUE_KIND, LEAGUE_LABEL, dto.season());
             setClubs(
                     honour,
@@ -155,8 +163,12 @@ public class CompetitionClosureService {
         return closure(competitionId);
     }
 
-    /** Fige le classement dans l'ordre donne, qui doit reprendre toutes les equipes classees ; renvoie le podium. */
-    private List<Team> freezeStandings(Competition competition, List<Long> ranking) {
+    /**
+     * Fige le classement dans l'ordre donne, qui doit reprendre toutes les equipes classees, en
+     * appliquant les ajustements de points (sanction, correction) ; renvoie le podium.
+     */
+    private List<Team> freezeStandings(
+            Competition competition, List<Long> ranking, List<PointsAdjustmentDto> adjustments) {
         List<StandingRowDto> live = standingsService.computeLiveStandings(competition.getId());
         Map<Long, StandingRowDto> byTeam =
                 live.stream().collect(Collectors.toMap(StandingRowDto::teamId, Function.identity()));
@@ -164,6 +176,7 @@ public class CompetitionClosureService {
             throw new IllegalArgumentException("Le classement final doit reprendre une fois chacune des " + live.size()
                     + " equipes du championnat");
         }
+        Map<Long, PointsAdjustmentDto> adjustmentByTeam = adjustmentsByTeam(adjustments, byTeam.keySet());
         finalStandingRepository.deleteByCompetitionId(competition.getId());
         List<Team> teams = ranking.stream().map(this::team).toList();
         for (int i = 0; i < teams.size(); i++) {
@@ -179,10 +192,37 @@ public class CompetitionClosureService {
             f.setLost(row.lost());
             f.setGoalsFor(row.goalsFor());
             f.setGoalsAgainst(row.goalsAgainst());
-            f.setPoints(row.points());
+            PointsAdjustmentDto adjustment = adjustmentByTeam.get(teams.get(i).getId());
+            int delta = adjustment == null ? 0 : adjustment.points();
+            f.setPoints(row.points() + delta);
+            f.setPointsAdjustment(delta);
+            f.setAdjustmentReason(delta == 0 ? null : reason(adjustment));
             finalStandingRepository.save(f);
         }
         return teams.subList(0, Math.min(3, teams.size()));
+    }
+
+    /** Ajustements non nuls par equipe ; chacun doit viser une equipe du classement, une seule fois. */
+    private static Map<Long, PointsAdjustmentDto> adjustmentsByTeam(
+            List<PointsAdjustmentDto> adjustments, Set<Long> rankedTeams) {
+        Map<Long, PointsAdjustmentDto> result = new HashMap<>();
+        for (PointsAdjustmentDto a : adjustments == null ? List.<PointsAdjustmentDto>of() : adjustments) {
+            if (a.teamId() == null || !rankedTeams.contains(a.teamId())) {
+                throw new IllegalArgumentException("Ajustement de points pour une equipe absente du classement");
+            }
+            if (a.points() != 0 && result.put(a.teamId(), a) != null) {
+                throw new IllegalArgumentException("Un seul ajustement de points par equipe");
+            }
+        }
+        return result;
+    }
+
+    private static String reason(PointsAdjustmentDto adjustment) {
+        String reason = adjustment.reason() == null ? "" : adjustment.reason().strip();
+        if (reason.length() > 200) {
+            reason = reason.substring(0, 200);
+        }
+        return reason.isEmpty() ? null : reason;
     }
 
     /** Ligne de palmares de la saison : existante (ex: deja importee de Wikipedia) ou nouvelle. */

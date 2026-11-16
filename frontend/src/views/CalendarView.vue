@@ -2,7 +2,7 @@
   <section class="hero">
     <span class="hero-eyebrow">Clubs</span>
     <h1>Calendrier</h1>
-    <p class="section-intro">Matchs pas encore joués (hors reportés/suspendus), du plus proche au plus lointain. Filtrable par type de compétition, 20 par page. 🔥 = affiche à voir de la journée, selon le classement.</p>
+    <p class="section-intro">Matchs pas encore joués (hors reportés/suspendus), du plus proche au plus lointain. Filtrable par type de compétition, 20 par page. 🔥 = affiche à voir de la journée, selon le classement ; 🆘 = match de relégation (5 dernières journées, deux équipes en zone rouge ou à 3 points maximum) ; ⚔️ = derby ou rivalité.</p>
   </section>
 
   <div class="filters">
@@ -17,6 +17,8 @@
     <span v-if="totalCount" class="page-info">{{ totalCount }} match{{ totalCount > 1 ? 's' : '' }}</span>
     <router-link to="/reportes-suspendus" class="action-btn action-btn--secondary">Reportés / Suspendus</router-link>
   </div>
+
+  <RivalryManager :teams="teams" @changed="onRivalriesChanged" />
 
   <div v-if="matches.length" class="table-scroll">
   <table>
@@ -47,6 +49,8 @@
         <td>
           {{ m.roundLabel }}
           <span v-if="m.featured" class="featured-match" title="Affiche de la journée : à voir" aria-label="Affiche de la journée">🔥</span>
+          <span v-if="m.relegationBattle" class="featured-match" title="Match de relégation : les deux équipes luttent pour le maintien" aria-label="Match de relégation">🆘</span>
+          <span v-if="m.rivalry" class="featured-match" :title="m.rivalry" :aria-label="m.rivalry">⚔️</span>
         </td>
         <td>
           <span class="team-cell">
@@ -119,6 +123,7 @@ import { penaltiesNeeded, teamOptionsFor as teamOptionsAmong } from '../utils/ma
 import { useMatchEdits } from '../composables/useMatchEdits'
 import TeamSelect from '../components/TeamSelect.vue'
 import SwapHomeButton from '../components/SwapHomeButton.vue'
+import RivalryManager from '../components/RivalryManager.vue'
 
 function isContinental(m) {
   return m.competitionCode === 'LDC' || m.competitionCode === 'EL' || m.competitionCode === 'EC'
@@ -181,6 +186,11 @@ async function load() {
 
   resetEdits(matches.value)
   loaded.value = true
+}
+
+// Icones de rivalite a jour, sauf si une saisie est en cours (le rechargement l'effacerait).
+function onRivalriesChanged() {
+  if (!dirtyMatches.value.length) void load()
 }
 
 function onFilterChange() {

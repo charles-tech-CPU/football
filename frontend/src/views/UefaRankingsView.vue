@@ -9,6 +9,16 @@
       depuis le début de saison (même classement sans les points 2027) ; "Écart" : points de
       retard sur le pays juste devant.
     </p>
+    <details class="add-form uefa-scale">
+      <summary>Barème des points 2027</summary>
+      <ul>
+        <li><strong>Matchs</strong> : qualifications et barrages d'avant la phase de ligue, 1 pt la victoire et 0,5 le nul ; à partir de la phase de ligue, 2 pts la victoire et 1 le nul.</li>
+        <li><strong>Participation à la phase de ligue de la LDC</strong> : 6 pts, dès le premier match joué.</li>
+        <li><strong>Classement final de la phase de ligue</strong> (une fois tous ses matchs joués), du 1er au 24e : LDC et EL 0,25 pt par place (1er 6 pts, soit 12 avec la participation en LDC ; 2e 5,75…) ; EC 4 pts au 1er puis −0,25 par place jusqu'au 8e, −0,125 du 9e au 24e.</li>
+        <li><strong>Tours à élimination directe atteints</strong> (huitièmes, quarts, demies, finale) : 1,5 pt en LDC, 1 en EL, 0,5 en EC par tour.</li>
+        <li>Les points d'un pays sont la somme de ceux de ses clubs (bonus compris), divisée par le nombre de clubs engagés. Un club éliminé perd sa pastille de coupe et sort des clubs « encore en course », sans perdre ses points.</li>
+      </ul>
+    </details>
   </section>
 
   <div class="tab-bar">

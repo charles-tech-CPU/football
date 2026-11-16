@@ -2,6 +2,7 @@ package com.charles.footresults.service;
 
 import com.charles.footresults.domain.ClubUefaRanking;
 import com.charles.footresults.domain.Match;
+import com.charles.footresults.domain.Rivalry;
 import com.charles.footresults.domain.Team;
 import com.charles.footresults.domain.TeamCompetitionStatus;
 import com.charles.footresults.dto.TeamDto;
@@ -11,6 +12,7 @@ import com.charles.footresults.repository.EuropeanSlotRepository;
 import com.charles.footresults.repository.FinalStandingRepository;
 import com.charles.footresults.repository.HonourRepository;
 import com.charles.footresults.repository.MatchRepository;
+import com.charles.footresults.repository.RivalryRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import com.charles.footresults.repository.TeamRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -42,6 +44,7 @@ public class TeamService {
     private final FinalStandingRepository finalStandingRepository;
     private final EuropeanSlotRepository europeanSlotRepository;
     private final CompetitionRepository competitionRepository;
+    private final RivalryRepository rivalryRepository;
 
     public TeamService(
             TeamRepository teamRepository,
@@ -51,7 +54,8 @@ public class TeamService {
             HonourRepository honourRepository,
             FinalStandingRepository finalStandingRepository,
             EuropeanSlotRepository europeanSlotRepository,
-            CompetitionRepository competitionRepository) {
+            CompetitionRepository competitionRepository,
+            RivalryRepository rivalryRepository) {
         this.teamRepository = teamRepository;
         this.matchRepository = matchRepository;
         this.statusRepository = statusRepository;
@@ -60,6 +64,7 @@ public class TeamService {
         this.finalStandingRepository = finalStandingRepository;
         this.europeanSlotRepository = europeanSlotRepository;
         this.competitionRepository = competitionRepository;
+        this.rivalryRepository = rivalryRepository;
     }
 
     public TeamDto merge(Long sourceId, Long targetId) {
@@ -114,6 +119,7 @@ public class TeamService {
         finalStandingRepository.reassignTeam(source, target);
         europeanSlotRepository.reassignTeam(source, target);
         competitionRepository.reassignWinner(source, target);
+        reassignRivalries(source, target);
 
         if (target.getLogoPath() == null && source.getLogoPath() != null) {
             target.setLogoPath(source.getLogoPath());
@@ -122,6 +128,32 @@ public class TeamService {
 
         teamRepository.delete(source);
         return TeamDto.from(target);
+    }
+
+    /**
+     * Les rivalites de "source" passent a "target" (paire renormalisee) ; celles qui opposaient les
+     * deux clubs ou que "target" a deja sont supprimees.
+     */
+    private void reassignRivalries(Team source, Team target) {
+        for (Rivalry r : rivalryRepository.findByTeam1_IdOrTeam2_Id(source.getId(), source.getId())) {
+            Team other = r.getTeam1().getId().equals(source.getId()) ? r.getTeam2() : r.getTeam1();
+            rivalryRepository.delete(r);
+            if (other.getId().equals(target.getId())) {
+                continue;
+            }
+            Team first = other.getId() < target.getId() ? other : target;
+            Team second = first == other ? target : other;
+            if (rivalryRepository
+                    .findByTeam1_IdAndTeam2_Id(first.getId(), second.getId())
+                    .isEmpty()) {
+                Rivalry moved = new Rivalry();
+                moved.setTeam1(first);
+                moved.setTeam2(second);
+                moved.setLabel(r.getLabel());
+                rivalryRepository.save(moved);
+            }
+        }
+        rivalryRepository.flush();
     }
 
     public void delete(Long id) {

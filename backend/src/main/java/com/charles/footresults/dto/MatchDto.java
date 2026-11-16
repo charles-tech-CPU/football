@@ -39,7 +39,11 @@ public record MatchDto(
         Knockout knockout,
         /** Groupe porte par le match (historique des selections nationales) ; null sinon. */
         String groupName,
-        boolean neutral) {
+        boolean neutral,
+        /** Match de relegation (fin de championnat, cf. MatchHighlightService) : calendrier uniquement. */
+        boolean relegationBattle,
+        /** Nom de la rivalite entre les deux clubs (derby...) ; null sinon. Calendrier uniquement. */
+        String rivalry) {
 
     /**
      * decider : dernier match de la confrontation (match sec ou retour), celui qui porte les
@@ -78,7 +82,9 @@ public record MatchDto(
                 false,
                 null,
                 m.getGroupName(),
-                m.isNeutral());
+                m.isNeutral(),
+                false,
+                null);
     }
 
     public MatchDto withCalendarInfo(Integer rank1, Integer rank2, boolean isFeatured, Knockout knockoutInfo) {
@@ -111,6 +117,44 @@ public record MatchDto(
                 isFeatured,
                 knockoutInfo,
                 groupName,
-                neutral);
+                neutral,
+                relegationBattle,
+                rivalry);
+    }
+
+    /** Icones du calendrier : match de relegation et rivalite (cf. MatchHighlightService). */
+    public MatchDto withHighlights(boolean isRelegationBattle, String rivalryLabel) {
+        return new MatchDto(
+                id,
+                competitionId,
+                competitionCode,
+                competitionName,
+                competitionCountry,
+                competitionType,
+                roundLabel,
+                date,
+                time,
+                team1Id,
+                team1Name,
+                team1LogoPath,
+                team1Country,
+                team2Id,
+                team2Name,
+                team2LogoPath,
+                team2Country,
+                score1,
+                score2,
+                penaltyScore1,
+                penaltyScore2,
+                status,
+                bracketPosition,
+                team1LeagueRank,
+                team2LeagueRank,
+                featured,
+                knockout,
+                groupName,
+                neutral,
+                isRelegationBattle,
+                rivalryLabel);
     }
 }

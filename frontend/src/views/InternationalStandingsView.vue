@@ -75,6 +75,7 @@
         v-if="activeView === 'resultats'"
         :matches="matchesByCompetition[comp.id] ?? []"
         :rows="standingsByCompetition[comp.id] ?? []"
+        :hide-other-rounds="isCurrent"
         @saved="loadFor(comp)"
       />
       <template v-else>
@@ -96,6 +97,13 @@
           </li>
         </ul>
       </template>
+      <InternationalKnockoutRounds
+        v-if="isCurrent && loadedIds.has(comp.id)"
+        :competition="comp"
+        :matches="outOfGroupMatches"
+        :rows="standingsByCompetition[comp.id] ?? []"
+        @saved="loadFor(comp)"
+      />
     </div>
   </template>
   <p v-else-if="loaded" class="empty-state">Aucune compétition de sélections.</p>
@@ -109,6 +117,8 @@ import StandingsTable from '../components/StandingsTable.vue'
 import InternationalResults from '../components/InternationalResults.vue'
 import InternationalNav from '../components/InternationalNav.vue'
 import InternationalBilan from '../components/InternationalBilan.vue'
+import InternationalKnockoutRounds from '../components/InternationalKnockoutRounds.vue'
+import { matchGroupResolver } from '../utils/internationalRounds'
 import { internationalFamilies, locateCompetition } from '../utils/internationalEditions'
 import { internationalLegend, internationalRowClasses } from '../utils/internationalQualification'
 
@@ -131,6 +141,14 @@ const currentSeason = computed(() => Math.max(...competitions.value.map(c => c.s
 const families = computed(() => internationalFamilies(competitions.value, currentSeason.value))
 const active = computed(() => locateCompetition(families.value, selectedId.value))
 const comp = computed(() => active.value?.phase.competition ?? null)
+// Edition de la saison en cours : barrages et phases finales saisissables (pas les archives).
+const isCurrent = computed(() => comp.value != null && comp.value.season === currentSeason.value)
+const outOfGroupMatches = computed(() => {
+  if (!comp.value) return []
+  const matches = matchesByCompetition.value[comp.value.id] ?? []
+  const groupOf = matchGroupResolver(matches, standingsByCompetition.value[comp.value.id] ?? [])
+  return matches.filter(m => groupOf(m) === undefined)
+})
 
 // Les editions les plus recentes en onglets, les autres (jusqu'a 1916 pour la Copa America) en liste.
 const RECENT_EDITIONS = 10

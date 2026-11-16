@@ -87,7 +87,7 @@
     </ul>
   </article>
 
-  <p v-if="!groupCards.length && !otherRounds.length" class="empty-state">Aucun résultat pour l'instant dans cette compétition.</p>
+  <p v-if="!groupCards.length && !otherRounds.length && !hideOtherRounds" class="empty-state">Aucun résultat pour l'instant dans cette compétition.</p>
   <p v-if="error" class="error-text">{{ error }}</p>
 </template>
 
@@ -105,7 +105,9 @@ import { isPlayed } from '../utils/matchEdit.js'
 const props = defineProps({
   matches: { type: Array, default: () => [] },
   // Lignes de classement (avec `group`) : composition et ordre des equipes de chaque groupe.
-  rows: { type: Array, default: () => [] }
+  rows: { type: Array, default: () => [] },
+  // Matchs hors groupe affiches a part (saison en cours : InternationalKnockoutRounds, saisissable)
+  hideOtherRounds: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['saved'])
@@ -162,6 +164,7 @@ const groupCards = computed(() => {
 // Matchs hors groupe, regroupes par tour (libelle sans la manche : "Barrages - Aller" et
 // "Barrages - Retour" vont ensemble), tours dans l'ordre chronologique.
 const otherRounds = computed(() => {
+  if (props.hideOtherRounds) return []
   const rounds = new Map()
   for (const m of props.matches.filter(x => isPlayed(x) && groupOf(x) === undefined).toSorted(byDate)) {
     const label = (m.roundLabel ?? 'Autres résultats').replace(/ - (Aller|Retour)$/, '')

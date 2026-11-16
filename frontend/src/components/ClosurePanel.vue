@@ -16,6 +16,12 @@
           <span class="closure-points">{{ r.points }} pts</span>
         </li>
       </ol>
+      <ul v-if="state.adjustments?.length" class="closure-adjustments">
+        <li v-for="a in state.adjustments" :key="a.teamId">
+          {{ a.teamName }} : {{ formatAdjustment(a.points) }} pt{{ Math.abs(a.points) > 1 ? 's' : '' }}
+          <span v-if="a.reason" class="muted">({{ a.reason }})</span>
+        </li>
+      </ul>
       <NextSeasonPanel
         v-if="isLeague && !nextSeasonExists && state.finalStandings.length"
         :league="competition"
@@ -44,14 +50,33 @@
       <template v-if="isLeague">
         <p class="section-intro">
           Ordre proposé d'après le classement : corrige-le avec les flèches si un départage (tête-à-tête,
-          barrage pour le titre...) en décide autrement.
+          barrage pour le titre...) en décide autrement. La colonne « ± pts » ajoute ou retire des points
+          à un club (sanction, erreur de saisie) dans le classement figé : pense à remettre l'ordre à jour.
         </p>
         <ol class="closure-ranking">
           <li v-for="(r, i) in ranking" :key="r.teamId">
             <span class="closure-rank">{{ i + 1 }}</span>
             <TeamLogo :name="r.teamName" :logo-path="r.teamLogoPath" :country="r.teamCountry" />
             <span class="closure-team">{{ r.teamName }}</span>
-            <span class="closure-points">{{ r.points }} pts</span>
+            <span class="closure-points" :class="{ 'closure-points--adjusted': adjustmentOf(r) }">
+              {{ r.points + adjustmentOf(r) }} pts
+            </span>
+            <input
+              v-model.number="adjustments[r.teamId]"
+              type="number"
+              step="1"
+              class="closure-adjust"
+              placeholder="± pts"
+              :aria-label="`Points ajoutés ou retirés à ${r.teamName}`"
+            />
+            <input
+              v-if="adjustmentOf(r)"
+              v-model.trim="reasons[r.teamId]"
+              class="closure-reason"
+              maxlength="200"
+              placeholder="Motif (sanction...)"
+              :aria-label="`Motif de l'ajustement de ${r.teamName}`"
+            />
             <button type="button" :disabled="i === 0" :aria-label="`Monter ${r.teamName}`" @click="move(i, -1)">↑</button>
             <button type="button" :disabled="i === ranking.length - 1" :aria-label="`Descendre ${r.teamName}`" @click="move(i, 1)">↓</button>
           </li>
@@ -104,6 +129,9 @@ const ranking = ref([])
 const matches = ref([])
 const winnerId = ref(null)
 const runnerUpId = ref(null)
+// Ajustements de points saisis avant la cloture, par club (sanction, correction d'une erreur).
+const adjustments = ref({})
+const reasons = ref({})
 const busy = ref(false)
 const error = ref('')
 const loadError = ref('')
@@ -139,6 +167,15 @@ async function load() {
   if (!isLeague.value) ({ winnerId: winnerId.value, runnerUpId: runnerUpId.value } = cupFinal(matchList))
 }
 
+function adjustmentOf(row) {
+  const value = adjustments.value[row.teamId]
+  return Number.isInteger(value) ? value : 0
+}
+
+function formatAdjustment(points) {
+  return points > 0 ? `+${points}` : String(points)
+}
+
 function move(index, delta) {
   ranking.value = moveRow(ranking.value, index, delta)
 }
@@ -158,7 +195,13 @@ async function run(action) {
 
 function close() {
   const payload = isLeague.value
-    ? { season: season.value, ranking: ranking.value.map(r => r.teamId) }
+    ? {
+        season: season.value,
+        ranking: ranking.value.map(r => r.teamId),
+        adjustments: ranking.value
+          .filter(r => adjustmentOf(r))
+          .map(r => ({ teamId: r.teamId, points: adjustmentOf(r), reason: reasons.value[r.teamId] || null }))
+      }
     : { season: season.value, winnerId: winnerId.value, runnerUpId: runnerUpId.value }
   return run(() => api.closeCompetition(props.competition.id, payload))
 }
@@ -168,7 +211,11 @@ function reopen() {
   return run(() => api.reopenCompetition(props.competition.id))
 }
 
-watch(() => props.proposedRows, rows => { ranking.value = rows.slice() }, { immediate: true })
+watch(() => props.proposedRows, rows => {
+  ranking.value = rows.slice()
+  adjustments.value = {}
+  reasons.value = {}
+}, { immediate: true })
 watch(() => props.competition.id, load, { immediate: true })
 </script>
 
@@ -187,6 +234,24 @@ watch(() => props.competition.id, load, { immediate: true })
   border-radius: var(--radius);
   background: var(--surface);
   font-weight: 600;
+}
+.closure-adjust {
+  width: 70px;
+}
+.closure-reason {
+  width: 160px;
+}
+.closure-points--adjusted {
+  color: var(--danger);
+  font-weight: 700;
+}
+.muted {
+  color: var(--text-muted);
+}
+.closure-adjustments {
+  margin: 4px 0 12px;
+  padding-left: 18px;
+  font-size: 0.9em;
 }
 .closure-season {
   display: block;

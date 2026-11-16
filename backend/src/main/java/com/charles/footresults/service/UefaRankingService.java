@@ -49,6 +49,14 @@ import org.springframework.stereotype.Service;
  * Un "barrage" existe aux 2 moments de la saison sous le meme libelle ; on les distingue par
  * date (avant/apres le debut de la phase de ligue de cette competition), cf. categorize().
  *
+ * Bonus (bareme 2024-2027, compte aussi pour le coefficient pays) :
+ * - participation a la phase de ligue de la LDC : 6 pts (au premier match joue de phase de ligue) ;
+ * - classement final de la phase de ligue (une fois toute la phase jouee), 1er a 24e :
+ *   LDC et EL 0,25 x (25 - rang) (1er = 6, soit 12 avec la participation en LDC) ;
+ *   EC 2,25 + 0,25 x (8 - rang) du 1er au 8e (1er = 4), puis 0,125 x (26 - rang) du 9e au 24e ;
+ * - chaque tour a elimination directe atteint (huitiemes, quarts, demies, finale) :
+ *   LDC 1,5, EL 1, EC 0,5 (au premier match joue du tour).
+ *
  * Statut "encore en course" : un club est elimine des qu'il perd une confrontation a
  * elimination directe (aggregat aller-retour, ou tirs au but si egalite) deja entierement
  * jouee, ou, pour la phase de ligue (pas une confrontation mais une mini-ligue), une fois que
@@ -72,6 +80,13 @@ public class UefaRankingService {
     private static final BigDecimal WIN_MAIN = BigDecimal.valueOf(2);
     private static final BigDecimal DRAW_MAIN = BigDecimal.ONE;
     private static final BigDecimal SEASONS_IN_COEFFICIENT = BigDecimal.valueOf(5);
+
+    private static final BigDecimal LDC_PARTICIPATION_BONUS = BigDecimal.valueOf(6);
+    private static final int LAST_BONUS_RANK = 24;
+    private static final Map<String, BigDecimal> KNOCKOUT_ROUND_BONUS = Map.of(
+            "LDC", new BigDecimal("1.5"),
+            "EL", BigDecimal.ONE,
+            "EC", new BigDecimal("0.5"));
 
     private static final Pattern LEG_SUFFIX = Pattern.compile("-\\s*(ALLER|RETOUR)\\s*$", Pattern.CASE_INSENSITIVE);
 
@@ -278,6 +293,17 @@ public class UefaRankingService {
             }
         }
 
+        for (Bonus bonus : bonuses(matches, leaguePhaseStart)) {
+            if (!teamIds.contains(bonus.teamId())) {
+                continue;
+            }
+            if (bonus.date() == null) {
+                undated = undated.add(bonus.points());
+            } else {
+                byDate.merge(bonus.date(), bonus.points(), BigDecimal::add);
+            }
+        }
+
         List<UefaHistoryPointDto> points = new ArrayList<>();
         BigDecimal cumulative = undated;
         points.add(historyPoint(null, cumulative, coefficientOf));
@@ -332,10 +358,129 @@ public class UefaRankingService {
             }
         }
 
+        for (Bonus bonus : bonuses(matches, leaguePhaseStart)) {
+            pointsByTeam.merge(bonus.teamId(), bonus.points(), BigDecimal::add);
+        }
+
         Set<Long> eliminated = new HashSet<>();
         eliminated.addAll(tieLosers(ties.values()));
         eliminated.addAll(leaguePhaseEliminated(leaguePhaseByCompetition));
         return new SeasonState(pointsByTeam, eliminated);
+    }
+
+    /**
+     * Bonus de la saison (cf. bareme en tete de classe), dates au match qui les declenche : premier
+     * match joue de phase de ligue (participation LDC), dernier match de la phase de ligue (classement
+     * final, seulement une fois toute la phase jouee), premier match de chaque tour a elimination
+     * directe atteint (premier match joue du tour).
+     */
+    private List<Bonus> bonuses(List<Match> matches, Map<Long, LocalDate> leaguePhaseStart) {
+        List<Bonus> result = new ArrayList<>();
+        Map<Long, List<Match>> leaguePhase = new HashMap<>();
+        Map<String, Match> firstKnockoutMatch = new HashMap<>();
+        for (Match m : matches) {
+            RoundCategory category = categorize(m, leaguePhaseStart);
+            if (category == RoundCategory.LEAGUE_PHASE) {
+                leaguePhase
+                        .computeIfAbsent(m.getCompetition().getId(), k -> new ArrayList<>())
+                        .add(m);
+            } else if (category == RoundCategory.KNOCKOUT_TIE && m.isDecided()) {
+                String round = knockoutRound(m.getRoundLabel());
+                if (round == null) {
+                    continue;
+                }
+                for (Long teamId : List.of(m.getTeam1().getId(), m.getTeam2().getId())) {
+                    firstKnockoutMatch.merge(
+                            m.getCompetition().getId() + "|" + round + "|" + teamId, m, UefaRankingService::earlier);
+                }
+            }
+        }
+        for (Map.Entry<String, Match> entry : firstKnockoutMatch.entrySet()) {
+            Match m = entry.getValue();
+            BigDecimal bonus = KNOCKOUT_ROUND_BONUS.get(m.getCompetition().getCode());
+            Long teamId = Long.valueOf(entry.getKey().substring(entry.getKey().lastIndexOf('|') + 1));
+            if (bonus != null && !isPlaceholder(m, teamId)) {
+                result.add(new Bonus(teamId, m.getDate(), bonus));
+            }
+        }
+        for (List<Match> phase : leaguePhase.values()) {
+            String code = phase.get(0).getCompetition().getCode();
+            if ("LDC".equals(code)) {
+                Map<Long, Match> firstMatch = new HashMap<>();
+                for (Match m : phase.stream().filter(Match::isDecided).toList()) {
+                    firstMatch.merge(m.getTeam1().getId(), m, UefaRankingService::earlier);
+                    firstMatch.merge(m.getTeam2().getId(), m, UefaRankingService::earlier);
+                }
+                firstMatch.forEach((teamId, m) -> {
+                    if (!isPlaceholder(m, teamId)) {
+                        result.add(new Bonus(teamId, m.getDate(), LDC_PARTICIPATION_BONUS));
+                    }
+                });
+            }
+            if (!phase.stream().allMatch(Match::isDecided)) {
+                continue;
+            }
+            LocalDate end = phase.stream()
+                    .map(Match::getDate)
+                    .filter(Objects::nonNull)
+                    .max(Comparator.naturalOrder())
+                    .orElse(null);
+            List<StandingRowDto> standings = standingsService.computeStandingsForRound(
+                    phase.get(0).getCompetition().getId(), LEAGUE_PHASE_ROUND);
+            for (int i = 0; i < Math.min(LAST_BONUS_RANK, standings.size()); i++) {
+                BigDecimal bonus = leaguePhaseRankBonus(code, i + 1);
+                if (bonus.signum() > 0) {
+                    result.add(new Bonus(standings.get(i).teamId(), end, bonus));
+                }
+            }
+        }
+        return result;
+    }
+
+    /** Bonus de classement final de phase de ligue (hors participation LDC) ; 0 au-dela du 24e. */
+    static BigDecimal leaguePhaseRankBonus(String code, int rank) {
+        if (rank < 1 || rank > LAST_BONUS_RANK) {
+            return BigDecimal.ZERO;
+        }
+        if ("EC".equals(code)) {
+            return rank <= 8
+                    ? new BigDecimal("2.25").add(new BigDecimal("0.25").multiply(BigDecimal.valueOf(8L - rank)))
+                    : new BigDecimal("0.125").multiply(BigDecimal.valueOf(26L - rank));
+        }
+        return new BigDecimal("0.25").multiply(BigDecimal.valueOf(25L - rank));
+    }
+
+    /** Tour a elimination directe donnant un bonus (HUITIEME, QUART, DEMI, FINALE) ; null sinon (seiziemes...). */
+    static String knockoutRound(String roundLabel) {
+        String label = roundLabel == null ? "" : roundLabel.toUpperCase();
+        if (label.contains("SEIZIEME")) {
+            return null;
+        }
+        if (label.contains("HUITIEME") || label.contains("HUITEME")) {
+            return "HUITIEME";
+        }
+        if (label.contains("QUART")) {
+            return "QUART";
+        }
+        if (label.contains("DEMI")) {
+            return "DEMI";
+        }
+        return label.contains("FINALE") ? "FINALE" : null;
+    }
+
+    /** Place "A DETERMINER" d'un tirage a venir : pas un vrai club. */
+    private static boolean isPlaceholder(Match m, Long teamId) {
+        String name = m.getTeam1().getId().equals(teamId)
+                ? m.getTeam1().getName()
+                : m.getTeam2().getName();
+        return name == null || name.toUpperCase().startsWith("A DETERMINER");
+    }
+
+    private static Match earlier(Match a, Match b) {
+        if (a.getDate() == null) {
+            return b.getDate() == null ? a : b;
+        }
+        return b.getDate() != null && b.getDate().isBefore(a.getDate()) ? b : a;
     }
 
     /** Date du premier match de phase de ligue de chaque competition (sert a situer les barrages). */
@@ -562,6 +707,9 @@ public class UefaRankingService {
 
     private record TieKey(
             Long competitionId, RoundCategory category, String strippedLabel, long teamLow, long teamHigh) {}
+
+    /** Bonus de saison d'un club, date du match qui le declenche (null : sans date). */
+    private record Bonus(Long teamId, LocalDate date, BigDecimal points) {}
 
     private record SeasonState(Map<Long, BigDecimal> pointsByTeam, Set<Long> eliminatedTeamIds) {}
 }

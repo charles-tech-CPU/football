@@ -21,6 +21,7 @@ import com.charles.footresults.repository.EuropeanSlotRepository;
 import com.charles.footresults.repository.FinalStandingRepository;
 import com.charles.footresults.repository.HonourRepository;
 import com.charles.footresults.repository.MatchRepository;
+import com.charles.footresults.repository.RivalryRepository;
 import com.charles.footresults.repository.TeamCompetitionStatusRepository;
 import com.charles.footresults.repository.TeamRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -59,6 +60,9 @@ class TeamServiceTest {
 
     @Mock
     private CompetitionRepository competitionRepository;
+
+    @Mock
+    private RivalryRepository rivalryRepository;
 
     @InjectMocks
     private TeamService teamService;
