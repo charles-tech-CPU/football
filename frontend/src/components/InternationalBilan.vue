@@ -18,12 +18,17 @@
               v-for="g in groups"
               :key="g.key"
               :colspan="RECORD_COLUMNS.length + 1"
-              class="bilan-group sortable"
-              :class="{ sorted: sortBy === g.key }"
-              :title="`Trier sur le bilan ${g.title.toLowerCase()}`"
-              @click="sortBy = g.key"
+              class="bilan-group"
             >
-              {{ g.title }}{{ sortBy === g.key ? ' ▼' : '' }}
+              <button
+                type="button"
+                class="sort-btn"
+                :class="{ sorted: sortBy === g.key }"
+                :title="`Trier sur le bilan ${g.title.toLowerCase()}`"
+                @click="sortBy = g.key"
+              >
+                {{ g.title }}{{ sortBy === g.key ? ' ▼' : '' }}
+              </button>
             </th>
           </tr>
           <tr>
@@ -181,7 +186,11 @@ watch(() => props.family, load, { immediate: true })
 .bilan-first {
   border-left: 2px solid var(--border);
 }
-.sortable {
+.sort-btn {
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
   cursor: pointer;
 }
 .sorted {
